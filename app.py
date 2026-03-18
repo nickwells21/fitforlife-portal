@@ -1,24 +1,35 @@
 import os
+import warnings
 from datetime import datetime, timedelta, timezone
 from calendar import month_name
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+
+_secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+if _secret_key == 'dev-secret-change-in-production':
+    warnings.warn('SECRET_KEY is not set — using insecure dev key. Set SECRET_KEY in environment!', stacklevel=1)
+app.config['SECRET_KEY'] = _secret_key
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///fitforlife.db')
 if db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 280,
+}
 
+csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -478,6 +489,7 @@ def api_sessions():
 
 @app.route('/api/check-conflict', methods=['POST'])
 @login_required
+@csrf.exempt
 def api_check_conflict():
     data = request.json
     trainer_id = int(data['trainer_id'])

@@ -16,6 +16,7 @@
     <div class="ffl-card">
       <div class="card-title" style="margin-bottom:0.875rem;">New Promo</div>
       <form method="POST" action="{{ url_for('admin_new_promo') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; flex-direction:column; gap:0.75rem;">
           <div>
             <label class="form-label">Title</label>
@@ -75,10 +76,12 @@
           </div>
           <div style="display:flex; gap:0.375rem; flex-shrink:0;">
             <form method="POST" action="{{ url_for('toggle_promo', promo_id=promo.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-outline-secondary btn-sm">{{ 'Deactivate' if promo.is_active else 'Activate' }}</button>
             </form>
             <form method="POST" action="{{ url_for('delete_promo', promo_id=promo.id) }}"
                   onsubmit="return confirm('Delete this promo?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-outline-danger btn-sm">Delete</button>
             </form>
           </div>

@@ -16,6 +16,7 @@
     <div class="ffl-card">
       <div class="card-title" style="margin-bottom:0.875rem;">Add / Update Package</div>
       <form method="POST" action="{{ url_for('admin_new_package') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; flex-direction:column; gap:0.75rem;">
           <div>
             <label class="form-label">Client</label>
@@ -84,6 +85,7 @@
             <td style="text-align:right;">
               <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
                     onsubmit="return confirm('Delete this package?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-outline-danger btn-sm">Delete</button>
               </form>
             </td>

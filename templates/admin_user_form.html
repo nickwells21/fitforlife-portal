@@ -16,6 +16,7 @@
   <div class="col-lg-6">
     <div class="ffl-card">
       <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; flex-direction:column; gap:0.875rem;">
           <div>
             <label class="form-label">Full Name</label>

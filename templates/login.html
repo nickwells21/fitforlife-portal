@@ -15,13 +15,14 @@
     {% endwith %}
 
     <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div style="margin-bottom:0.875rem;">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control" placeholder="you@example.com" required autofocus>
+        <label class="form-label" for="email">Email</label>
+        <input type="email" name="email" id="email" class="form-control" placeholder="you@example.com" required autofocus autocomplete="email">
       </div>
       <div style="margin-bottom:1.5rem;">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+        <label class="form-label" for="password">Password</label>
+        <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
       </div>
       <button type="submit" class="btn btn-ffl w-100" style="padding:0.6rem 1rem !important;">Sign In</button>
     </form>

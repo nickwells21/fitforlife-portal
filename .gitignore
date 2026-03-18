@@ -33,3 +33,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Dev artifacts
+static/preview_dashboard.html
+static/screenshot_temp.png
+
+# Credentials
+Client Logins.txt
+*.txt

@@ -78,6 +78,7 @@
       <div class="card-title" style="margin-bottom:0.75rem;">Update Status</div>
       {% for s in ['scheduled','completed','missed','cancelled'] %}
       <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin-bottom:0.375rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="{{ s }}">
         <button type="submit" class="btn btn-outline-secondary btn-sm w-100 text-start"
           style="{% if sess.status == s %}background:var(--bg-active); color:var(--text); border-color:var(--border-mid);{% endif %} justify-content:flex-start;">
