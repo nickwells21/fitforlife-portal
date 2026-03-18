@@ -277,6 +277,15 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/dev-login/<email>')
+def dev_login(email):
+    if os.environ.get('FLASK_ENV') == 'production':
+        abort(404)
+    user = User.query.filter_by(email=email).first_or_404()
+    login_user(user)
+    return redirect(url_for('dashboard'))
+
+
 # ─── Dashboard ───────────────────────────────────────────────────────────────
 
 @app.route('/dashboard')
