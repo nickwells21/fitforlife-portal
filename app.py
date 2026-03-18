@@ -919,12 +919,31 @@ def init_db():
         db.session.add(admin)
         db.session.commit()
         print('Admin created: nick@fitforlife.com / changeme — CHANGE THIS PASSWORD!')
-    if not User.query.filter_by(email='client@fitforlife.com').first():
-        client = User(name='Test Client', email='client@fitforlife.com', role='client')
-        client.set_password('client123')
-        db.session.add(client)
-        db.session.commit()
-        print('Test client created: client@fitforlife.com / client123')
+    clients_seed = [
+        ('Akennya Barnes',       'ABarnes251@fitforlife.com',    'Barnes2026'),
+        ('Alison Herlihy',       'AHerlihy251@fitforlife.com',   'Herlihy2026'),
+        ('Andrew Sprinkle',      'ASprinkle251@fitforlife.com',  'Sprinkle2026'),
+        ('Chad Hansen',          'CHansen251@fitforlife.com',    'Hansen2026'),
+        ('Charlene Shaw',        'CShaw251@fitforlife.com',      'Shaw2026'),
+        ('Clare McConnell',      'CMcConnell251@fitforlife.com', 'McConnell2026'),
+        ('Debbie McGowin',       'DMcGowin251@fitforlife.com',   'McGowin2026'),
+        ('Jennifer Morgan',      'JMorgan251@fitforlife.com',    'Morgan2026'),
+        ('Kari Bradham',         'KBradham251@fitforlife.com',   'Bradham2026'),
+        ('Mary Alice Mathison',  'MMathison251@fitforlife.com',  'Mathison2026'),
+        ('Noah Pittman',         'NPittman251@fitforlife.com',   'Pittman2026'),
+        ('Peyton Atkins',        'PAtkins251@fitforlife.com',    'Atkins2026'),
+        ('Rebekka Dyess',        'RDyess251@fitforlife.com',     'Dyess2026'),
+        ('Ruth Pappas',          'RPappas251@fitforlife.com',    'Pappas2026'),
+        ('Sarah Williams',       'SWilliams251@fitforlife.com',  'Williams2026'),
+        ('Shea Sadler',          'SSadler251@fitforlife.com',    'Sadler2026'),
+    ]
+    for name, email, password in clients_seed:
+        if not User.query.filter_by(email=email).first():
+            u = User(name=name, email=email, role='client')
+            u.set_password(password)
+            db.session.add(u)
+    db.session.commit()
+    print('Client accounts seeded.')
 
 
 with app.app_context():
