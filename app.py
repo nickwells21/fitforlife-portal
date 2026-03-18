@@ -28,6 +28,9 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 280,
 }
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
@@ -912,6 +915,13 @@ def forbidden(e):
 @app.errorhandler(404)
 def not_found(e):
     return render_template('error.html', code=404, message="Page not found."), 404
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.exception("Unhandled 500 error")
+    db.session.rollback()
+    return render_template('error.html', code=500, message="Something went wrong. Please try again."), 500
 
 
 # ─── Init ────────────────────────────────────────────────────────────────────

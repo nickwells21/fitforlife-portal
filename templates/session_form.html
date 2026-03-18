@@ -20,7 +20,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.875rem;">
 
           <div>
-            <label class="form-label">Trainer</label>
+            <label class="form-label" for="trainer_id">Trainer</label>
             <select name="trainer_id" id="trainer_id" class="form-select" required onchange="checkConflict()">
               <option value="">Select trainer…</option>
               {% for t in trainers %}
@@ -34,7 +34,7 @@
           </div>
 
           <div>
-            <label class="form-label">Client</label>
+            <label class="form-label" for="client_id">Client</label>
             <select name="client_id" id="client_id" class="form-select" required>
               <option value="">Select client…</option>
               {% for c in clients %}
@@ -46,7 +46,7 @@
           </div>
 
           <div>
-            <label class="form-label">Location</label>
+            <label class="form-label" for="location_id">Location</label>
             <select name="location_id" id="location_id" class="form-select" required onchange="checkConflict()">
               <option value="">Select location…</option>
               {% for loc in locations %}
@@ -59,7 +59,7 @@
           </div>
 
           <div>
-            <label class="form-label">Duration</label>
+            <label class="form-label" for="duration">Duration</label>
             <select name="duration" id="duration" class="form-select" onchange="checkConflict()">
               <option value="30"  {% if sess and sess.duration==30  %}selected{% endif %}>30 min</option>
               <option value="45"  {% if sess and sess.duration==45  %}selected{% endif %}>45 min</option>
@@ -70,21 +70,21 @@
           </div>
 
           <div style="grid-column: 1 / -1;">
-            <label class="form-label">Date &amp; Time</label>
+            <label class="form-label" for="scheduled_at">Date &amp; Time</label>
             <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" required
               value="{{ sess.scheduled_at.strftime('%Y-%m-%dT%H:%M') if sess else prefill_date }}"
               onchange="checkConflict()">
           </div>
 
           <div style="grid-column: 1 / -1;">
-            <label class="form-label">Notes <span style="color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
-            <textarea name="notes" class="form-control" rows="3" placeholder="Any notes for this session…">{{ sess.notes or '' }}</textarea>
+            <label class="form-label" for="notes">Notes <span style="color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
+            <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Any notes for this session…">{{ sess.notes or '' }}</textarea>
           </div>
 
         </div>
 
         <!-- Conflict warning -->
-        <div id="conflictAlert" style="display:none; margin-top:0.875rem;">
+        <div id="conflictAlert" role="alert" aria-live="assertive" style="display:none; margin-top:0.875rem;">
           <i class="bi bi-exclamation-triangle me-1"></i>
           <strong>Conflict:</strong>
           <ul id="conflictList" style="margin:4px 0 0 0; padding-left:1.25rem; font-size:12px;"></ul>
