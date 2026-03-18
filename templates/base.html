@@ -94,11 +94,20 @@
 
   <!-- Main -->
   <div class="main-content">
-    <div class="topbar d-flex align-items-center d-md-none">
-      <button class="btn-ghost btn btn-sm me-2" id="sidebarToggle" style="padding:0.3rem 0.5rem !important;">
-        <i class="bi bi-list" style="font-size:16px;"></i>
-      </button>
-      <span style="font-size:13px; font-weight:700; color:var(--text);">Fit For Life</span>
+    <div class="topbar d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <button class="btn-ghost btn btn-sm me-2 d-md-none" id="sidebarToggle" style="padding:0.3rem 0.5rem !important;">
+          <i class="bi bi-list" style="font-size:16px;"></i>
+        </button>
+        <span class="topbar-title">{{ current_user.role | capitalize }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="topbar-user">{{ current_user.name }}</span>
+        <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign out">
+          <i class="bi bi-box-arrow-right"></i>
+          <span class="logout-label">Sign Out</span>
+        </a>
+      </div>
     </div>
 
     <div class="content-area">
