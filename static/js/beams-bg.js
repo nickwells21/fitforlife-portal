@@ -7,13 +7,13 @@
   'use strict';
 
   const BEAMS = [
-    { x: 0.10, y: -0.05, angle: 218, width: 2.2, hue: 247, speed: 0.38, opacity: 0.55 },
-    { x: 0.35, y: -0.15, angle: 225, width: 3.0, hue: 258, speed: 0.28, opacity: 0.45 },
-    { x: 0.60, y: -0.08, angle: 212, width: 1.6, hue: 242, speed: 0.52, opacity: 0.65 },
-    { x: 0.82, y:  0.02, angle: 232, width: 2.5, hue: 252, speed: 0.33, opacity: 0.50 },
-    { x: 0.20, y:  0.40, angle: 220, width: 1.9, hue: 238, speed: 0.44, opacity: 0.38 },
-    { x: 0.50, y:  0.25, angle: 228, width: 2.8, hue: 262, speed: 0.31, opacity: 0.42 },
-    { x: 0.75, y:  0.55, angle: 215, width: 1.4, hue: 245, speed: 0.58, opacity: 0.35 },
+    { x: 0.10, y: -0.05, angle: 218, width: 2.2, hue: 204, speed: 0.38, opacity: 0.55 },
+    { x: 0.35, y: -0.15, angle: 225, width: 3.0, hue: 210, speed: 0.28, opacity: 0.45 },
+    { x: 0.60, y: -0.08, angle: 212, width: 1.6, hue: 198, speed: 0.52, opacity: 0.65 },
+    { x: 0.82, y:  0.02, angle: 232, width: 2.5, hue: 207, speed: 0.33, opacity: 0.50 },
+    { x: 0.20, y:  0.40, angle: 220, width: 1.9, hue: 196, speed: 0.44, opacity: 0.38 },
+    { x: 0.50, y:  0.25, angle: 228, width: 2.8, hue: 213, speed: 0.31, opacity: 0.42 },
+    { x: 0.75, y:  0.55, angle: 215, width: 1.4, hue: 202, speed: 0.58, opacity: 0.35 },
   ];
 
   function initBeams(containerEl) {
@@ -46,8 +46,8 @@
       const radius = Math.max(w, h) * 0.75;
 
       const radial = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      radial.addColorStop(0,   'rgba(99,102,241,0.15)');
-      radial.addColorStop(0.5, 'rgba(99,102,241,0.04)');
+      radial.addColorStop(0,   'rgba(30,157,241,0.15)');
+      radial.addColorStop(0.5, 'rgba(30,157,241,0.04)');
       radial.addColorStop(1,   'rgba(8,8,8,0)');
 
       ctx.fillStyle = '#080808';

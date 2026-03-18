@@ -14,7 +14,7 @@
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1.75rem 2rem;
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(99,102,241,0.08) 100%);
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(30,157,241,0.08) 100%);
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-lg);
   position: relative;
@@ -25,7 +25,7 @@
   position: absolute;
   top: -40px; right: -40px;
   width: 180px; height: 180px;
-  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(30,157,241,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
 .dash-hero-left {}
@@ -37,7 +37,7 @@
   line-height: 1.2;
 }
 .dash-hero-greeting span {
-  background: linear-gradient(90deg, #a5b4fc, #6366f1);
+  background: linear-gradient(90deg, #a5b4fc, #1e9df1);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -60,7 +60,7 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #1e9df1, #0a7abf);
   color: #fff;
   font-size: 0.8rem;
   font-weight: 600;
@@ -68,11 +68,11 @@
   border: none;
   text-decoration: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+  box-shadow: 0 4px 14px rgba(30,157,241,0.35);
 }
 .btn-action-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+  box-shadow: 0 6px 20px rgba(30,157,241,0.45);
   color: #fff;
   text-decoration: none;
 }
@@ -129,10 +129,10 @@
   width: 3px;
   border-radius: 3px 0 0 3px;
 }
-.kpi-card.accent::before  { background: linear-gradient(180deg, #6366f1, #818cf8); }
+.kpi-card.accent::before  { background: linear-gradient(180deg, #1e9df1, #818cf8); }
 .kpi-card.green::before   { background: linear-gradient(180deg, #22c55e, #4ade80); }
 .kpi-card.teal::before    { background: linear-gradient(180deg, #06b6d4, #22d3ee); }
-.kpi-card.purple::before  { background: linear-gradient(180deg, #7c3aed, #a78bfa); }
+.kpi-card.purple::before  { background: linear-gradient(180deg, #7c3aed, #69c0f5); }
 
 .kpi-card-icon {
   position: absolute;
@@ -141,7 +141,7 @@
   opacity: 0.07;
   line-height: 1;
 }
-.kpi-card.accent  .kpi-card-icon { color: #6366f1; }
+.kpi-card.accent  .kpi-card-icon { color: #1e9df1; }
 .kpi-card.green   .kpi-card-icon { color: #22c55e; }
 .kpi-card.teal    .kpi-card-icon { color: #06b6d4; }
 .kpi-card.purple  .kpi-card-icon { color: #7c3aed; }
@@ -169,7 +169,7 @@
 .kpi-card.accent  .kpi-trend { color: #818cf8; }
 .kpi-card.green   .kpi-trend { color: #4ade80; }
 .kpi-card.teal    .kpi-trend { color: #22d3ee; }
-.kpi-card.purple  .kpi-trend { color: #a78bfa; }
+.kpi-card.purple  .kpi-trend { color: #69c0f5; }
 
 /* Two-column lower layout */
 .dash-lower {
@@ -262,8 +262,8 @@
   flex-shrink: 0;
   text-transform: uppercase;
 }
-.avatar-client  { background: var(--accent-dim);  color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
-.avatar-trainer { background: var(--west-dim);     color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+.avatar-client  { background: var(--accent-dim);  color: #818cf8; border: 1px solid rgba(30,157,241,0.25); }
+.avatar-trainer { background: var(--west-dim);     color: #69c0f5; border: 1px solid rgba(124,58,237,0.25); }
 
 .sess-info { flex: 1; min-width: 0; }
 .sess-client-name {
@@ -294,7 +294,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.status-badge.scheduled  { background: var(--accent-dim);   color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.status-badge.scheduled  { background: var(--accent-dim);   color: #818cf8; border: 1px solid rgba(30,157,241,0.25); }
 .status-badge.completed  { background: var(--green-dim);    color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
 .status-badge.missed     { background: var(--red-dim);      color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
 .status-badge.cancelled  { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }

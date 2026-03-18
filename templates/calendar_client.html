@@ -10,8 +10,8 @@
   --bg: #080808;
   --bg-surface: #0f0f0f;
   --bg-elevated: #161616;
-  --accent: #6366f1;
-  --accent-dim: rgba(99,102,241,0.15);
+  --accent: #1e9df1;
+  --accent-dim: rgba(30,157,241,0.15);
   --west: #7c3aed;
   --west-dim: rgba(124,58,237,0.15);
   --midtown: #06b6d4;
@@ -76,7 +76,7 @@
   line-height: 1;
 }
 
-.bal-num.accent { color: #6366f1; }
+.bal-num.accent { color: #1e9df1; }
 .bal-num.green  { color: #4ade80; }
 .bal-num.amber  { color: #fcd34d; }
 
@@ -216,9 +216,9 @@
   --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: var(--bg-elevated);
   --fc-list-event-hover-bg-color: rgba(255,255,255,0.04);
-  --fc-today-bg-color: rgba(99,102,241,0.06);
-  --fc-now-indicator-color: #6366f1;
-  font-family: 'Inter', sans-serif;
+  --fc-today-bg-color: rgba(30,157,241,0.06);
+  --fc-now-indicator-color: #1e9df1;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .fc .fc-toolbar {
@@ -260,7 +260,7 @@
 }
 
 .fc .fc-button:focus {
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
+  box-shadow: 0 0 0 2px rgba(30,157,241,0.35) !important;
 }
 
 .fc .fc-col-header-cell-cushion {
@@ -285,7 +285,7 @@
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background: #6366f1;
+  background: #1e9df1;
   color: #fff;
   border-radius: 50%;
   width: 22px;
@@ -432,7 +432,7 @@
   margin-top: 0.75rem;
 }
 
-.modal-status-chip.scheduled  { background: rgba(99,102,241,0.12); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+.modal-status-chip.scheduled  { background: rgba(30,157,241,0.12); color: #a5b4fc; border: 1px solid rgba(30,157,241,0.25); }
 .modal-status-chip.completed  { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
 .modal-status-chip.missed     { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
 
@@ -517,7 +517,7 @@
   <div class="bal-bar-wrap">
     <div style="font-size:10px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;">{{ month_name }} {{ year }}</div>
     <div class="bal-bar-track">
-      <div class="bal-bar-fill" style="width:{{ pct }}%; background:{% if pct == 100 %}#22c55e{% else %}#6366f1{% endif %};"></div>
+      <div class="bal-bar-fill" style="width:{{ pct }}%; background:{% if pct == 100 %}#22c55e{% else %}#1e9df1{% endif %};"></div>
     </div>
   </div>
 </div>

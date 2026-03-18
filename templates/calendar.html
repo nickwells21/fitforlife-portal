@@ -10,8 +10,8 @@
   --bg: #080808;
   --bg-surface: #0f0f0f;
   --bg-elevated: #161616;
-  --accent: #6366f1;
-  --accent-dim: rgba(99,102,241,0.15);
+  --accent: #1e9df1;
+  --accent-dim: rgba(30,157,241,0.15);
   --west: #7c3aed;
   --west-dim: rgba(124,58,237,0.15);
   --midtown: #06b6d4;
@@ -111,9 +111,9 @@
   --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: var(--bg-elevated);
   --fc-list-event-hover-bg-color: rgba(255,255,255,0.04);
-  --fc-today-bg-color: rgba(99,102,241,0.04);
-  --fc-now-indicator-color: #6366f1;
-  font-family: 'Inter', sans-serif;
+  --fc-today-bg-color: rgba(30,157,241,0.04);
+  --fc-now-indicator-color: #1e9df1;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .fc .fc-toolbar {
@@ -155,7 +155,7 @@
 }
 
 .fc .fc-button:focus {
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
+  box-shadow: 0 0 0 2px rgba(30,157,241,0.35) !important;
 }
 
 .fc .fc-col-header-cell {
@@ -198,7 +198,7 @@
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background: #6366f1;
+  background: #1e9df1;
   color: #fff;
   border-radius: 50%;
   width: 22px;
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Location badge
       const locColors = { 'West Mobile': '#7c3aed', 'Midtown': '#06b6d4' };
-      const locColor = locColors[p.location] || '#6366f1';
+      const locColor = locColors[p.location] || '#1e9df1';
       document.getElementById('modalLocation').innerHTML =
         `<span style="background:${locColor}20; color:${locColor}; border:1px solid ${locColor}30; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${p.location}</span>`;
 
