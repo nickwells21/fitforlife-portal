@@ -942,6 +942,7 @@ def init_db():
         db.session.commit()
         print('Admin created: nick@fitforlife.com / changeme — CHANGE THIS PASSWORD!')
     clients_seed = [
+        ('Demo Client',          'client@fitforlife.com',        'Client123'),
         ('Akennya Barnes',       'ABarnes251@fitforlife.com',    'Barnes2026'),
         ('Alison Herlihy',       'AHerlihy251@fitforlife.com',   'Herlihy2026'),
         ('Andrew Sprinkle',      'ASprinkle251@fitforlife.com',  'Sprinkle2026'),
