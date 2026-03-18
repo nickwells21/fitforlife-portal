@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Promos — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">Shown on client dashboards</div>
+    <h1 class="page-title">Promos &amp; Offers</h1>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Add promo -->
+  <div class="col-lg-4">
+    <div class="ffl-card">
+      <div class="card-title" style="margin-bottom:0.875rem;">New Promo</div>
+      <form method="POST" action="{{ url_for('admin_new_promo') }}">
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+          <div>
+            <label class="form-label">Title</label>
+            <input type="text" name="title" class="form-control" required placeholder="Spring Reset — 10% Off">
+          </div>
+          <div>
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" required placeholder="Details visible to clients…"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Type</label>
+            <select name="promo_type" class="form-select">
+              <option value="general">General</option>
+              <option value="pack">Session Pack Deal</option>
+              <option value="seasonal">Seasonal</option>
+              <option value="event">Event</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+            <div>
+              <label class="form-label">Start Date</label>
+              <input type="date" name="start_date" class="form-control">
+            </div>
+            <div>
+              <label class="form-label">End Date</label>
+              <input type="date" name="end_date" class="form-control">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-ffl">Create Promo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Promo list -->
+  <div class="col-lg-8">
+    <div class="ffl-card">
+      <div class="card-title" style="margin-bottom:0.875rem;">All Promos</div>
+      {% if promos %}
+        {% for promo in promos %}
+        <div style="display:flex; align-items:flex-start; gap:0.875rem; padding:0.875rem 0; border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:3px;">
+              <span style="font-size:13px; font-weight:600; color:var(--text);">{{ promo.title }}</span>
+              <span style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
+                color:{% if promo.promo_type=='pack' %}#4ade80{% elif promo.promo_type=='seasonal' %}#fcd34d{% elif promo.promo_type=='event' %}#a78bfa{% else %}#a5b4fc{% endif %};">
+                {{ promo.promo_type }}
+              </span>
+              {% if not promo.is_active %}
+              <span style="font-size:10px; color:var(--text-faint); font-weight:600;">INACTIVE</span>
+              {% endif %}
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">{{ promo.description }}</div>
+            {% if promo.end_date %}
+            <div style="font-size:10px; color:var(--text-faint); margin-top:4px;">Expires {{ promo.end_date.strftime('%B %d, %Y') }}</div>
+            {% endif %}
+          </div>
+          <div style="display:flex; gap:0.375rem; flex-shrink:0;">
+            <form method="POST" action="{{ url_for('toggle_promo', promo_id=promo.id) }}">
+              <button class="btn btn-outline-secondary btn-sm">{{ 'Deactivate' if promo.is_active else 'Activate' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('delete_promo', promo_id=promo.id) }}"
+                  onsubmit="return confirm('Delete this promo?')">
+              <button class="btn btn-outline-danger btn-sm">Delete</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted);">No promos yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

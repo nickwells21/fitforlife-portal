@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }} — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <div class="user-avatar" style="width:44px; height:44px; font-size:17px; border-radius:12px; flex-shrink:0;">{{ client.name[0] }}</div>
+    <div>
+      <div class="page-subtitle" style="margin-bottom:2px;">{{ client.role | capitalize }}</div>
+      <h1 class="page-title">{{ client.name }}</h1>
+    </div>
+  </div>
+  <div style="display:flex; gap:0.5rem; align-items:center;">
+    {% if client.trainerize_url %}
+    <a href="{{ client.trainerize_url }}" target="_blank" class="btn-trainerize">
+      <i class="bi bi-box-arrow-up-right" style="font-size:10px;"></i> Trainerize
+    </a>
+    {% endif %}
+    {% if current_user.role in ('admin','trainer') %}
+    <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
+      <i class="bi bi-plus-lg me-1"></i> Book
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Balance banner -->
+<div class="ffl-card" style="margin-bottom:1rem;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+    <div class="card-title">{{ month_name }} {{ year }} — Session Balance</div>
+    <div style="font-size:1.5rem; font-weight:900; letter-spacing:-0.03em; color:var(--text);">
+      {{ completed }}<span style="font-size:0.9rem; color:var(--text-muted); font-weight:400;">/{{ purchased }}</span>
+    </div>
+  </div>
+  <div class="balance-bar" style="height:5px; margin-bottom:0.5rem;">
+    {% set pct = ((completed / purchased) * 100)|int if purchased > 0 else 0 %}
+    <div class="balance-fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}" style="width:{{ pct }}%;"></div>
+  </div>
+  <div style="font-size:11px; color:var(--text-muted);">
+    {% if remaining > 0 %}
+      <span style="color:var(--amber);">{{ remaining }} session{{ 's' if remaining != 1 }} remaining this month</span>
+    {% elif purchased > 0 %}
+      <span style="color:var(--green);">All sessions complete for {{ month_name }}</span>
+    {% else %}
+      No package set.
+      {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin_packages') }}" style="color:var(--accent); font-size:11px; margin-left:4px;">Set package →</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Upcoming sessions -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row"><span class="card-title">Upcoming Sessions</span></div>
+      {% if upcoming %}
+        {% for sess in upcoming %}
+        <div class="session-row">
+          <div class="session-time-col">
+            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
+            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
+          </div>
+          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
+          <div class="session-label flex-grow-1">
+            <div class="name">{{ sess.trainer.name }}</div>
+            <div class="meta">{{ sess.location.name }} · {{ sess.duration }} min</div>
+          </div>
+          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No upcoming sessions.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Session history -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row"><span class="card-title">History</span></div>
+      {% if recent %}
+        {% for sess in recent %}
+        <div class="session-row">
+          <div class="session-time-col">
+            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
+            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
+          </div>
+          <span class="status-chip {{ sess.status }}" style="font-size:10px;">{{ sess.status }}</span>
+          <div class="session-label flex-grow-1">
+            <div class="name">{{ sess.trainer.name }}</div>
+            <div class="meta">{{ sess.location.name }}</div>
+          </div>
+          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No session history.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Package history (admin only) -->
+  {% if current_user.role == 'admin' %}
+  <div class="col-12">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Session Packages</span>
+        <a href="{{ url_for('admin_packages') }}" class="btn btn-outline-secondary btn-sm">Manage →</a>
+      </div>
+      {% if packages %}
+      <table class="ffl-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Purchased</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set MN = ['','January','February','March','April','May','June','July','August','September','October','November','December'] %}
+          {% for pkg in packages %}
+          <tr>
+            <td style="font-weight:600; color:var(--text);">{{ MN[pkg.month] }} {{ pkg.year }}</td>
+            <td>{{ pkg.sessions_purchased }}</td>
+            <td style="color:var(--text-muted); font-size:12px;">{{ pkg.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No packages on file.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

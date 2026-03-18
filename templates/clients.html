@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Clients — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">Session balances for {{ month_name }}</div>
+    <h1 class="page-title">Clients</h1>
+  </div>
+  {% if current_user.role == 'admin' %}
+  <a href="{{ url_for('admin_new_user') }}" class="btn btn-ffl">
+    <i class="bi bi-person-plus me-1"></i> Add Client
+  </a>
+  {% endif %}
+</div>
+
+<div class="ffl-card">
+  <table class="ffl-table">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>{{ month_name }} Balance</th>
+        <th>Progress</th>
+        <th>Next Session</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in client_data %}
+      {% set c = item.client %}
+      {% set pct = ((item.completed / item.purchased) * 100)|int if item.purchased > 0 else 0 %}
+      <tr>
+        <td>
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div class="user-avatar" style="width:30px; height:30px; font-size:12px; flex-shrink:0;">{{ c.name[0] }}</div>
+            <div>
+              <div style="font-weight:600; font-size:13px; color:var(--text);">{{ c.name }}</div>
+              <div style="font-size:11px; color:var(--text-muted);">{{ c.email }}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          {% if item.purchased > 0 %}
+            <div style="font-size:14px; font-weight:700; color:var(--text);">
+              {{ item.completed }}<span style="color:var(--text-muted); font-weight:400;">/{{ item.purchased }}</span>
+            </div>
+            {% if item.remaining > 0 %}
+            <div style="font-size:10px; color:var(--amber); margin-top:1px;">{{ item.remaining }} remaining</div>
+            {% elif item.completed == item.purchased %}
+            <div style="font-size:10px; color:var(--green); margin-top:1px;">Complete ✓</div>
+            {% endif %}
+          {% else %}
+            <span style="font-size:12px; color:var(--text-faint);">No package</span>
+          {% endif %}
+        </td>
+        <td style="min-width:100px;">
+          {% if item.purchased > 0 %}
+          <div class="balance-bar" style="margin-bottom:3px;">
+            <div class="balance-fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}" style="width:{{ pct }}%;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--text-faint);">{{ pct }}%</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.next_session %}
+          <div style="font-size:13px; font-weight:600; color:var(--text);">{{ item.next_session.scheduled_at.strftime('%b %d') }}</div>
+          <div style="font-size:11px; color:var(--text-muted);">{{ item.next_session.scheduled_at.strftime('%I:%M %p') }} · {{ item.next_session.location.name }}</div>
+          {% else %}
+          <span style="font-size:12px; color:var(--text-faint);">None scheduled</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.375rem; justify-content:flex-end;">
+            <a href="{{ url_for('client_detail', client_id=c.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+            <a href="{{ url_for('new_session') }}" class="btn btn-ffl btn-sm">Book</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" style="text-align:center; color:var(--text-faint); padding:2rem;">No active clients.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

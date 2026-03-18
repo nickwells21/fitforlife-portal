@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Session Packages — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">Track sessions purchased per client per month</div>
+    <h1 class="page-title">Session Packages</h1>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Add / Edit Package -->
+  <div class="col-lg-4">
+    <div class="ffl-card">
+      <div class="card-title" style="margin-bottom:0.875rem;">Add / Update Package</div>
+      <form method="POST" action="{{ url_for('admin_new_package') }}">
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+          <div>
+            <label class="form-label">Client</label>
+            <select name="client_id" class="form-select" required>
+              <option value="">Select client…</option>
+              {% for c in clients %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+            <div>
+              <label class="form-label">Month</label>
+              <select name="month" class="form-select" required>
+                {% set MN = ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                {% for i in range(1,13) %}
+                <option value="{{ i }}" {% if i == current_month %}selected{% endif %}>{{ MN[i-1] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Year</label>
+              <input type="number" name="year" class="form-control" value="{{ current_year }}" min="2024" max="2030" required>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Sessions Purchased</label>
+            <input type="number" name="sessions_purchased" class="form-control" min="1" max="50" placeholder="4" required>
+          </div>
+          <div>
+            <label class="form-label">Notes <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
+            <input type="text" name="notes" class="form-control" placeholder="e.g. 4x/week package">
+          </div>
+          <button type="submit" class="btn btn-ffl">Save Package</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Packages table -->
+  <div class="col-lg-8">
+    <div class="ffl-card">
+      <div class="card-title" style="margin-bottom:0.875rem;">All Packages</div>
+      {% if packages %}
+      <table class="ffl-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Month</th>
+            <th>Purchased</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pkg in packages %}
+          <tr>
+            <td style="font-weight:600; font-size:13px; color:var(--text);">
+              <a href="{{ url_for('client_detail', client_id=pkg.client_id) }}" style="color:var(--text); text-decoration:none;">
+                {{ pkg.client_user.name }}
+              </a>
+            </td>
+            <td style="font-size:13px; color:var(--text-soft);">{{ month_name[pkg.month] }} {{ pkg.year }}</td>
+            <td style="font-size:14px; font-weight:700; color:var(--text);">{{ pkg.sessions_purchased }}</td>
+            <td style="font-size:12px; color:var(--text-muted);">{{ pkg.notes or '—' }}</td>
+            <td style="text-align:right;">
+              <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
+                    onsubmit="return confirm('Delete this package?')">
+                <button class="btn btn-outline-danger btn-sm">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted);">No packages yet. Add one on the left.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

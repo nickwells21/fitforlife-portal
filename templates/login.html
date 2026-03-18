@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — Fit For Life{% endblock %}
+
+{% block auth_content %}
+<div class="login-wrapper">
+  <div class="login-box">
+    <div class="login-logo">FFL</div>
+    <div class="login-title">Fit For Life</div>
+    <div class="login-subtitle">Client &amp; Coach Portal</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}
+        <div class="ffl-alert danger" style="margin-bottom:1rem;">{{ message }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <div style="margin-bottom:0.875rem;">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" placeholder="you@example.com" required autofocus>
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-ffl w-100" style="padding:0.6rem 1rem !important;">Sign In</button>
+    </form>
+
+    <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); text-align:center;">
+      <span style="font-size:11px; color:var(--text-faint);">Contact Nick to get access · fitforlife.com</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

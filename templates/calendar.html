@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}Calendar — Fit For Life{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">West Mobile &amp; Midtown</div>
+    <h1 class="page-title">Session Calendar</h1>
+  </div>
+  {% if current_user.role in ('admin', 'trainer') %}
+  <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
+    <i class="bi bi-plus-lg me-1"></i> Book Session
+  </a>
+  {% endif %}
+</div>
+
+{% if current_user.role in ('admin', 'trainer') %}
+<!-- Filters + Legend -->
+<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+  <div class="filter-bar">
+    <select class="filter-select" id="filterLocation" onchange="refreshCalendar()">
+      <option value="">All Locations</option>
+      {% for loc in locations %}
+      <option value="{{ loc.id }}">{{ loc.name }}</option>
+      {% endfor %}
+    </select>
+    <select class="filter-select" id="filterTrainer" onchange="refreshCalendar()">
+      <option value="">All Trainers</option>
+      {% for t in trainers %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <select class="filter-select" id="filterStatus" onchange="refreshCalendar()">
+      <option value="">All Statuses</option>
+      <option value="scheduled">Scheduled</option>
+      <option value="completed">Completed</option>
+      <option value="missed">Missed</option>
+    </select>
+  </div>
+  <div class="legend-row" style="margin-bottom:0;">
+    {% for loc in locations %}
+    <div class="legend-item"><span class="legend-dot" style="background:{{ loc.color }};"></span>{{ loc.name }}</div>
+    {% endfor %}
+    <div class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span>Completed</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>Missed</div>
+  </div>
+</div>
+{% endif %}
+
+<div id="calendar"></div>
+
+<!-- Session Detail Modal -->
+<div class="modal fade" id="sessionModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-content" style="background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-lg);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border); padding:1rem 1.25rem;">
+        <div>
+          <div style="font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Session</div>
+          <h5 class="modal-title" id="modalTitle" style="font-size:15px; font-weight:700; color:var(--text); margin:0; letter-spacing:-0.01em;"></h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:invert(1) brightness(0.4);"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Client</div>
+            <div id="modalClient" style="font-size:13px; font-weight:600; color:var(--text);"></div>
+          </div>
+          <div>
+            <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Trainer</div>
+            <div id="modalTrainer" style="font-size:13px; font-weight:600; color:var(--text);"></div>
+          </div>
+          <div>
+            <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Location</div>
+            <div id="modalLocation"></div>
+          </div>
+          <div>
+            <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Status</div>
+            <div id="modalStatus"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Time</div>
+          <div id="modalTime" style="font-size:13px; color:var(--text-soft);"></div>
+        </div>
+        <div id="modalNotesRow" style="display:none; margin-top:0.875rem;">
+          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px;">Notes</div>
+          <div id="modalNotes" style="font-size:12px; color:var(--text-muted); background:var(--bg-elevated); padding:0.625rem 0.75rem; border-radius:var(--radius-sm);"></div>
+        </div>
+      </div>
+      <div class="modal-footer" id="modalActions" style="border-top:1px solid var(--border); padding:0.875rem 1.25rem; gap:0.5rem; justify-content:flex-start;">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+const isStaff = {{ 'true' if current_user.role in ('admin','trainer') else 'false' }};
+
+function fetchEvents(fetchInfo, successCb, failureCb) {
+  const loc = document.getElementById('filterLocation')?.value || '';
+  const trainer = document.getElementById('filterTrainer')?.value || '';
+  const status = document.getElementById('filterStatus')?.value || '';
+
+  fetch(`/api/sessions?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}`)
+    .then(r => r.json())
+    .then(events => successCb(events.filter(e => {
+      if (loc     && String(e.extendedProps.location_id) !== loc)     return false;
+      if (trainer && String(e.extendedProps.trainer_id)  !== trainer) return false;
+      if (status  && e.extendedProps.status              !== status)  return false;
+      return true;
+    })))
+    .catch(failureCb);
+}
+
+let calendar;
+function refreshCalendar() { if (calendar) calendar.refetchEvents(); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: 'timeGridWeek',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+    },
+    slotMinTime: '05:30:00',
+    slotMaxTime: '21:00:00',
+    allDaySlot: false,
+    nowIndicator: true,
+    height: 'auto',
+    events: fetchEvents,
+
+    eventClick(info) {
+      const p = info.event.extendedProps;
+      const id = p.session_id;
+
+      document.getElementById('modalTitle').textContent = info.event.title;
+      document.getElementById('modalClient').textContent = p.client;
+      document.getElementById('modalTrainer').textContent = p.trainer;
+
+      // Location badge
+      const locColors = { 'West Mobile': '#7c3aed', 'Midtown': '#06b6d4' };
+      const locColor = locColors[p.location] || '#6366f1';
+      document.getElementById('modalLocation').innerHTML =
+        `<span style="background:${locColor}20; color:${locColor}; border:1px solid ${locColor}30; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${p.location}</span>`;
+
+      // Status chip
+      document.getElementById('modalStatus').innerHTML =
+        `<span class="status-chip ${p.status}">${p.status}</span>`;
+
+      // Time
+      const fmt = d => d?.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) || '';
+      const fmtD = d => d?.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}) || '';
+      document.getElementById('modalTime').textContent =
+        `${fmtD(info.event.start)} · ${fmt(info.event.start)} – ${fmt(info.event.end)}`;
+
+      // Notes
+      if (p.notes) {
+        document.getElementById('modalNotesRow').style.display = 'block';
+        document.getElementById('modalNotes').textContent = p.notes;
+      } else {
+        document.getElementById('modalNotesRow').style.display = 'none';
+      }
+
+      // Actions
+      const actions = document.getElementById('modalActions');
+      actions.innerHTML = '';
+      if (isStaff) {
+        actions.innerHTML += `<a href="/sessions/${id}" class="btn btn-outline-secondary btn-sm">View / Edit</a>`;
+        if (p.status === 'scheduled') {
+          actions.innerHTML += `
+            <form method="POST" action="/sessions/${id}/status" class="d-inline">
+              <input type="hidden" name="status" value="completed">
+              <button class="btn btn-sm" style="background:var(--green-dim);color:#4ade80;border:1px solid rgba(34,197,94,0.25);font-weight:600;">✓ Complete</button>
+            </form>
+            <form method="POST" action="/sessions/${id}/status" class="d-inline">
+              <input type="hidden" name="status" value="missed">
+              <button class="btn btn-sm" style="background:var(--red-dim);color:#f87171;border:1px solid rgba(239,68,68,0.25);font-weight:600;">✗ Missed</button>
+            </form>`;
+        }
+      }
+
+      new bootstrap.Modal(document.getElementById('sessionModal')).show();
+    },
+
+    dateClick(info) {
+      if (!isStaff) return;
+      window.location.href = `/sessions/new?date=${encodeURIComponent(info.dateStr.replace('Z',''))}`;
+    },
+
+    eventDidMount(info) {
+      const p = info.event.extendedProps;
+      info.el.title = `${p.client} with ${p.trainer} @ ${p.location}`;
+    }
+  });
+
+  calendar.render();
+});
+</script>
+{% endblock %}

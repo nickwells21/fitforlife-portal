@@ -1,0 +1,456 @@
+{% extends 'base.html' %}
+{% block title %}My Schedule — Fit For Life{% endblock %}
+
+{% block head %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+<style>
+/* ── Client calendar styles ─────────────────────────────────────────────── */
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cal-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.cal-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Balance strip */
+.bal-strip {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.bal-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.bal-num {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.bal-num.accent { color: #6366f1; }
+.bal-num.green  { color: #4ade80; }
+.bal-num.amber  { color: #fcd34d; }
+
+.bal-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bal-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+}
+
+.bal-bar-wrap {
+  flex: 1;
+  min-width: 120px;
+}
+
+.bal-bar-track {
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.bal-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+/* FullCalendar dark theme overrides */
+.fc {
+  --fc-border-color: rgba(255,255,255,0.07);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--bg-elevated);
+  --fc-list-event-hover-bg-color: rgba(255,255,255,0.04);
+  --fc-today-bg-color: rgba(99,102,241,0.08);
+  --fc-now-indicator-color: #6366f1;
+  --fc-button-bg-color: var(--bg-elevated);
+  --fc-button-border-color: rgba(255,255,255,0.1);
+  --fc-button-hover-bg-color: rgba(255,255,255,0.06);
+  --fc-button-hover-border-color: rgba(255,255,255,0.15);
+  --fc-button-active-bg-color: rgba(99,102,241,0.2);
+  --fc-button-active-border-color: rgba(99,102,241,0.4);
+  --fc-button-text-color: rgba(255,255,255,0.85);
+  font-family: 'Inter', sans-serif;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.fc .fc-col-header-cell-cushion {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 6px 4px;
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+  padding: 4px 6px;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: #6366f1;
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 11px;
+}
+
+.fc .fc-event {
+  border-radius: 5px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+
+.fc .fc-event .fc-event-title {
+  font-weight: 600;
+}
+
+.fc .fc-button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.fc .fc-button:focus {
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
+}
+
+/* Session detail modal */
+.sess-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.sess-modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.sess-modal {
+  background: var(--bg-surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 380px;
+  transform: translateY(12px);
+  transition: transform 0.2s;
+}
+
+.sess-modal-overlay.active .sess-modal {
+  transform: translateY(0);
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.875rem; right: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.modal-close:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
+}
+
+.modal-time {
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.modal-date {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.modal-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-detail-row:last-of-type { border-bottom: none; }
+
+.modal-detail-row i {
+  color: var(--text-faint);
+  font-size: 14px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.modal-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 5px;
+  margin-top: 0.75rem;
+}
+
+.modal-status-chip.scheduled  { background: rgba(99,102,241,0.12); color: #a5b4fc; }
+.modal-status-chip.completed  { background: rgba(34,197,94,0.12);  color: #4ade80; }
+.modal-status-chip.missed     { background: rgba(239,68,68,0.12);  color: #f87171; }
+
+/* Legend */
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="cal-header">
+  <div>
+    <div class="cal-title">My Schedule</div>
+    <div class="cal-subtitle">Your upcoming training sessions</div>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-house me-1"></i>Dashboard
+  </a>
+</div>
+
+<!-- Monthly balance strip -->
+{% if purchased > 0 %}
+{% set pct = ((completed / purchased) * 100)|int %}
+<div class="bal-strip">
+  <div class="bal-stat">
+    <span class="bal-num accent">{{ purchased }}</span>
+    <span class="bal-label">Sessions<br>This Month</span>
+  </div>
+  <div class="bal-divider"></div>
+  <div class="bal-stat">
+    <span class="bal-num green">{{ completed }}</span>
+    <span class="bal-label">Completed</span>
+  </div>
+  <div class="bal-divider"></div>
+  <div class="bal-stat">
+    <span class="bal-num {% if remaining == 0 %}green{% else %}amber{% endif %}">{{ remaining }}</span>
+    <span class="bal-label">Remaining</span>
+  </div>
+  <div class="bal-bar-wrap">
+    <div style="font-size:10px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;">{{ month_name }} {{ year }}</div>
+    <div class="bal-bar-track">
+      <div class="bal-bar-fill" style="width:{{ pct }}%; background:{% if pct == 100 %}#22c55e{% else %}#6366f1{% endif %};"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Legend + calendar wrapper -->
+<div class="ffl-card" style="padding:1rem 1.25rem;">
+  <div class="cal-legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#22c55e;"></div>Completed
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#6366f1;"></div>Scheduled
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ef4444;"></div>Missed
+    </div>
+  </div>
+  <div id="clientCalendar"></div>
+</div>
+
+<!-- Session detail modal -->
+<div class="sess-modal-overlay" id="sessModal">
+  <div class="sess-modal" style="position:relative;">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div class="modal-time" id="mTime"></div>
+    <div class="modal-date" id="mDate"></div>
+    <div class="modal-detail-row">
+      <i class="bi bi-person"></i>
+      <span id="mTrainer"></span>
+    </div>
+    <div class="modal-detail-row">
+      <i class="bi bi-geo-alt"></i>
+      <span id="mLocation"></span>
+    </div>
+    <div class="modal-detail-row">
+      <i class="bi bi-clock"></i>
+      <span id="mDuration"></span>
+    </div>
+    <div id="mNotes" class="modal-detail-row" style="display:none;">
+      <i class="bi bi-chat-left-text"></i>
+      <span id="mNotesText"></span>
+    </div>
+    <div><span class="modal-status-chip" id="mStatus"></span></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const calEl = document.getElementById('clientCalendar');
+  const modal = document.getElementById('sessModal');
+  const modalClose = document.getElementById('modalClose');
+
+  const calendar = new FullCalendar.Calendar(calEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listMonth'
+    },
+    buttonText: {
+      today: 'Today',
+      month: 'Month',
+      list:  'List'
+    },
+    height: 'auto',
+    firstDay: 1, // Monday start
+    events: '/api/sessions',
+    eventClick: function(info) {
+      const p = info.event.extendedProps;
+      const start = info.event.start;
+      const end = info.event.end;
+      const durationMin = end ? Math.round((end - start) / 60000) : 60;
+
+      document.getElementById('mTime').textContent = start.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true
+      });
+      document.getElementById('mDate').textContent = start.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+      });
+      document.getElementById('mTrainer').textContent = p.trainer;
+      document.getElementById('mLocation').textContent = p.location;
+      document.getElementById('mDuration').textContent = durationMin + ' min session';
+
+      const notesRow = document.getElementById('mNotes');
+      if (p.notes) {
+        document.getElementById('mNotesText').textContent = p.notes;
+        notesRow.style.display = 'flex';
+      } else {
+        notesRow.style.display = 'none';
+      }
+
+      const chip = document.getElementById('mStatus');
+      chip.textContent = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+      chip.className = 'modal-status-chip ' + p.status;
+
+      modal.classList.add('active');
+    }
+  });
+
+  calendar.render();
+
+  // Close modal
+  modalClose.addEventListener('click', () => modal.classList.remove('active'));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') modal.classList.remove('active');
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">{{ month_name }}</div>
+    <h1 class="page-title">Hey, {{ current_user.name.split()[0] }}</h1>
+  </div>
+  <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
+    <i class="bi bi-plus-lg me-1"></i> Book Session
+  </a>
+</div>
+
+<div class="row g-3">
+
+  <!-- Today -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Today</span>
+      </div>
+      {% if today_sessions %}
+        {% for sess in today_sessions %}
+        <div class="session-row">
+          <div class="session-time-col">
+            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M') }}</span>
+            <span class="time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
+          </div>
+          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
+          <div class="session-label flex-grow-1">
+            <div class="name">{{ sess.client.name }}</div>
+            <div class="meta">{{ sess.location.name }} · {{ sess.duration }} min</div>
+          </div>
+          {% if sess.status == 'scheduled' %}
+          <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}">
+            <input type="hidden" name="status" value="completed">
+            <button class="btn btn-sm" style="background:var(--green-dim); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-size:11px; font-weight:600;">✓ Done</button>
+          </form>
+          {% else %}
+          <span class="status-chip {{ sess.status }}">{{ sess.status }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No sessions today.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Upcoming -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Upcoming</span>
+        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm">Calendar →</a>
+      </div>
+      {% if upcoming %}
+        {% for sess in upcoming %}
+        <div class="session-row">
+          <div class="session-time-col">
+            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
+            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
+          </div>
+          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
+          <div class="session-label flex-grow-1">
+            <div class="name">{{ sess.client.name }}</div>
+            <div class="meta">{{ sess.location.name }}</div>
+          </div>
+          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No upcoming sessions.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Clients -->
+  <div class="col-12">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Your Clients</span>
+        <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm">All →</a>
+      </div>
+      <div class="row g-2">
+        {% for client in all_clients %}
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <a href="{{ url_for('client_detail', client_id=client.id) }}" class="client-chip">
+            <div class="user-avatar" style="width:22px; height:22px; font-size:9px; flex-shrink:0;">{{ client.name[0] }}</div>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ client.name.split()[0] }}</span>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

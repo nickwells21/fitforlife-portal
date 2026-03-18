@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">{{ month_name }} {{ year }}</div>
+    <h1 class="page-title">Dashboard</h1>
+  </div>
+  <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
+    <i class="bi bi-plus-lg me-1"></i> Book Session
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="bi bi-people"></i></div>
+      <div class="stat-value">{{ total_clients }}</div>
+      <div class="stat-label">Active Clients</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="bi bi-person-badge"></i></div>
+      <div class="stat-value">{{ total_trainers }}</div>
+      <div class="stat-label">Trainers</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+      <div class="stat-value">{{ completed_this_month }}</div>
+      <div class="stat-label">Completed</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="bi bi-calendar2"></i></div>
+      <div class="stat-value">{{ sessions_this_month }}</div>
+      <div class="stat-label">Scheduled</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Today's schedule -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Today's Schedule</span>
+        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm">Calendar →</a>
+      </div>
+      {% if today_sessions %}
+        {% for sess in today_sessions %}
+        <div class="session-row">
+          <div class="session-time-col">
+            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M') }}</span>
+            <span class="time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
+          </div>
+          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
+          <div class="session-label flex-grow-1">
+            <div class="name">{{ sess.client.name }}</div>
+            <div class="meta">{{ sess.trainer.name }} · {{ sess.location.name }}</div>
+          </div>
+          <span class="status-chip {{ sess.status }}">{{ sess.status }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No sessions today.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Session balance alerts -->
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <div class="card-header-row">
+        <span class="card-title">Remaining — {{ month_name }}</span>
+        <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm">All Clients →</a>
+      </div>
+      {% if at_risk %}
+        {% for item in at_risk %}
+        {% set pct = ((item.completed / item.purchased) * 100)|int if item.purchased > 0 else 0 %}
+        <div style="margin-bottom:0.875rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <a href="{{ url_for('client_detail', client_id=item.client.id) }}" style="font-size:13px; font-weight:600; color:var(--text); text-decoration:none;">
+              {{ item.client.name }}
+            </a>
+            <span style="font-size:11px; color:var(--text-muted);">{{ item.completed }}/{{ item.purchased }}</span>
+          </div>
+          <div class="balance-bar">
+            <div class="balance-fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}" style="width:{{ pct }}%;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--amber); margin-top:3px;">{{ item.remaining }} session{{ 's' if item.remaining != 1 }} remaining</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">All clients on track this month.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

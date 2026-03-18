@@ -1,0 +1,698 @@
+{% extends 'base.html' %}
+{% block title %}Home — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+/* ── Client Dashboard ────────────────────────────────────────────────────── */
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.client-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 2rem 0 2rem;
+  flex-wrap: wrap;
+}
+
+.hero-greeting {
+  font-size: 2.25rem;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  color: var(--text);
+  line-height: 1.05;
+}
+
+.hero-date {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+.hero-right {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.22);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fcd34d;
+}
+
+/* ── Next Session Card — clean, no gradients ────────────────────────────── */
+.next-session-card {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(99,102,241,0.18);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 2rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+.nsc-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #818cf8;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.nsc-time {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.nsc-date-line {
+  font-size: 15px;
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.nsc-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin-bottom: 1.125rem;
+}
+
+.nsc-countdown.today    { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.nsc-countdown.tomorrow { background: rgba(252,211,77,0.1);  color: #fcd34d; border: 1px solid rgba(252,211,77,0.22); }
+.nsc-countdown.upcoming { background: rgba(99,102,241,0.1);  color: #a5b4fc; border: 1px solid rgba(99,102,241,0.2); }
+
+.nsc-trainer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.trainer-initial {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(99,102,241,0.15);
+  border: 2px solid rgba(99,102,241,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.trainer-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.trainer-role-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.nsc-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.125rem;
+}
+
+.nsc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 4px 11px;
+}
+
+.nsc-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.nsc-message-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(165,180,252,0.6);
+  text-decoration: none;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 1rem;
+  transition: color 0.15s;
+}
+
+.nsc-message-link:hover { color: #a5b4fc; }
+
+.nsc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  gap: 0.5rem;
+}
+
+/* ── Quick Actions — full-width rows, prominent ─────────────────────────── */
+.actions-list { display: flex; flex-direction: column; gap: 0; }
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.12s;
+  border-radius: 0;
+}
+
+.action-row:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.action-row:last-child  { border-bottom: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.action-row:hover       { background: rgba(255,255,255,0.03); }
+
+.action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.action-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.action-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.action-arrow { margin-left: auto; color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
+
+/* ── Upcoming Sessions — Trainerize-style vertical list ─────────────────── */
+.upcoming-list { display: flex; flex-direction: column; }
+
+.upcoming-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.upcoming-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.ur-date-block {
+  text-align: center;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.ur-day {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.ur-num {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.ur-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.ur-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #a5b4fc;
+  line-height: 1.2;
+}
+
+.ur-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ur-loc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.ur-trainer {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── This Month — progress ring ─────────────────────────────────────────── */
+.month-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.375rem;
+  height: 100%;
+}
+
+.ring-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-label {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ring-num {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  display: block;
+}
+
+.ring-of {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  display: block;
+  margin-top: 2px;
+}
+
+.month-motivator {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 0.875rem;
+}
+
+.month-badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+}
+
+.month-badge.complete    { background: var(--green-dim); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.month-badge.in-progress { background: var(--amber-dim); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+
+/* ── At Fit For Life ─────────────────────────────────────────────────────── */
+.bulletin-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  height: 100%;
+}
+
+.feed-card {
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-left: 3px solid transparent;
+  flex: 1;
+}
+
+.feed-card.event    { border-left-color: var(--accent); }
+.feed-card.promo    { border-left-color: var(--green); }
+.feed-card.seasonal { border-left-color: #f59e0b; }
+.feed-card.pack     { border-left-color: #22d3ee; }
+
+.feed-type {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feed-card.event .feed-type    { color: #a5b4fc; }
+.feed-card.promo .feed-type    { color: #4ade80; }
+.feed-card.seasonal .feed-type { color: #fcd34d; }
+.feed-card.pack .feed-type     { color: #22d3ee; }
+
+.feed-title  { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
+.feed-desc   { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.feed-footer { font-size: 10px; color: var(--text-faint); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .hero-greeting { font-size: 1.75rem; }
+  .nsc-time      { font-size: 2.5rem; }
+  .client-hero   { padding: 1.25rem 0 1.5rem; }
+  .next-session-card { padding: 1.375rem 1.25rem 1.25rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set first_name = current_user.name.split()[0] %}
+
+<!-- ─── Hero ──────────────────────────────────────────────────────────────── -->
+<div class="client-hero">
+  <div>
+    <div class="hero-greeting">{{ greeting }}, {{ first_name }}.</div>
+    <div class="hero-date">{{ now.strftime('%A, %B %d') }} &middot; Fit For Life</div>
+  </div>
+  <div class="hero-right">
+    {% if streak > 0 %}
+    <div class="streak-badge">🔥 {{ streak }}-week streak</div>
+    {% endif %}
+    {% if current_user.trainerize_url %}
+    <a href="{{ current_user.trainerize_url }}" target="_blank" class="btn-trainerize">
+      <i class="bi bi-lightning-charge-fill" style="font-size:11px; color:#fcd34d;"></i> My Workouts
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ─── Next Session ───────────────────────────────────────────────────────── -->
+<div class="next-session-card">
+  {% if next_session %}
+  {% set trainer_first = next_session.trainer.name.split()[0] %}
+
+  <span class="nsc-label">Next Session</span>
+  <div class="nsc-time">{{ next_session.scheduled_at.strftime('%I:%M %p') }}</div>
+  <div class="nsc-date-line">{{ next_session.scheduled_at.strftime('%A, %B %d') }}</div>
+
+  {% if days_until_next == 0 %}
+  <div class="nsc-countdown today"><i class="bi bi-check-circle-fill"></i> Today — see you there!</div>
+  {% elif days_until_next == 1 %}
+  <div class="nsc-countdown tomorrow"><i class="bi bi-clock-fill"></i> Tomorrow</div>
+  {% else %}
+  <div class="nsc-countdown upcoming"><i class="bi bi-calendar3"></i> In {{ days_until_next }} days</div>
+  {% endif %}
+
+  <div class="nsc-trainer-row">
+    <div class="trainer-initial">{{ next_session.trainer.name[0] }}</div>
+    <div>
+      <div class="trainer-name">{{ next_session.trainer.name }}</div>
+      <div class="trainer-role-sub">Your trainer</div>
+    </div>
+  </div>
+
+  <div class="nsc-pills">
+    <div class="nsc-pill">
+      <div class="dot" style="background:{{ next_session.location.color }};"></div>
+      {{ next_session.location.name }}
+    </div>
+    <div class="nsc-pill">
+      <i class="bi bi-clock" style="font-size:10px;"></i>
+      {{ next_session.duration }} min
+    </div>
+  </div>
+
+  <a href="mailto:{{ next_session.trainer.email }}?subject=Question about my session on {{ next_session.scheduled_at.strftime('%B %d') }}"
+     class="nsc-message-link">
+    <i class="bi bi-envelope"></i> Message {{ trainer_first }}
+  </a>
+
+  {% else %}
+  <span class="nsc-label">Next Session</span>
+  <div class="nsc-empty">
+    <div style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem;"><i class="bi bi-calendar-x"></i></div>
+    <div style="font-size:15px; font-weight:700; color:var(--text-soft);">Nothing scheduled yet</div>
+    <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">
+      Reach out to your trainer to get your first session on the calendar.
+    </div>
+    <a href="mailto:nick@fitforlife.com?subject=Session Request"
+       style="margin-top:1rem; display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#a5b4fc; text-decoration:none;">
+      <i class="bi bi-plus-circle"></i> Request a session
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ─── Quick Actions ─────────────────────────────────────────────────────── -->
+<div class="ffl-card mb-3" style="padding:0; overflow:hidden;">
+  <div class="actions-list">
+
+    <a href="{{ url_for('client_calendar') }}" class="action-row">
+      <div class="action-icon" style="background:rgba(99,102,241,0.12); color:#a5b4fc;">
+        <i class="bi bi-calendar3"></i>
+      </div>
+      <div>
+        <div class="action-title">Full Schedule</div>
+        <div class="action-desc">Browse all your sessions</div>
+      </div>
+      <i class="bi bi-chevron-right action-arrow"></i>
+    </a>
+
+    {% if next_session %}
+    <a href="mailto:{{ next_session.trainer.email }}?subject=Question about my training"
+       class="action-row">
+    {% else %}
+    <a href="mailto:nick@fitforlife.com?subject=Question" class="action-row">
+    {% endif %}
+      <div class="action-icon" style="background:rgba(34,197,94,0.1); color:#4ade80;">
+        <i class="bi bi-envelope"></i>
+      </div>
+      <div>
+        <div class="action-title">{% if next_session %}Message {{ next_session.trainer.name.split()[0] }}{% else %}Contact Us{% endif %}</div>
+        <div class="action-desc">Email your trainer directly</div>
+      </div>
+      <i class="bi bi-chevron-right action-arrow"></i>
+    </a>
+
+    {% if next_session %}
+    <a href="mailto:{{ next_session.trainer.email }}?subject=Session Request&body=Hi {{ next_session.trainer.name.split()[0] }}, I'd like to book a session."
+       class="action-row">
+    {% else %}
+    <a href="mailto:nick@fitforlife.com?subject=Session Request" class="action-row">
+    {% endif %}
+      <div class="action-icon" style="background:rgba(245,158,11,0.1); color:#fcd34d;">
+        <i class="bi bi-plus-circle"></i>
+      </div>
+      <div>
+        <div class="action-title">Book a Session</div>
+        <div class="action-desc">Request a new session with your trainer</div>
+      </div>
+      <i class="bi bi-chevron-right action-arrow"></i>
+    </a>
+
+  </div>
+</div>
+
+<!-- ─── Upcoming Sessions ──────────────────────────────────────────────────── -->
+{% if upcoming|length > 1 %}
+<div class="ffl-card mb-3">
+  <div class="card-header-row" style="margin-bottom:0.5rem;">
+    <span class="section-label" style="margin-bottom:0;">Upcoming Sessions</span>
+    <a href="{{ url_for('client_calendar') }}"
+       style="font-size:11px; font-weight:600; color:var(--text-faint); text-decoration:none;">
+      See all &rarr;
+    </a>
+  </div>
+  <div class="upcoming-list">
+    {% for sess in upcoming[1:5] %}
+    <div class="upcoming-row">
+      <div class="ur-date-block">
+        <div class="ur-day">{{ sess.scheduled_at.strftime('%a') }}</div>
+        <div class="ur-num">{{ sess.scheduled_at.strftime('%d') }}</div>
+      </div>
+      <div class="ur-divider"></div>
+      <div style="flex:1;">
+        <div class="ur-time">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+        <div class="ur-meta">
+          <div class="ur-loc-dot" style="background:{{ sess.location.color }};"></div>
+          {{ sess.location.name }}
+        </div>
+      </div>
+      <div class="ur-trainer">{{ sess.trainer.name.split()[0] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ─── This Month + At Fit For Life ──────────────────────────────────────── -->
+<div class="row g-3 {% if not events and not promos %}mb-0{% else %}mb-0{% endif %}">
+
+  <!-- This Month -->
+  <div class="{% if events or promos %}col-md-5{% else %}col-12{% endif %}">
+    <div class="month-card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+        <span class="section-label" style="margin-bottom:0;">{{ month_name }}</span>
+        {% if remaining == 0 and purchased > 0 %}
+        <span class="month-badge complete">Complete</span>
+        {% elif remaining > 0 %}
+        <span class="month-badge in-progress">{{ remaining }} left</span>
+        {% endif %}
+      </div>
+
+      {% if purchased > 0 %}
+        {% set pct    = ((completed / purchased) * 100)|int %}
+        {% set radius = 48 %}
+        {% set circ   = (2 * 3.14159 * radius)|int %}
+        {% set dash   = ((pct / 100) * circ)|int %}
+
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div class="ring-container">
+            <svg width="130" height="130" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="{{ radius }}" fill="none"
+                stroke="rgba(255,255,255,0.06)" stroke-width="11"/>
+              <circle id="progress-ring" cx="60" cy="60" r="{{ radius }}" fill="none"
+                stroke="{% if pct == 100 %}#22c55e{% else %}#6366f1{% endif %}"
+                stroke-width="11"
+                stroke-dasharray="0 {{ circ }}"
+                stroke-dashoffset="{{ circ // 4 }}"
+                stroke-linecap="round"
+                data-dash="{{ dash }}"
+                data-circ="{{ circ }}"/>
+            </svg>
+            <div class="ring-label">
+              <span class="ring-num">{{ completed }}</span>
+              <span class="ring-of">of {{ purchased }}</span>
+            </div>
+          </div>
+          <div class="month-motivator">
+            {% if pct == 100 %}All sessions done — incredible month.
+            {% elif pct >= 75 %}Almost there. One more to go.
+            {% elif pct >= 50 %}More than halfway. Keep the momentum.
+            {% elif completed > 0 %}{{ month_name }} is in motion. Stay consistent.
+            {% else %}{{ month_name }} starts now. Let's go.
+            {% endif %}
+          </div>
+        </div>
+
+      {% else %}
+        <div style="text-align:center; padding:1.75rem 0; color:var(--text-muted); font-size:13px; line-height:1.6;">
+          No package set for {{ month_name }}.<br>
+          <span style="font-size:12px; color:var(--text-faint);">Contact Nick to get started.</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- At Fit For Life -->
+  {% if events or promos %}
+  <div class="col-md-7">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+      <span class="section-label" style="margin-bottom:0;">At Fit For Life</span>
+    </div>
+    <div class="bulletin-feed">
+      {% for event in events[:2] %}
+      <div class="feed-card event">
+        <div class="feed-type"><i class="bi bi-star-fill"></i> Event</div>
+        <div class="feed-title">{{ event.title }}</div>
+        {% if event.description %}<div class="feed-desc">{{ event.description }}</div>{% endif %}
+        <div class="feed-footer">
+          <i class="bi bi-calendar3"></i>
+          {{ event.event_date.strftime('%B %d') }}{% if event.location %} &middot; {{ event.location.name }}{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% for promo in promos[:2] %}
+      <div class="feed-card promo {{ promo.promo_type }}">
+        <div class="feed-type"><i class="bi bi-tag-fill"></i> {{ promo.promo_type | capitalize }}</div>
+        <div class="feed-title">{{ promo.title }}</div>
+        <div class="feed-desc">{{ promo.description }}</div>
+        {% if promo.end_date %}
+        <div class="feed-footer"><i class="bi bi-clock"></i> Ends {{ promo.end_date.strftime('%B %d') }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Animate progress ring on page load
+document.addEventListener('DOMContentLoaded', function () {
+  var ring = document.getElementById('progress-ring');
+  if (ring) {
+    var target = ring.getAttribute('data-dash');
+    var circ   = ring.getAttribute('data-circ');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        ring.style.transition = 'stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1)';
+        ring.style.strokeDasharray = target + ' ' + circ;
+      });
+    });
+  }
+});
+</script>
+{% endblock %}

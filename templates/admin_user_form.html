@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if user else 'New' }} User — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">{{ 'Update user details' if user else 'Create a new account' }}</div>
+    <h1 class="page-title">{{ 'Edit ' + user.name if user else 'Add User' }}</h1>
+  </div>
+  <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Users
+  </a>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="ffl-card">
+      <form method="POST">
+        <div style="display:flex; flex-direction:column; gap:0.875rem;">
+          <div>
+            <label class="form-label">Full Name</label>
+            <input type="text" name="name" class="form-control" value="{{ user.name if user else '' }}" required placeholder="First Last">
+          </div>
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}" required placeholder="email@example.com">
+          </div>
+          <div>
+            <label class="form-label">Role</label>
+            <select name="role" class="form-select" required>
+              {% for r in ['client','trainer','admin'] %}
+              <option value="{{ r }}" {% if user and user.role == r %}selected{% endif %}>{{ r | capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Password {% if user %}<span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(leave blank to keep current)</span>{% endif %}</label>
+            <input type="password" name="password" class="form-control" placeholder="••••••••" {% if not user %}required{% endif %}>
+          </div>
+          <div>
+            <label class="form-label">Trainerize URL <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional — for client portal button)</span></label>
+            <input type="url" name="trainerize_url" class="form-control" value="{{ user.trainerize_url or '' }}" placeholder="https://…">
+          </div>
+          {% if user %}
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <input type="checkbox" name="is_active" id="is_active" {% if user.is_active %}checked{% endif %}
+              style="width:14px; height:14px; accent-color:var(--accent); cursor:pointer;">
+            <label for="is_active" style="font-size:13px; color:var(--text-soft); cursor:pointer; margin:0;">Account active</label>
+          </div>
+          {% endif %}
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
+          <button type="submit" class="btn btn-ffl">{{ 'Save Changes' if user else 'Create User' }}</button>
+          <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
