@@ -919,6 +919,12 @@ def init_db():
         db.session.add(admin)
         db.session.commit()
         print('Admin created: nick@fitforlife.com / changeme — CHANGE THIS PASSWORD!')
+    if not User.query.filter_by(email='client@fitforlife.com').first():
+        client = User(name='Test Client', email='client@fitforlife.com', role='client')
+        client.set_password('client123')
+        db.session.add(client)
+        db.session.commit()
+        print('Test client created: client@fitforlife.com / client123')
 
 
 with app.app_context():
