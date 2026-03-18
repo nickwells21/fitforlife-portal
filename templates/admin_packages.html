@@ -1,6 +1,288 @@
 {% extends 'base.html' %}
 {% block title %}Session Packages — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --bg: #080808;
+    --bg-surface: #0f0f0f;
+    --bg-elevated: #161616;
+    --accent: #6366f1;
+    --accent-dim: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --border: rgba(255,255,255,0.07);
+    --border-mid: rgba(255,255,255,0.10);
+    --text: #EDEDED;
+    --text-soft: rgba(255,255,255,0.55);
+    --text-muted: rgba(255,255,255,0.30);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  /* ── Add/Edit form card ── */
+  .pkg-form-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .pkg-form-card .form-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pkg-form-card .form-section-title i {
+    font-size: 14px;
+  }
+
+  .pkg-form-card .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-soft);
+    margin-bottom: 0.35rem;
+  }
+
+  .pkg-form-card .form-control,
+  .pkg-form-card .form-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-mid);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    padding: 0.55rem 0.75rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .pkg-form-card .form-control:focus,
+  .pkg-form-card .form-select:focus {
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    color: var(--text);
+    outline: none;
+  }
+
+  .btn-pkg-submit {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 1.25rem;
+    width: 100%;
+    letter-spacing: 0.03em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-pkg-submit:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    color: #fff;
+  }
+
+  /* ── Package cards grid ── */
+  .pkg-cards-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+  }
+
+  .pkg-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+
+  .pkg-panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pkg-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 1px 8px;
+    min-width: 22px;
+  }
+
+  /* ── Individual package card ── */
+  .pkg-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.125rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 0.625rem;
+  }
+
+  .pkg-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .pkg-card:hover {
+    border-color: var(--border-mid);
+    background: var(--bg-elevated);
+  }
+
+  .pkg-sessions-bubble {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-dim);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: var(--radius-md);
+    min-width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    padding: 0.375rem;
+  }
+
+  .pkg-sessions-number {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .pkg-sessions-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(99,102,241,0.7);
+    margin-top: 2px;
+  }
+
+  .pkg-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pkg-client-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .pkg-client-name:hover {
+    color: var(--accent);
+  }
+
+  .pkg-month {
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .pkg-notes {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .btn-pkg-delete {
+    background: transparent;
+    border: 1px solid var(--red-dim);
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.75rem;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .btn-pkg-delete:hover {
+    background: var(--red-dim);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* ── Empty state ── */
+  .pkg-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .pkg-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--accent);
+  }
+
+  .pkg-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+
+  .pkg-empty-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -13,11 +295,13 @@
 
   <!-- Add / Edit Package -->
   <div class="col-lg-4">
-    <div class="ffl-card">
-      <div class="card-title" style="margin-bottom:0.875rem;">Add / Update Package</div>
+    <div class="pkg-form-card">
+      <div class="form-section-title">
+        <i class="bi bi-plus-circle-fill"></i> Add / Update Package
+      </div>
       <form method="POST" action="{{ url_for('admin_new_package') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <div style="display:flex; flex-direction:column; gap:0.875rem;">
           <div>
             <label class="form-label">Client</label>
             <select name="client_id" class="form-select" required>
@@ -47,54 +331,65 @@
             <input type="number" name="sessions_purchased" class="form-control" min="1" max="50" placeholder="4" required>
           </div>
           <div>
-            <label class="form-label">Notes <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
+            <label class="form-label">Notes <span style="color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
             <input type="text" name="notes" class="form-control" placeholder="e.g. 4x/week package">
           </div>
-          <button type="submit" class="btn btn-ffl">Save Package</button>
+          <button type="submit" class="btn-pkg-submit">
+            <i class="bi bi-check2-circle me-1"></i> Save Package
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Packages table -->
+  <!-- Packages list -->
   <div class="col-lg-8">
-    <div class="ffl-card">
-      <div class="card-title" style="margin-bottom:0.875rem;">All Packages</div>
+    <div class="pkg-cards-panel">
+      <div class="pkg-panel-header">
+        <div class="pkg-panel-title">
+          <i class="bi bi-box-seam"></i> All Packages
+          {% if packages %}
+          <span class="pkg-count-badge">{{ packages | length }}</span>
+          {% endif %}
+        </div>
+      </div>
+
       {% if packages %}
-      <table class="ffl-table">
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>Month</th>
-            <th>Purchased</th>
-            <th>Notes</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for pkg in packages %}
-          <tr>
-            <td style="font-weight:600; font-size:13px; color:var(--text);">
-              <a href="{{ url_for('client_detail', client_id=pkg.client_id) }}" style="color:var(--text); text-decoration:none;">
-                {{ pkg.client_user.name }}
-              </a>
-            </td>
-            <td style="font-size:13px; color:var(--text-soft);">{{ month_name[pkg.month] }} {{ pkg.year }}</td>
-            <td style="font-size:14px; font-weight:700; color:var(--text);">{{ pkg.sessions_purchased }}</td>
-            <td style="font-size:12px; color:var(--text-muted);">{{ pkg.notes or '—' }}</td>
-            <td style="text-align:right;">
-              <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
-                    onsubmit="return confirm('Delete this package?')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn btn-outline-danger btn-sm">Delete</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        {% for pkg in packages %}
+        <div class="pkg-card">
+          <div class="pkg-sessions-bubble">
+            <div class="pkg-sessions-number">{{ pkg.sessions_purchased }}</div>
+            <div class="pkg-sessions-label">sessions</div>
+          </div>
+          <div class="pkg-info">
+            <a href="{{ url_for('client_detail', client_id=pkg.client_id) }}" class="pkg-client-name">
+              {{ pkg.client_user.name }}
+            </a>
+            <div class="pkg-month">
+              <i class="bi bi-calendar3" style="font-size:10px;"></i>
+              {{ month_name[pkg.month] }} {{ pkg.year }}
+            </div>
+            {% if pkg.notes %}
+            <div class="pkg-notes">{{ pkg.notes }}</div>
+            {% endif %}
+          </div>
+          <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
+                onsubmit="return confirm('Delete this package?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-pkg-delete">
+              <i class="bi bi-trash3 me-1"></i>Delete
+            </button>
+          </form>
+        </div>
+        {% endfor %}
       {% else %}
-        <p style="font-size:13px; color:var(--text-muted);">No packages yet. Add one on the left.</p>
+        <div class="pkg-empty-state">
+          <div class="pkg-empty-icon">
+            <i class="bi bi-box-seam"></i>
+          </div>
+          <div class="pkg-empty-title">No packages yet</div>
+          <div class="pkg-empty-sub">Add a client package using the form on the left.</div>
+        </div>
       {% endif %}
     </div>
   </div>

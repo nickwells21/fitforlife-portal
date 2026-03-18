@@ -1,9 +1,219 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Edit' if sess else 'Book' }} Session — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+/* ── Page header accent ─────────────────────────────────────── */
+.sf-header-bar {
+  height: 3px;
+  width: 48px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--west));
+  margin-bottom: 0.5rem;
+}
+
+/* ── Location badge ─────────────────────────────────────────── */
+#locationBadge {
+  display: none;
+  margin-top: 0.5rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+#locationBadge.loc-west {
+  background: var(--west-dim);
+  color: var(--west);
+  border: 1px solid var(--west);
+}
+#locationBadge.loc-midtown {
+  background: var(--midtown-dim);
+  color: var(--midtown);
+  border: 1px solid var(--midtown);
+}
+#locationBadge.loc-default {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+/* ── Duration pill selector ─────────────────────────────────── */
+#durationNativeSelect {
+  display: none;
+}
+.duration-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+.dur-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  border: 1px solid var(--border-mid);
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.dur-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.dur-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(99,102,241,0.35);
+}
+
+/* ── Conflict alert ─────────────────────────────────────────── */
+#conflictAlert {
+  border-radius: var(--radius-md);
+  background: rgba(239,68,68,0.08);
+  border: 1.5px solid var(--red) !important;
+  padding: 0.875rem 1rem;
+  animation: conflict-pulse 2s ease-in-out infinite;
+}
+@keyframes conflict-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.0); }
+  50%       { box-shadow: 0 0 0 5px rgba(239,68,68,0.15); }
+}
+.conflict-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--red);
+  font-size: 13px;
+  margin-bottom: 0.4rem;
+}
+.conflict-heading i {
+  font-size: 16px;
+}
+#conflictList {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 12px;
+  color: rgba(239,68,68,0.85);
+}
+#conflictList li {
+  margin-bottom: 2px;
+}
+
+/* ── Submit button ──────────────────────────────────────────── */
+.btn-sf-submit {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.3);
+}
+.btn-sf-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+  color: #fff;
+}
+.btn-sf-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Status update buttons ──────────────────────────────────── */
+.status-update-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+.status-update-btn:hover {
+  border-color: var(--border-mid);
+  color: var(--text);
+  background: var(--bg-surface);
+}
+.status-update-btn .status-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.status-update-btn.active-scheduled {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 10px rgba(99,102,241,0.2);
+}
+.status-update-btn.active-scheduled .status-icon {
+  background: var(--accent);
+  color: #fff;
+}
+.status-update-btn.active-completed {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(34,197,94,0.1);
+  box-shadow: 0 0 10px rgba(34,197,94,0.2);
+}
+.status-update-btn.active-completed .status-icon {
+  background: var(--green);
+  color: #fff;
+}
+.status-update-btn.active-missed {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(239,68,68,0.1);
+  box-shadow: 0 0 10px rgba(239,68,68,0.2);
+}
+.status-update-btn.active-missed .status-icon {
+  background: var(--red);
+  color: #fff;
+}
+.status-update-btn.active-cancelled {
+  border-color: var(--text-muted);
+  color: var(--text-soft);
+  background: rgba(255,255,255,0.04);
+}
+.status-update-btn.active-cancelled .status-icon {
+  background: rgba(255,255,255,0.15);
+  color: var(--text);
+}
+.status-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
+    <div class="sf-header-bar"></div>
     <div class="page-subtitle" style="margin-bottom:2px;">{{ 'Update session details' if sess else 'Conflicts checked automatically' }}</div>
     <h1 class="page-title">{{ 'Edit Session' if sess else 'Book a Session' }}</h1>
   </div>
@@ -47,26 +257,35 @@
 
           <div>
             <label class="form-label" for="location_id">Location</label>
-            <select name="location_id" id="location_id" class="form-select" required onchange="checkConflict()">
+            <select name="location_id" id="location_id" class="form-select" required onchange="checkConflict(); updateLocationBadge();">
               <option value="">Select location…</option>
               {% for loc in locations %}
               <option value="{{ loc.id }}" {% if sess and sess.location_id == loc.id %}selected{% endif %}
-                data-color="{{ loc.color }}">
+                data-color="{{ loc.color }}" data-name="{{ loc.name }}">
                 {{ loc.name }}
               </option>
               {% endfor %}
             </select>
+            <div id="locationBadge"></div>
           </div>
 
           <div>
-            <label class="form-label" for="duration">Duration</label>
-            <select name="duration" id="duration" class="form-select" onchange="checkConflict()">
+            <label class="form-label">Duration</label>
+            <!-- Hidden native select keeps form submission working -->
+            <select name="duration" id="durationNativeSelect" onchange="checkConflict()">
               <option value="30"  {% if sess and sess.duration==30  %}selected{% endif %}>30 min</option>
               <option value="45"  {% if sess and sess.duration==45  %}selected{% endif %}>45 min</option>
               <option value="60"  {% if not sess or sess.duration==60 %}selected{% endif %}>60 min</option>
               <option value="90"  {% if sess and sess.duration==90  %}selected{% endif %}>90 min</option>
               <option value="120" {% if sess and sess.duration==120 %}selected{% endif %}>2 hrs</option>
             </select>
+            <div class="duration-pills" id="durationPills">
+              <div class="dur-pill" data-val="30">30 min</div>
+              <div class="dur-pill" data-val="45">45 min</div>
+              <div class="dur-pill" data-val="60">60 min</div>
+              <div class="dur-pill" data-val="90">90 min</div>
+              <div class="dur-pill" data-val="120">2 hrs</div>
+            </div>
           </div>
 
           <div style="grid-column: 1 / -1;">
@@ -85,13 +304,15 @@
 
         <!-- Conflict warning -->
         <div id="conflictAlert" role="alert" aria-live="assertive" style="display:none; margin-top:0.875rem;">
-          <i class="bi bi-exclamation-triangle me-1"></i>
-          <strong>Conflict:</strong>
-          <ul id="conflictList" style="margin:4px 0 0 0; padding-left:1.25rem; font-size:12px;"></ul>
+          <div class="conflict-heading">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Scheduling Conflict
+          </div>
+          <ul id="conflictList"></ul>
         </div>
 
         <div style="display:flex; align-items:center; gap:0.5rem; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-          <button type="submit" class="btn btn-ffl" id="submitBtn">
+          <button type="submit" class="btn-sf-submit" id="submitBtn">
             {{ 'Save Changes' if sess else 'Book Session' }}
           </button>
           <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -113,18 +334,25 @@
   <div class="col-lg-4 offset-lg-1">
     {% if sess %}
     <div class="ffl-card" style="margin-bottom:0.875rem;">
-      <div class="card-title" style="margin-bottom:0.75rem;">Update Status</div>
+      <div class="card-title" style="margin-bottom:0.875rem;">Update Status</div>
       {% for s in ['scheduled','completed','missed','cancelled'] %}
-      <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin-bottom:0.375rem;">
+      <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin-bottom:0.5rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="{{ s }}">
-        <button type="submit" class="btn btn-outline-secondary btn-sm w-100 text-start"
-          style="{% if sess.status == s %}background:var(--bg-active); color:var(--text); border-color:var(--border-mid);{% endif %} justify-content:flex-start;">
-          <span style="margin-right:6px; {% if s=='completed' %}color:#4ade80;{% elif s=='missed' %}color:#f87171;{% elif s=='cancelled' %}color:var(--text-faint);{% endif %}">
-            {% if s=='completed' %}✓{% elif s=='missed' %}✗{% elif s=='cancelled' %}⊘{% else %}○{% endif %}
+        <button type="submit" class="status-update-btn{% if sess.status == s %} active-{{ s }}{% endif %}">
+          <span class="status-icon">
+            {% if s=='completed' %}✓
+            {% elif s=='missed' %}✗
+            {% elif s=='cancelled' %}⊘
+            {% else %}○
+            {% endif %}
           </span>
-          {{ s | capitalize }}
-          {% if sess.status == s %}<i class="bi bi-check float-end mt-1" style="color:var(--text-muted);"></i>{% endif %}
+          <span class="status-label-line">
+            <span>{{ s | capitalize }}</span>
+            {% if sess.status == s %}
+            <i class="bi bi-check-circle-fill" style="font-size:14px; opacity:0.7;"></i>
+            {% endif %}
+          </span>
         </button>
       </form>
       {% endfor %}
@@ -162,11 +390,12 @@
 <script>
 const SESSION_ID = {{ sess.id if sess else 'null' }};
 
+/* ── Conflict check (preserved exactly) ─────────────────────── */
 async function checkConflict() {
   const trainer_id = document.getElementById('trainer_id').value;
   const location_id = document.getElementById('location_id').value;
   const scheduled_at = document.getElementById('scheduled_at').value;
-  const duration = document.getElementById('duration').value;
+  const duration = document.getElementById('durationNativeSelect').value;
   const alertEl = document.getElementById('conflictAlert');
   const listEl = document.getElementById('conflictList');
   const submitBtn = document.getElementById('submitBtn');
@@ -195,7 +424,52 @@ async function checkConflict() {
   }
 }
 
+/* ── Location badge ─────────────────────────────────────────── */
+function updateLocationBadge() {
+  const sel = document.getElementById('location_id');
+  const badge = document.getElementById('locationBadge');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) { badge.style.display = 'none'; return; }
+
+  const name = opt.dataset.name || opt.text;
+  const nameLower = name.toLowerCase();
+  badge.textContent = name;
+  badge.className = '';
+  if (nameLower.includes('west')) {
+    badge.className = 'loc-west';
+  } else if (nameLower.includes('midtown')) {
+    badge.className = 'loc-midtown';
+  } else {
+    badge.className = 'loc-default';
+  }
+  badge.style.display = 'inline-block';
+}
+
+/* ── Duration pill selector ─────────────────────────────────── */
+function initDurationPills() {
+  const nativeSel = document.getElementById('durationNativeSelect');
+  const pills = document.querySelectorAll('.dur-pill');
+
+  // Sync pills to current native select value
+  function syncPills(val) {
+    pills.forEach(p => {
+      p.classList.toggle('active', p.dataset.val === val);
+    });
+  }
+  syncPills(nativeSel.value);
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      nativeSel.value = pill.dataset.val;
+      syncPills(pill.dataset.val);
+      checkConflict();
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initDurationPills();
+  updateLocationBadge();
   {% if sess %}checkConflict();{% endif %}
 });
 </script>

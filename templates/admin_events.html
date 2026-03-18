@@ -1,6 +1,354 @@
 {% extends 'base.html' %}
 {% block title %}Events — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --bg: #080808;
+    --bg-surface: #0f0f0f;
+    --bg-elevated: #161616;
+    --accent: #6366f1;
+    --accent-dim: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --border: rgba(255,255,255,0.07);
+    --border-mid: rgba(255,255,255,0.10);
+    --text: #EDEDED;
+    --text-soft: rgba(255,255,255,0.55);
+    --text-muted: rgba(255,255,255,0.30);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  /* ── Add event form card ── */
+  .event-form-card {
+    background: var(--bg-elevated);
+    border: 1px solid rgba(99,102,241,0.20);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .event-form-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .event-form-card .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-soft);
+    margin-bottom: 0.35rem;
+  }
+
+  .event-form-card .form-control,
+  .event-form-card .form-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-mid);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    padding: 0.55rem 0.75rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .event-form-card .form-control:focus,
+  .event-form-card .form-select:focus {
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    color: var(--text);
+    outline: none;
+  }
+
+  .btn-event-submit {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 1.25rem;
+    width: 100%;
+    letter-spacing: 0.03em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-event-submit:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    color: #fff;
+  }
+
+  /* ── Events panel ── */
+  .events-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+  }
+
+  .events-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+
+  .events-panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .event-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 1px 8px;
+    min-width: 22px;
+  }
+
+  /* ── Timeline event row ── */
+  .event-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--border);
+    transition: opacity 0.15s;
+  }
+
+  .event-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .event-row.past {
+    opacity: 0.45;
+  }
+
+  /* ── Date chip (left column) ── */
+  .event-date-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 58px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    text-align: center;
+    padding: 0.25rem;
+  }
+
+  .event-row.past .event-date-chip {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border);
+  }
+
+  .e-month {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .event-row.past .e-month { color: var(--text-muted); }
+
+  .e-day {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  .event-row.past .e-day { color: var(--text-muted); }
+
+  /* ── Event info ── */
+  .event-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .event-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+  }
+
+  .event-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .event-upcoming-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: var(--green-dim);
+    color: var(--green);
+    border-radius: 20px;
+    padding: 2px 7px;
+  }
+
+  .event-past-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 2px 7px;
+  }
+
+  .event-hidden-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 2px 7px;
+  }
+
+  .event-description {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-bottom: 4px;
+  }
+
+  .event-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .event-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* ── Event action buttons ── */
+  .event-actions {
+    display: flex;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    align-items: flex-start;
+  }
+
+  .btn-event-toggle {
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    color: var(--text-soft);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.625rem;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-event-toggle:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-event-delete {
+    background: transparent;
+    border: 1px solid var(--red-dim);
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.625rem;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-event-delete:hover {
+    background: var(--red-dim);
+    color: var(--red);
+  }
+
+  /* ── Empty state ── */
+  .event-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .event-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--accent);
+  }
+
+  .event-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+
+  .event-empty-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -13,17 +361,19 @@
 
   <!-- Add event -->
   <div class="col-lg-4">
-    <div class="ffl-card">
-      <div class="card-title" style="margin-bottom:0.875rem;">New Event</div>
+    <div class="event-form-card">
+      <div class="event-form-title">
+        <i class="bi bi-calendar-plus-fill"></i> New Event
+      </div>
       <form method="POST" action="{{ url_for('admin_new_event') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <div style="display:flex; flex-direction:column; gap:0.875rem;">
           <div>
             <label class="form-label">Title</label>
             <input type="text" name="title" class="form-control" required placeholder="Spring Reset Kickoff">
           </div>
           <div>
-            <label class="form-label">Description <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
+            <label class="form-label">Description <span style="color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
             <textarea name="description" class="form-control" rows="2" placeholder="Details…"></textarea>
           </div>
           <div>
@@ -31,7 +381,7 @@
             <input type="datetime-local" name="event_date" class="form-control" required>
           </div>
           <div>
-            <label class="form-label">Location <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
+            <label class="form-label">Location <span style="color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
             <select name="location_id" class="form-select">
               <option value="">No specific location</option>
               {% for loc in locations %}
@@ -39,7 +389,9 @@
               {% endfor %}
             </select>
           </div>
-          <button type="submit" class="btn btn-ffl">Create Event</button>
+          <button type="submit" class="btn-event-submit">
+            <i class="bi bi-plus-circle me-1"></i> Create Event
+          </button>
         </div>
       </form>
     </div>
@@ -47,45 +399,80 @@
 
   <!-- Events list -->
   <div class="col-lg-8">
-    <div class="ffl-card">
-      <div class="card-title" style="margin-bottom:0.875rem;">All Events</div>
+    <div class="events-panel">
+      <div class="events-panel-header">
+        <div class="events-panel-title">
+          <i class="bi bi-calendar3"></i> All Events
+          {% if events %}
+          <span class="event-count-badge">{{ events | length }}</span>
+          {% endif %}
+        </div>
+      </div>
+
       {% if events %}
         {% for event in events %}
-        <div style="display:flex; align-items:flex-start; gap:0.875rem; padding:0.875rem 0; border-bottom:1px solid var(--border);">
+        {% set is_past = event.event_date < now %}
+        <div class="event-row {% if is_past %}past{% endif %}">
           <div class="event-date-chip">
             <div class="e-month">{{ event.event_date.strftime('%b') }}</div>
             <div class="e-day">{{ event.event_date.strftime('%d') }}</div>
           </div>
-          <div style="flex:1;">
-            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:2px;">
-              <span style="font-size:13px; font-weight:600; color:var(--text);">{{ event.title }}</span>
+          <div class="event-info">
+            <div class="event-title-row">
+              <span class="event-title">{{ event.title }}</span>
               {% if not event.is_active %}
-              <span style="font-size:10px; color:var(--text-faint); font-weight:600;">HIDDEN</span>
+                <span class="event-hidden-badge"><i class="bi bi-eye-slash me-1"></i>Hidden</span>
+              {% elif is_past %}
+                <span class="event-past-badge">Past</span>
+              {% else %}
+                <span class="event-upcoming-badge"><i class="bi bi-circle-fill me-1" style="font-size:6px;"></i>Upcoming</span>
               {% endif %}
             </div>
             {% if event.description %}
-            <div style="font-size:12px; color:var(--text-muted); line-height:1.4;">{{ event.description }}</div>
+            <div class="event-description">{{ event.description }}</div>
             {% endif %}
-            <div style="font-size:10px; color:var(--text-faint); margin-top:4px;">
-              {{ event.event_date.strftime('%I:%M %p') }}
-              {% if event.location %} · {{ event.location.name }}{% endif %}
+            <div class="event-meta">
+              <div class="event-meta-item">
+                <i class="bi bi-clock" style="font-size:10px;"></i>
+                {{ event.event_date.strftime('%I:%M %p') }}
+              </div>
+              {% if event.location %}
+              <div class="event-meta-item">
+                <i class="bi bi-geo-alt" style="font-size:10px;"></i>
+                {{ event.location.name }}
+              </div>
+              {% endif %}
             </div>
           </div>
-          <div style="display:flex; gap:0.375rem; flex-shrink:0;">
+          <div class="event-actions">
             <form method="POST" action="{{ url_for('toggle_event', event_id=event.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-outline-secondary btn-sm">{{ 'Hide' if event.is_active else 'Show' }}</button>
+              <button class="btn-event-toggle">
+                {% if event.is_active %}
+                  <i class="bi bi-eye-slash me-1"></i>Hide
+                {% else %}
+                  <i class="bi bi-eye me-1"></i>Show
+                {% endif %}
+              </button>
             </form>
             <form method="POST" action="{{ url_for('delete_event', event_id=event.id) }}"
                   onsubmit="return confirm('Delete this event?')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-outline-danger btn-sm">Delete</button>
+              <button class="btn-event-delete">
+                <i class="bi bi-trash3"></i>
+              </button>
             </form>
           </div>
         </div>
         {% endfor %}
       {% else %}
-        <p style="font-size:13px; color:var(--text-muted);">No events yet.</p>
+        <div class="event-empty-state">
+          <div class="event-empty-icon">
+            <i class="bi bi-calendar3"></i>
+          </div>
+          <div class="event-empty-title">No events scheduled</div>
+          <div class="event-empty-sub">Create your first event using the form on the left.</div>
+        </div>
       {% endif %}
     </div>
   </div>

@@ -1,141 +1,604 @@
 {% extends 'base.html' %}
 {% block title %}{{ client.name }} — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+/* ── Client Detail page ──────────────────────────────────────── */
+
+/* Breadcrumb */
+.detail-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+.detail-breadcrumb a {
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.detail-breadcrumb a:hover { color: var(--accent); }
+.detail-breadcrumb .sep { opacity: 0.4; }
+
+/* Profile header card */
+.profile-header-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.profile-header-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 90% -10%, rgba(99,102,241,0.08) 0%, transparent 55%);
+  pointer-events: none;
+}
+.profile-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(99,102,241,0.2);
+  color: #818cf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+  border: 2px solid rgba(99,102,241,0.3);
+}
+.profile-name-block {}
+.profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 9px;
+  margin-bottom: 6px;
+}
+.profile-name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0 0 3px;
+  line-height: 1.15;
+}
+.profile-email {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.profile-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.btn-trainerize-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(124,58,237,0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+}
+.btn-trainerize-new:hover {
+  background: rgba(124,58,237,0.25);
+  color: #c4b5fd;
+}
+.btn-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  text-decoration: none;
+  transition: background 0.18s, transform 0.15s;
+  box-shadow: 0 3px 10px rgba(99,102,241,0.3);
+}
+.btn-book:hover { background: #4f46e5; color: #fff; transform: translateY(-1px); }
+
+/* Stats row */
+.detail-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+@media (max-width: 640px) {
+  .detail-stats-row { grid-template-columns: 1fr; }
+}
+.detail-stat {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  text-align: center;
+}
+.detail-stat__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.detail-stat__value {
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.detail-stat__sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.detail-stat--purchased .detail-stat__value { color: var(--accent); }
+.detail-stat--used      .detail-stat__value { color: var(--text-soft); }
+.detail-stat--remaining .detail-stat__value { color: var(--green); }
+.detail-stat--remaining-warn .detail-stat__value { color: var(--amber); }
+.detail-stat--remaining-empty .detail-stat__value { color: var(--red); }
+
+/* Balance progress bar (inside its own mini-card) */
+.balance-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.balance-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.6rem;
+}
+.balance-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+  text-transform: uppercase;
+}
+.balance-card__fraction {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.balance-card__fraction span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.balance-bar-thick {
+  height: 7px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+.balance-bar-thick__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+.balance-bar-thick__fill.complete { background: var(--green); }
+.balance-bar-thick__fill.low      { background: var(--amber); }
+.balance-card__status {
+  font-size: 11px;
+}
+.balance-card__status .ok   { color: var(--green); }
+.balance-card__status .warn { color: var(--amber); }
+.balance-card__status .none { color: var(--text-muted); }
+
+/* Section card */
+.detail-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  height: 100%;
+}
+.detail-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.detail-section__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.detail-section__title i { color: var(--accent); }
+.detail-section__body {
+  padding: 0.75rem 1.1rem;
+}
+
+/* Session rows */
+.sess-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.sess-row:last-child { border-bottom: none; }
+.sess-row__time {
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.sess-row__time-main {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.sess-row__time-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.sess-row__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sess-row__info { flex: 1; min-width: 0; }
+.sess-row__trainer {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sess-row__meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+.status-badge.completed  { background: rgba(34,197,94,0.14);  color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+.status-badge.scheduled  { background: rgba(99,102,241,0.14); color: #818cf8;      border: 1px solid rgba(99,102,241,0.25); }
+.status-badge.cancelled  { background: rgba(239,68,68,0.12);  color: var(--red);   border: 1px solid rgba(239,68,68,0.22); }
+.status-badge.no-show    { background: rgba(245,158,11,0.14); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+
+/* Location badge */
+.loc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.loc-badge.west    { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+.loc-badge.midtown { background: rgba(6,182,212,0.12);  color: #22d3ee; border: 1px solid rgba(6,182,212,0.22); }
+.loc-badge.other   { background: rgba(255,255,255,0.06); color: var(--text-soft); border: 1px solid var(--border); }
+
+/* Packages table */
+.pkg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pkg-table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.pkg-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-soft);
+  vertical-align: middle;
+}
+.pkg-table tr:last-child td { border-bottom: none; }
+.pkg-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+.pkg-table .pkg-month { font-weight: 700; color: var(--text); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+}
+.empty-state i {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  opacity: 0.3;
+}
+.empty-state p { font-size: 13px; margin: 0; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <div style="display:flex; align-items:center; gap:1rem;">
-    <div class="user-avatar" style="width:44px; height:44px; font-size:17px; border-radius:12px; flex-shrink:0;">{{ client.name[0] }}</div>
-    <div>
-      <div class="page-subtitle" style="margin-bottom:2px;">{{ client.role | capitalize }}</div>
-      <h1 class="page-title">{{ client.name }}</h1>
+
+<!-- ── Breadcrumb ──────────────────────────────────────────────── -->
+<div class="detail-breadcrumb">
+  <a href="{{ url_for('clients') }}"><i class="bi bi-people me-1"></i>Clients</a>
+  <span class="sep"><i class="bi bi-chevron-right"></i></span>
+  <span>{{ client.name }}</span>
+</div>
+
+<!-- ── Profile header card ────────────────────────────────────── -->
+<div class="profile-header-card">
+  <div class="profile-header-left">
+    <div class="profile-avatar">{{ client.name[0] | upper }}</div>
+    <div class="profile-name-block">
+      <div class="profile-role-badge">
+        <i class="bi bi-person-fill"></i> {{ client.role | capitalize }}
+      </div>
+      <h1 class="profile-name">{{ client.name }}</h1>
+      <div class="profile-email">{{ client.email }}</div>
     </div>
   </div>
-  <div style="display:flex; gap:0.5rem; align-items:center;">
+  <div class="profile-header-actions">
     {% if client.trainerize_url %}
-    <a href="{{ client.trainerize_url }}" target="_blank" class="btn-trainerize">
-      <i class="bi bi-box-arrow-up-right" style="font-size:10px;"></i> Trainerize
+    <a href="{{ client.trainerize_url }}" target="_blank" class="btn-trainerize-new">
+      <i class="bi bi-box-arrow-up-right"></i> Trainerize
     </a>
     {% endif %}
-    {% if current_user.role in ('admin','trainer') %}
-    <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
-      <i class="bi bi-plus-lg me-1"></i> Book
+    {% if current_user.role in ('admin', 'trainer') %}
+    <a href="{{ url_for('new_session') }}" class="btn-book">
+      <i class="bi bi-plus-lg"></i> Book Session
     </a>
     {% endif %}
   </div>
 </div>
 
-<!-- Balance banner -->
-<div class="ffl-card" style="margin-bottom:1rem;">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-    <div class="card-title">{{ month_name }} {{ year }} — Session Balance</div>
-    <div style="font-size:1.5rem; font-weight:900; letter-spacing:-0.03em; color:var(--text);">
-      {{ completed }}<span style="font-size:0.9rem; color:var(--text-muted); font-weight:400;">/{{ purchased }}</span>
+<!-- ── Stats row ──────────────────────────────────────────────── -->
+{% set pct = ((completed / purchased) * 100)|int if purchased > 0 else 0 %}
+<div class="detail-stats-row">
+  <div class="detail-stat detail-stat--purchased">
+    <div class="detail-stat__label">Purchased</div>
+    <div class="detail-stat__value">{{ purchased }}</div>
+    <div class="detail-stat__sub">sessions this month</div>
+  </div>
+  <div class="detail-stat detail-stat--used">
+    <div class="detail-stat__label">Used</div>
+    <div class="detail-stat__value">{{ completed }}</div>
+    <div class="detail-stat__sub">sessions completed</div>
+  </div>
+  <div class="detail-stat {% if remaining == 0 and purchased > 0 %}detail-stat--remaining{% elif remaining == 1 %}detail-stat--remaining-warn{% elif remaining == 0 and purchased == 0 %}detail-stat--remaining-empty{% else %}detail-stat--remaining{% endif %}">
+    <div class="detail-stat__label">Remaining</div>
+    <div class="detail-stat__value">{{ remaining }}</div>
+    <div class="detail-stat__sub">sessions left</div>
+  </div>
+</div>
+
+<!-- ── Balance bar ────────────────────────────────────────────── -->
+<div class="balance-card">
+  <div class="balance-card__header">
+    <div class="balance-card__title">{{ month_name }} {{ year }} — Balance</div>
+    <div class="balance-card__fraction">
+      {{ completed }}<span> / {{ purchased }}</span>
     </div>
   </div>
-  <div class="balance-bar" style="height:5px; margin-bottom:0.5rem;">
-    {% set pct = ((completed / purchased) * 100)|int if purchased > 0 else 0 %}
-    <div class="balance-fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}" style="width:{{ pct }}%;"></div>
+  <div class="balance-bar-thick">
+    <div class="balance-bar-thick__fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}"
+         style="width: {{ pct }}%;"></div>
   </div>
-  <div style="font-size:11px; color:var(--text-muted);">
+  <div class="balance-card__status">
     {% if remaining > 0 %}
-      <span style="color:var(--amber);">{{ remaining }} session{{ 's' if remaining != 1 }} remaining this month</span>
+      <span class="warn"><i class="bi bi-exclamation-circle me-1"></i>{{ remaining }} session{{ 's' if remaining != 1 }} remaining this month</span>
     {% elif purchased > 0 %}
-      <span style="color:var(--green);">All sessions complete for {{ month_name }}</span>
+      <span class="ok"><i class="bi bi-check-circle-fill me-1"></i>All sessions complete for {{ month_name }}</span>
     {% else %}
-      No package set.
-      {% if current_user.role == 'admin' %}
-        <a href="{{ url_for('admin_packages') }}" style="color:var(--accent); font-size:11px; margin-left:4px;">Set package →</a>
-      {% endif %}
+      <span class="none">No package set this month.
+        {% if current_user.role == 'admin' %}
+          <a href="{{ url_for('admin_packages') }}" style="color:var(--accent); margin-left:4px;">Set package →</a>
+        {% endif %}
+      </span>
     {% endif %}
   </div>
 </div>
 
-<div class="row g-3">
+<!-- ── Two-column section ─────────────────────────────────────── -->
+<div class="row g-3 mb-3">
 
   <!-- Upcoming sessions -->
   <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row"><span class="card-title">Upcoming Sessions</span></div>
-      {% if upcoming %}
-        {% for sess in upcoming %}
-        <div class="session-row">
-          <div class="session-time-col">
-            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
-            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
-          </div>
-          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
-          <div class="session-label flex-grow-1">
-            <div class="name">{{ sess.trainer.name }}</div>
-            <div class="meta">{{ sess.location.name }} · {{ sess.duration }} min</div>
-          </div>
-          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+    <div class="detail-section">
+      <div class="detail-section__header">
+        <div class="detail-section__title">
+          <i class="bi bi-calendar-check"></i> Upcoming Sessions
         </div>
-        {% endfor %}
-      {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No upcoming sessions.</p>
-      {% endif %}
+      </div>
+      <div class="detail-section__body">
+        {% if upcoming %}
+          {% for sess in upcoming %}
+          <div class="sess-row">
+            <div class="sess-row__time">
+              <div class="sess-row__time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+              <div class="sess-row__time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</div>
+            </div>
+            <div class="sess-row__dot" style="background: {{ sess.location.color }};"></div>
+            <div class="sess-row__info">
+              <div class="sess-row__trainer">{{ sess.trainer.name }}</div>
+              <div class="sess-row__meta">{{ sess.location.name }} &middot; {{ sess.duration }} min</div>
+            </div>
+            {% set loc_lower = sess.location.name | lower %}
+            {% if 'west' in loc_lower %}
+              <span class="loc-badge west">West</span>
+            {% elif 'midtown' in loc_lower %}
+              <span class="loc-badge midtown">Midtown</span>
+            {% else %}
+              <span class="loc-badge other">{{ sess.location.name }}</span>
+            {% endif %}
+            <a href="{{ url_for('session_detail', session_id=sess.id) }}"
+               class="btn btn-outline-secondary btn-sm">View</a>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <p>No upcoming sessions scheduled.</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 
   <!-- Session history -->
   <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row"><span class="card-title">History</span></div>
-      {% if recent %}
-        {% for sess in recent %}
-        <div class="session-row">
-          <div class="session-time-col">
-            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
-            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
-          </div>
-          <span class="status-chip {{ sess.status }}" style="font-size:10px;">{{ sess.status }}</span>
-          <div class="session-label flex-grow-1">
-            <div class="name">{{ sess.trainer.name }}</div>
-            <div class="meta">{{ sess.location.name }}</div>
-          </div>
-          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
+    <div class="detail-section">
+      <div class="detail-section__header">
+        <div class="detail-section__title">
+          <i class="bi bi-clock-history"></i> Session History
         </div>
-        {% endfor %}
-      {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No session history.</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Package history (admin only) -->
-  {% if current_user.role == 'admin' %}
-  <div class="col-12">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Session Packages</span>
-        <a href="{{ url_for('admin_packages') }}" class="btn btn-outline-secondary btn-sm">Manage →</a>
       </div>
-      {% if packages %}
-      <table class="ffl-table">
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Purchased</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% set MN = ['','January','February','March','April','May','June','July','August','September','October','November','December'] %}
-          {% for pkg in packages %}
-          <tr>
-            <td style="font-weight:600; color:var(--text);">{{ MN[pkg.month] }} {{ pkg.year }}</td>
-            <td>{{ pkg.sessions_purchased }}</td>
-            <td style="color:var(--text-muted); font-size:12px;">{{ pkg.notes or '—' }}</td>
-          </tr>
+      <div class="detail-section__body">
+        {% if recent %}
+          {% for sess in recent %}
+          <div class="sess-row">
+            <div class="sess-row__time">
+              <div class="sess-row__time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+              <div class="sess-row__time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</div>
+            </div>
+            <div class="sess-row__info">
+              <div class="sess-row__trainer">{{ sess.trainer.name }}</div>
+              <div class="sess-row__meta">{{ sess.location.name }}</div>
+            </div>
+            {% set loc_lower = sess.location.name | lower %}
+            {% if 'west' in loc_lower %}
+              <span class="loc-badge west">West</span>
+            {% elif 'midtown' in loc_lower %}
+              <span class="loc-badge midtown">Midtown</span>
+            {% else %}
+              <span class="loc-badge other">{{ sess.location.name }}</span>
+            {% endif %}
+            <span class="status-badge {{ sess.status | replace(' ', '-') | lower }}">
+              {% if sess.status == 'completed' %}<i class="bi bi-check-lg"></i>
+              {% elif sess.status == 'cancelled' %}<i class="bi bi-x-lg"></i>
+              {% elif sess.status == 'no-show' or sess.status == 'no_show' %}<i class="bi bi-slash-circle"></i>
+              {% else %}<i class="bi bi-circle"></i>{% endif %}
+              {{ sess.status | replace('_', ' ') | replace('-', ' ') }}
+            </span>
+            <a href="{{ url_for('session_detail', session_id=sess.id) }}"
+               class="btn btn-outline-secondary btn-sm">View</a>
+          </div>
           {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.25rem 0;">No packages on file.</p>
-      {% endif %}
+        {% else %}
+          <div class="empty-state">
+            <i class="bi bi-clock-history"></i>
+            <p>No session history yet.</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
-  {% endif %}
 
 </div>
+
+<!-- ── Package history (admin only) ──────────────────────────── -->
+{% if current_user.role == 'admin' %}
+<div class="detail-section" style="margin-bottom: 1.5rem;">
+  <div class="detail-section__header">
+    <div class="detail-section__title">
+      <i class="bi bi-layers"></i> Session Packages
+    </div>
+    <a href="{{ url_for('admin_packages') }}" class="btn btn-outline-secondary btn-sm">
+      Manage <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+  <div class="detail-section__body" style="padding: 0;">
+    {% if packages %}
+    {% set MN = ['','January','February','March','April','May','June','July','August','September','October','November','December'] %}
+    <table class="pkg-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Sessions Purchased</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pkg in packages %}
+        <tr>
+          <td class="pkg-month">{{ MN[pkg.month] }} {{ pkg.year }}</td>
+          <td>
+            <span style="font-weight:700; color:var(--accent);">{{ pkg.sessions_purchased }}</span>
+          </td>
+          <td style="font-size:12px; color:var(--text-muted);">{{ pkg.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty-state">
+        <i class="bi bi-layers"></i>
+        <p>No packages on file for this client.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

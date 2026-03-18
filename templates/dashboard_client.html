@@ -3,8 +3,12 @@
 
 {% block head %}
 <style>
-/* ── Client Dashboard ────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════════
+   Client Dashboard — FFL Portal
+   All layout, hero, stats, gallery, promos, events
+   ══════════════════════════════════════════════════════════════════════════════ */
 
+/* ── Shared ─────────────────────────────────────────────────────────────────── */
 .section-label {
   font-size: 10px;
   font-weight: 700;
@@ -15,29 +19,38 @@
   display: block;
 }
 
-/* ── Hero ───────────────────────────────────────────────────────────────── */
+/* ── Hero ────────────────────────────────────────────────────────────────────── */
 .client-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 2rem 0 2rem;
-  flex-wrap: wrap;
+  padding: 2.25rem 0 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.hero-time-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
 }
 
 .hero-greeting {
-  font-size: 2.25rem;
+  font-size: 2.75rem;
   font-weight: 900;
-  letter-spacing: -0.045em;
-  color: var(--text);
-  line-height: 1.05;
+  letter-spacing: -0.05em;
+  line-height: 1.0;
+  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 40%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
 }
 
-.hero-date {
-  font-size: 13px;
-  color: var(--text-muted);
+.hero-subtitle {
+  font-size: 14px;
+  color: var(--text-soft);
   font-weight: 500;
-  margin-top: 6px;
+  letter-spacing: 0.01em;
 }
 
 .hero-right {
@@ -46,6 +59,7 @@
   gap: 0.625rem;
   flex-wrap: wrap;
   flex-shrink: 0;
+  margin-top: 1.25rem;
 }
 
 .streak-badge {
@@ -61,15 +75,115 @@
   color: #fcd34d;
 }
 
-/* ── Next Session Card — clean, no gradients ────────────────────────────── */
+/* ── Stats Row ───────────────────────────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.stat-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.375rem;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover { border-color: var(--border-mid); }
+
+.stat-icon {
+  font-size: 1.125rem;
+  margin-bottom: 0.125rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-muted);
+}
+
+/* Ring stat (sessions this month) */
+.stat-ring-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.stat-ring-label {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+.stat-ring-num {
+  font-size: 1.375rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  display: block;
+}
+
+.stat-ring-sub {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 700;
+  display: block;
+  margin-top: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Next Session Card ──────────────────────────────────────────────────────── */
 .next-session-card {
   background: var(--bg-elevated);
-  border: 1px solid rgba(99,102,241,0.18);
-  border-left: 4px solid var(--accent);
+  border: 1px solid rgba(99,102,241,0.22);
   border-radius: var(--radius-lg);
   padding: 1.75rem 2rem 1.5rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 0 0 0 transparent;
+  margin-bottom: 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient top accent bar */
+.next-session-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Subtle glow behind card */
+.next-session-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: radial-gradient(ellipse at 0% 0%, rgba(99,102,241,0.06) 0%, transparent 60%);
+  pointer-events: none;
 }
 
 .nsc-label {
@@ -109,9 +223,9 @@
   margin-bottom: 1.125rem;
 }
 
-.nsc-countdown.today    { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
-.nsc-countdown.tomorrow { background: rgba(252,211,77,0.1);  color: #fcd34d; border: 1px solid rgba(252,211,77,0.22); }
-.nsc-countdown.upcoming { background: rgba(99,102,241,0.1);  color: #a5b4fc; border: 1px solid rgba(99,102,241,0.2); }
+.nsc-countdown.today    { background: rgba(34,197,94,0.12);  color: #4ade80;  border: 1px solid rgba(34,197,94,0.25); }
+.nsc-countdown.tomorrow { background: rgba(252,211,77,0.1);  color: #fcd34d;  border: 1px solid rgba(252,211,77,0.22); }
+.nsc-countdown.upcoming { background: rgba(99,102,241,0.1);  color: #a5b4fc;  border: 1px solid rgba(99,102,241,0.2); }
 
 .nsc-trainer-row {
   display: flex;
@@ -172,16 +286,49 @@
 
 .nsc-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
+/* Location badges — West Mobile = purple, Midtown = teal */
+.loc-badge-west    { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.28); color: #c4b5fd; }
+.loc-badge-midtown { background: rgba(6,182,212,0.1);   border-color: rgba(6,182,212,0.25);  color: #67e8f9; }
+
+.nsc-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 1rem;
+}
+
+.nsc-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.28);
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a5b4fc;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nsc-join-btn:hover {
+  background: rgba(99,102,241,0.25);
+  border-color: rgba(99,102,241,0.45);
+  color: #c7d2fe;
+  text-decoration: none;
+}
+
 .nsc-message-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: rgba(165,180,252,0.6);
+  color: rgba(165,180,252,0.55);
   text-decoration: none;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  padding-top: 1rem;
   transition: color 0.15s;
 }
 
@@ -197,7 +344,7 @@
   gap: 0.5rem;
 }
 
-/* ── Quick Actions — full-width rows, prominent ─────────────────────────── */
+/* ── Quick Actions ───────────────────────────────────────────────────────────── */
 .actions-list { display: flex; flex-direction: column; gap: 0; }
 
 .action-row {
@@ -241,7 +388,7 @@
 
 .action-arrow { margin-left: auto; color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
 
-/* ── Upcoming Sessions — Trainerize-style vertical list ─────────────────── */
+/* ── Upcoming Sessions ───────────────────────────────────────────────────────── */
 .upcoming-list { display: flex; flex-direction: column; }
 
 .upcoming-row {
@@ -312,7 +459,7 @@
   white-space: nowrap;
 }
 
-/* ── This Month — progress ring ─────────────────────────────────────────── */
+/* ── This Month — progress ring ──────────────────────────────────────────────── */
 .month-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -371,7 +518,7 @@
 .month-badge.complete    { background: var(--green-dim); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
 .month-badge.in-progress { background: var(--amber-dim); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
 
-/* ── At Fit For Life ─────────────────────────────────────────────────────── */
+/* ── At Fit For Life / bulletin ───────────────────────────────────────────────── */
 .bulletin-feed {
   display: flex;
   flex-direction: column;
@@ -413,12 +560,189 @@
 .feed-desc   { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 .feed-footer { font-size: 10px; color: var(--text-faint); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
 
-/* ── Mobile ──────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════════
+   Gallery — Embla Carousel
+   ══════════════════════════════════════════════════════════════════════════════ */
+.ffl-gallery-section {
+  margin-bottom: 2rem;
+  outline: none;
+}
+
+.ffl-gallery-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1.125rem;
+  gap: 1rem;
+}
+
+.ffl-gallery-heading {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0 0 4px 0;
+  line-height: 1.15;
+}
+
+.ffl-gallery-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+.ffl-gallery-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.ffl-gallery__prev,
+.ffl-gallery__next {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+.ffl-gallery__prev:hover:not(:disabled),
+.ffl-gallery__next:hover:not(:disabled) {
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.35);
+  color: #a5b4fc;
+}
+
+.ffl-gallery__prev:disabled,
+.ffl-gallery__next:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Embla viewport */
+.ffl-gallery {
+  overflow: hidden;
+}
+
+.ffl-gallery__viewport {
+  overflow: hidden;
+}
+
+.ffl-gallery__container {
+  display: flex;
+  gap: 1rem;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ffl-gallery__slide {
+  flex: 0 0 calc(50% - 0.5rem);
+  min-width: 0;
+}
+
+/* Gallery card */
+.gallery-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  height: 100%;
+  transition: border-color 0.2s, transform 0.2s;
+  cursor: default;
+}
+
+.gallery-card:hover {
+  border-color: var(--border-mid);
+  transform: translateY(-2px);
+}
+
+.gallery-card__img-wrap {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+
+.gallery-card__img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.gallery-card:hover .gallery-card__img-wrap img {
+  transform: scale(1.05);
+}
+
+.gallery-card__body {
+  padding: 1rem 1.125rem 1.125rem;
+}
+
+.gallery-card__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.gallery-card__desc {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.55;
+  margin-bottom: 0.75rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gallery-card__link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #818cf8;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: color 0.15s;
+}
+
+.gallery-card__link:hover { color: #a5b4fc; }
+
+/* ── Mobile ────────────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .hero-greeting { font-size: 1.75rem; }
-  .nsc-time      { font-size: 2.5rem; }
-  .client-hero   { padding: 1.25rem 0 1.5rem; }
-  .next-session-card { padding: 1.375rem 1.25rem 1.25rem; }
+  .hero-greeting       { font-size: 2rem; }
+  .nsc-time            { font-size: 2.5rem; }
+  .client-hero         { padding: 1.5rem 0 0.25rem; }
+  .next-session-card   { padding: 1.375rem 1.25rem 1.25rem; }
+  .stats-row           { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .stat-value          { font-size: 1.5rem; }
+  .stat-card           { padding: 1rem 0.5rem; }
+  .ffl-gallery__slide  { flex: 0 0 calc(85% - 0.5rem); }
+  .ffl-gallery-heading { font-size: 1.1rem; }
+}
+
+@media (min-width: 768px) {
+  .ffl-gallery__slide  { flex: 0 0 calc(33.333% - 0.667rem); }
+  .client-hero         { padding: 2.5rem 0 0.5rem; }
+  .hero-greeting       { font-size: 3rem; }
+  .hero-right          { margin-top: 0; }
+}
+
+@media (min-width: 1200px) {
+  .ffl-gallery__slide  { flex: 0 0 calc(25% - 0.75rem); }
 }
 </style>
 {% endblock %}
@@ -426,11 +750,12 @@
 {% block content %}
 {% set first_name = current_user.name.split()[0] %}
 
-<!-- ─── Hero ──────────────────────────────────────────────────────────────── -->
+<!-- ─── Hero ───────────────────────────────────────────────────────────────── -->
 <div class="client-hero">
   <div>
-    <div class="hero-greeting">{{ greeting }}, {{ first_name }}.</div>
-    <div class="hero-date">{{ now.strftime('%A, %B %d') }} &middot; Fit For Life</div>
+    <div class="hero-time-label" id="hero-time-label">Good day</div>
+    <div class="hero-greeting" id="hero-greeting">{{ greeting }}, {{ first_name }}.</div>
+    <div class="hero-subtitle">Here's your training overview.</div>
   </div>
   <div class="hero-right">
     {% if streak > 0 %}
@@ -444,7 +769,57 @@
   </div>
 </div>
 
-<!-- ─── Next Session ───────────────────────────────────────────────────────── -->
+<!-- ─── Stats Row ─────────────────────────────────────────────────────────── -->
+<div class="stats-row">
+
+  <!-- Sessions This Month — ring -->
+  <div class="stat-card">
+    {% if purchased > 0 %}
+      {% set pct_s  = ((sessions_this_month / purchased) * 100)|int %}
+      {% set rad_s  = 28 %}
+      {% set circ_s = (2 * 3.14159 * rad_s)|int %}
+      {% set dash_s = ((pct_s / 100) * circ_s)|int %}
+      <div class="stat-ring-wrap">
+        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+          <circle cx="36" cy="36" r="{{ rad_s }}" fill="none"
+            stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
+          <circle id="stats-ring" cx="36" cy="36" r="{{ rad_s }}" fill="none"
+            stroke="{% if pct_s == 100 %}#22c55e{% else %}#6366f1{% endif %}"
+            stroke-width="7"
+            stroke-dasharray="0 {{ circ_s }}"
+            stroke-dashoffset="{{ circ_s // 4 }}"
+            stroke-linecap="round"
+            data-dash="{{ dash_s }}"
+            data-circ="{{ circ_s }}"/>
+        </svg>
+        <div class="stat-ring-label">
+          <span class="stat-ring-num">{{ sessions_this_month }}</span>
+          <span class="stat-ring-sub">of {{ purchased }}</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="stat-value" style="color:#818cf8;">{{ sessions_this_month }}</div>
+    {% endif %}
+    <div class="stat-label">This Month</div>
+  </div>
+
+  <!-- Streak -->
+  <div class="stat-card">
+    <div class="stat-icon" style="color:#fcd34d;">🔥</div>
+    <div class="stat-value" style="color:#fcd34d;">{{ streak }}</div>
+    <div class="stat-label">Week Streak</div>
+  </div>
+
+  <!-- Total Sessions -->
+  <div class="stat-card">
+    <div class="stat-icon" style="color:#a5b4fc;"><i class="bi bi-bar-chart-fill"></i></div>
+    <div class="stat-value" style="color:#a5b4fc;">{{ total_sessions }}</div>
+    <div class="stat-label">Total Sessions</div>
+  </div>
+
+</div>
+
+<!-- ─── Next Session ──────────────────────────────────────────────────────── -->
 <div class="next-session-card">
   {% if next_session %}
   {% set trainer_first = next_session.trainer.name.split()[0] %}
@@ -470,7 +845,8 @@
   </div>
 
   <div class="nsc-pills">
-    <div class="nsc-pill">
+    {% set loc_name_lower = next_session.location.name | lower %}
+    <div class="nsc-pill {% if 'west' in loc_name_lower %}loc-badge-west{% elif 'midtown' in loc_name_lower %}loc-badge-midtown{% endif %}">
       <div class="dot" style="background:{{ next_session.location.color }};"></div>
       {{ next_session.location.name }}
     </div>
@@ -480,10 +856,15 @@
     </div>
   </div>
 
-  <a href="mailto:{{ next_session.trainer.email }}?subject=Question about my session on {{ next_session.scheduled_at.strftime('%B %d') }}"
-     class="nsc-message-link">
-    <i class="bi bi-envelope"></i> Message {{ trainer_first }}
-  </a>
+  <div class="nsc-cta-row">
+    <a href="mailto:{{ next_session.trainer.email }}?subject=Question about my session on {{ next_session.scheduled_at.strftime('%B %d') }}"
+       class="nsc-join-btn">
+      <i class="bi bi-envelope"></i> Message {{ trainer_first }}
+    </a>
+    <a href="{{ url_for('client_calendar') }}" class="nsc-message-link">
+      <i class="bi bi-calendar3"></i> View full schedule
+    </a>
+  </div>
 
   {% else %}
   <span class="nsc-label">Next Session</span>
@@ -551,7 +932,7 @@
   </div>
 </div>
 
-<!-- ─── Upcoming Sessions ──────────────────────────────────────────────────── -->
+<!-- ─── Upcoming Sessions ─────────────────────────────────────────────────── -->
 {% if upcoming|length > 1 %}
 <div class="ffl-card mb-3">
   <div class="card-header-row" style="margin-bottom:0.5rem;">
@@ -583,8 +964,8 @@
 </div>
 {% endif %}
 
-<!-- ─── This Month + At Fit For Life ──────────────────────────────────────── -->
-<div class="row g-3 {% if not events and not promos %}mb-0{% else %}mb-0{% endif %}">
+<!-- ─── This Month + At Fit For Life ─────────────────────────────────────── -->
+<div class="row g-3 mb-0">
 
   <!-- This Month -->
   <div class="{% if events or promos %}col-md-5{% else %}col-12{% endif %}">
@@ -676,12 +1057,114 @@
 
 </div>
 
+<!-- ─── Gallery — Your Training Programs ─────────────────────────────────── -->
+<section class="ffl-gallery-section mt-4" aria-label="Training Programs">
+  <div class="ffl-gallery-header">
+    <div>
+      <h2 class="ffl-gallery-heading">Your Training Programs</h2>
+      <p class="ffl-gallery-sub">Services available at West Mobile &amp; Midtown</p>
+    </div>
+    <div class="ffl-gallery-controls">
+      <button class="ffl-gallery__prev" aria-label="Previous slide" type="button">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <button class="ffl-gallery__next" aria-label="Next slide" type="button">
+        <i class="bi bi-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="ffl-gallery">
+    <div class="ffl-gallery__viewport">
+      <div class="ffl-gallery__container">
+
+        <!-- 1. 1-on-1 Personal Training -->
+        <div class="ffl-gallery__slide">
+          <div class="gallery-card">
+            <div class="gallery-card__img-wrap">
+              <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop&auto=format"
+                   alt="1-on-1 Personal Training" loading="lazy">
+            </div>
+            <div class="gallery-card__body">
+              <div class="gallery-card__title">1-on-1 Personal Training</div>
+              <div class="gallery-card__desc">Tailored programming and real-time coaching designed to your exact goals, pace, and lifestyle.</div>
+              <a href="mailto:nick@fitforlife.com?subject=1-on-1 Personal Training" class="gallery-card__link">Learn More &rarr;</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. HIIT & Conditioning -->
+        <div class="ffl-gallery__slide">
+          <div class="gallery-card">
+            <div class="gallery-card__img-wrap">
+              <img src="https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=600&h=400&fit=crop&auto=format"
+                   alt="HIIT & Conditioning" loading="lazy">
+            </div>
+            <div class="gallery-card__body">
+              <div class="gallery-card__title">HIIT &amp; Conditioning</div>
+              <div class="gallery-card__desc">High-intensity interval training that maximizes calorie burn and builds athletic endurance fast.</div>
+              <a href="mailto:nick@fitforlife.com?subject=HIIT and Conditioning" class="gallery-card__link">Learn More &rarr;</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Strength Training -->
+        <div class="ffl-gallery__slide">
+          <div class="gallery-card">
+            <div class="gallery-card__img-wrap">
+              <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=400&fit=crop&auto=format"
+                   alt="Strength Training" loading="lazy">
+            </div>
+            <div class="gallery-card__body">
+              <div class="gallery-card__title">Strength Training</div>
+              <div class="gallery-card__desc">Progressive overload programming to build lean muscle, increase strength, and transform your physique.</div>
+              <a href="mailto:nick@fitforlife.com?subject=Strength Training" class="gallery-card__link">Learn More &rarr;</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Nutrition Coaching -->
+        <div class="ffl-gallery__slide">
+          <div class="gallery-card">
+            <div class="gallery-card__img-wrap">
+              <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=400&fit=crop&auto=format"
+                   alt="Nutrition Coaching" loading="lazy">
+            </div>
+            <div class="gallery-card__body">
+              <div class="gallery-card__title">Nutrition Coaching</div>
+              <div class="gallery-card__desc">Custom meal strategies and macros coaching to fuel performance and accelerate body composition change.</div>
+              <a href="mailto:nick@fitforlife.com?subject=Nutrition Coaching" class="gallery-card__link">Learn More &rarr;</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Athletic Performance -->
+        <div class="ffl-gallery__slide">
+          <div class="gallery-card">
+            <div class="gallery-card__img-wrap">
+              <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&auto=format"
+                   alt="Athletic Performance" loading="lazy">
+            </div>
+            <div class="gallery-card__body">
+              <div class="gallery-card__title">Athletic Performance</div>
+              <div class="gallery-card__desc">Sport-specific training protocols to build explosive power, agility, and competitive edge.</div>
+              <a href="mailto:nick@fitforlife.com?subject=Athletic Performance Training" class="gallery-card__link">Learn More &rarr;</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
 {% endblock %}
 
 {% block scripts %}
+<!-- Ring animations -->
 <script>
-// Animate progress ring on page load
 document.addEventListener('DOMContentLoaded', function () {
+  // Animate the large month progress ring
   var ring = document.getElementById('progress-ring');
   if (ring) {
     var target = ring.getAttribute('data-dash');
@@ -693,6 +1176,52 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
+
+  // Animate the small stats ring
+  var statsRing = document.getElementById('stats-ring');
+  if (statsRing) {
+    var sDash = statsRing.getAttribute('data-dash');
+    var sCirc = statsRing.getAttribute('data-circ');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        statsRing.style.transition = 'stroke-dasharray 1.0s cubic-bezier(0.4,0,0.2,1) 0.15s';
+        statsRing.style.strokeDasharray = sDash + ' ' + sCirc;
+      });
+    });
+  }
+
+  // Time-based greeting update
+  var hour = new Date().getHours();
+  var timeLabel, timeGreeting;
+  if (hour < 12) {
+    timeLabel   = 'Good morning';
+    timeGreeting = 'morning';
+  } else if (hour < 17) {
+    timeLabel   = 'Good afternoon';
+    timeGreeting = 'afternoon';
+  } else {
+    timeLabel   = 'Good evening';
+    timeGreeting = 'evening';
+  }
+
+  var labelEl    = document.getElementById('hero-time-label');
+  var greetingEl = document.getElementById('hero-greeting');
+
+  if (labelEl)    labelEl.textContent = timeLabel;
+  if (greetingEl) {
+    // Replace the greeting word while keeping the name (everything after the first comma+space)
+    var current = greetingEl.textContent;
+    var commaIdx = current.indexOf(',');
+    if (commaIdx !== -1) {
+      var namePart = current.slice(commaIdx); // ", FirstName."
+      greetingEl.textContent = timeLabel + namePart;
+    }
+  }
 });
 </script>
+
+<!-- Embla Carousel CDN -->
+<script src="https://cdn.jsdelivr.net/npm/embla-carousel/embla-carousel.umd.js"></script>
+<!-- Gallery init -->
+<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
 {% endblock %}

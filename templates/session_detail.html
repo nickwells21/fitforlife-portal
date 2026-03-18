@@ -1,19 +1,337 @@
 {% extends 'base.html' %}
 {% block title %}Session — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+/* ── Hero session card ──────────────────────────────────────── */
+.sd-hero {
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  padding: 1.75rem;
+  margin-bottom: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+.sd-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--west));
+}
+.sd-hero-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+.sd-hero-time {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+.sd-hero-people {
+  font-size: 15px;
+  color: var(--text-soft);
+  margin-bottom: 1rem;
+}
+.sd-hero-people strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.sd-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* ── Location badge ─────────────────────────────────────────── */
+.sd-loc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Status badge with pulse ────────────────────────────────── */
+.sd-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sd-status-badge.scheduled {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.sd-status-badge.completed {
+  background: rgba(34,197,94,0.12);
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+.sd-status-badge.missed {
+  background: rgba(239,68,68,0.12);
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+.sd-status-badge.cancelled {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-mid);
+}
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-pulse 1.8s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* ── Details grid ───────────────────────────────────────────── */
+.sd-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+}
+.sd-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+.sd-detail-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.sd-detail-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 3px;
+}
+.sd-detail-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.sd-detail-value a {
+  color: var(--text);
+  text-decoration: none;
+}
+.sd-detail-value a:hover {
+  color: var(--accent);
+}
+.sd-detail-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-top: 1px;
+}
+
+/* ── Notes section ──────────────────────────────────────────── */
+.sd-notes {
+  grid-column: 1 / -1;
+}
+.sd-notes-inner {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.65;
+  font-style: italic;
+}
+
+/* ── Breadcrumb navigation ──────────────────────────────────── */
+.sd-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.sd-breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.sd-breadcrumb a:hover {
+  color: var(--accent);
+}
+.sd-breadcrumb .sep {
+  opacity: 0.4;
+}
+
+/* ── Action buttons ─────────────────────────────────────────── */
+.btn-sd-edit {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.3);
+}
+.btn-sd-edit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+  color: #fff;
+}
+.btn-sd-cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+/* ── Status update buttons ──────────────────────────────────── */
+.status-update-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+.status-update-btn:hover {
+  border-color: var(--border-mid);
+  color: var(--text);
+  background: var(--bg-surface);
+}
+.status-update-btn .status-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+}
+.status-update-btn.active-scheduled {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 10px rgba(99,102,241,0.2);
+}
+.status-update-btn.active-scheduled .status-icon {
+  background: var(--accent);
+  color: #fff;
+}
+.status-update-btn.active-completed {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(34,197,94,0.1);
+  box-shadow: 0 0 10px rgba(34,197,94,0.2);
+}
+.status-update-btn.active-completed .status-icon {
+  background: var(--green);
+  color: #fff;
+}
+.status-update-btn.active-missed {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(239,68,68,0.1);
+  box-shadow: 0 0 10px rgba(239,68,68,0.2);
+}
+.status-update-btn.active-missed .status-icon {
+  background: var(--red);
+  color: #fff;
+}
+.status-update-btn.active-cancelled {
+  border-color: var(--text-muted);
+  color: var(--text-soft);
+  background: rgba(255,255,255,0.04);
+}
+.status-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
+
+<!-- Breadcrumb -->
+<div class="sd-breadcrumb">
+  <a href="{{ url_for('calendar_view') }}"><i class="bi bi-calendar3"></i> Calendar</a>
+  <span class="sep"><i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
+  <span>Session Details</span>
+</div>
+
+<!-- Page header actions -->
+<div class="page-header" style="margin-bottom:1rem;">
   <div>
     <div class="page-subtitle" style="margin-bottom:2px;">{{ sess.scheduled_at.strftime('%A, %B %d, %Y') }}</div>
     <h1 class="page-title">Session Details</h1>
   </div>
   <div style="display:flex; gap:0.5rem;">
-    <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-calendar3 me-1"></i> Calendar
+    <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sd-cal">
+      <i class="bi bi-calendar3"></i> Calendar
     </a>
     {% if current_user.role in ('admin', 'trainer') %}
-    <a href="{{ url_for('edit_session', session_id=sess.id) }}" class="btn btn-ffl">
-      <i class="bi bi-pencil me-1"></i> Edit
+    <a href="{{ url_for('edit_session', session_id=sess.id) }}" class="btn-sd-edit">
+      <i class="bi bi-pencil"></i> Edit Session
     </a>
     {% endif %}
   </div>
@@ -21,50 +339,105 @@
 
 <div class="row g-3">
   <div class="col-lg-7">
+
+    <!-- Hero card -->
+    <div class="sd-hero">
+      <div class="sd-hero-date">{{ sess.scheduled_at.strftime('%A, %B %d, %Y') }}</div>
+      <div class="sd-hero-time">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+      <div class="sd-hero-people">
+        <strong>{{ sess.trainer.name }}</strong>
+        <span style="color:var(--text-muted); margin:0 6px;">with</span>
+        <a href="{{ url_for('client_detail', client_id=sess.client_id) }}" style="color:var(--text); font-weight:700; text-decoration:none;">{{ sess.client.name }}</a>
+      </div>
+      <div class="sd-hero-meta">
+        <!-- Location badge -->
+        {% set loc_name_lower = sess.location.name | lower %}
+        <span class="sd-loc-badge"
+          style="
+            {% if 'west' in loc_name_lower %}
+              background: var(--west-dim); color: var(--west); border: 1px solid var(--west);
+            {% elif 'midtown' in loc_name_lower %}
+              background: var(--midtown-dim); color: var(--midtown); border: 1px solid var(--midtown);
+            {% else %}
+              background: {{ sess.location.color }}18; color: {{ sess.location.color }}; border: 1px solid {{ sess.location.color }}55;
+            {% endif %}
+          ">
+          <i class="bi bi-geo-alt-fill" style="font-size:10px;"></i>
+          {{ sess.location.name }}
+        </span>
+
+        <!-- Status badge -->
+        <span class="sd-status-badge {{ sess.status }}">
+          {% if sess.status == 'scheduled' %}<span class="pulse-dot"></span>{% endif %}
+          {% if sess.status == 'completed' %}<i class="bi bi-check-circle-fill" style="font-size:11px;"></i>
+          {% elif sess.status == 'missed' %}<i class="bi bi-x-circle-fill" style="font-size:11px;"></i>
+          {% elif sess.status == 'cancelled' %}<i class="bi bi-slash-circle-fill" style="font-size:11px;"></i>
+          {% endif %}
+          {{ sess.status | capitalize }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Details card -->
     <div class="ffl-card">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+      <div class="sd-details-grid">
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Client</div>
-          <a href="{{ url_for('client_detail', client_id=sess.client_id) }}"
-             style="font-size:15px; font-weight:700; color:var(--text); text-decoration:none;">
-            {{ sess.client.name }}
-          </a>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-person-fill"></i></div>
+          <div>
+            <div class="sd-detail-label">Client</div>
+            <div class="sd-detail-value">
+              <a href="{{ url_for('client_detail', client_id=sess.client_id) }}">{{ sess.client.name }}</a>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Trainer</div>
-          <div style="font-size:15px; font-weight:700; color:var(--text);">{{ sess.trainer.name }}</div>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-person-badge-fill"></i></div>
+          <div>
+            <div class="sd-detail-label">Trainer</div>
+            <div class="sd-detail-value">{{ sess.trainer.name }}</div>
+          </div>
         </div>
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Location</div>
-          <span style="display:inline-block; background:{{ sess.location.color }}18; color:{{ sess.location.color }}; border:1px solid {{ sess.location.color }}35; padding:3px 10px; border-radius:4px; font-size:12px; font-weight:600;">
-            {{ sess.location.name }}
-          </span>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-geo-alt-fill"></i></div>
+          <div>
+            <div class="sd-detail-label">Location</div>
+            <div class="sd-detail-value">{{ sess.location.name }}</div>
+          </div>
         </div>
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Status</div>
-          <span class="status-chip {{ sess.status }}">{{ sess.status | capitalize }}</span>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-clock-fill"></i></div>
+          <div>
+            <div class="sd-detail-label">Duration</div>
+            <div class="sd-detail-value">{{ sess.duration }} min</div>
+            <div class="sd-detail-sub">Ends {{ sess.end_time.strftime('%I:%M %p') }}</div>
+          </div>
         </div>
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Start</div>
-          <div style="font-size:15px; font-weight:700; color:var(--text);">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-calendar-event-fill"></i></div>
+          <div>
+            <div class="sd-detail-label">Start</div>
+            <div class="sd-detail-value">{{ sess.scheduled_at.strftime('%I:%M %p') }}</div>
+            <div class="sd-detail-sub">{{ sess.scheduled_at.strftime('%b %d, %Y') }}</div>
+          </div>
         </div>
 
-        <div>
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Duration</div>
-          <div style="font-size:15px; font-weight:700; color:var(--text);">{{ sess.duration }} min <span style="font-size:12px; color:var(--text-muted);">(ends {{ sess.end_time.strftime('%I:%M %p') }})</span></div>
+        <div class="sd-detail-item">
+          <div class="sd-detail-icon"><i class="bi bi-activity"></i></div>
+          <div>
+            <div class="sd-detail-label">Status</div>
+            <div class="sd-detail-value">{{ sess.status | capitalize }}</div>
+          </div>
         </div>
 
         {% if sess.notes %}
-        <div style="grid-column: 1 / -1;">
-          <div style="font-size:10px; color:var(--text-faint); font-weight:600; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px;">Notes</div>
-          <div style="font-size:13px; color:var(--text-soft); background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem;">
-            {{ sess.notes }}
-          </div>
+        <div class="sd-notes">
+          <div class="sd-detail-label" style="margin-bottom:0.5rem;">Notes</div>
+          <div class="sd-notes-inner">{{ sess.notes }}</div>
         </div>
         {% endif %}
 
@@ -75,23 +448,31 @@
   {% if current_user.role in ('admin', 'trainer') %}
   <div class="col-lg-4 offset-lg-1">
     <div class="ffl-card">
-      <div class="card-title" style="margin-bottom:0.75rem;">Update Status</div>
+      <div class="card-title" style="margin-bottom:0.875rem;">Update Status</div>
       {% for s in ['scheduled','completed','missed','cancelled'] %}
-      <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin-bottom:0.375rem;">
+      <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin-bottom:0.5rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="{{ s }}">
-        <button type="submit" class="btn btn-outline-secondary btn-sm w-100 text-start"
-          style="{% if sess.status == s %}background:var(--bg-active); color:var(--text); border-color:var(--border-mid);{% endif %} justify-content:flex-start;">
-          <span style="margin-right:6px; {% if s=='completed' %}color:#4ade80;{% elif s=='missed' %}color:#f87171;{% elif s=='cancelled' %}color:var(--text-faint);{% endif %}">
-            {% if s=='completed' %}✓{% elif s=='missed' %}✗{% elif s=='cancelled' %}⊘{% else %}○{% endif %}
+        <button type="submit" class="status-update-btn{% if sess.status == s %} active-{{ s }}{% endif %}">
+          <span class="status-icon">
+            {% if s=='completed' %}✓
+            {% elif s=='missed' %}✗
+            {% elif s=='cancelled' %}⊘
+            {% else %}○
+            {% endif %}
           </span>
-          {{ s | capitalize }}
-          {% if sess.status == s %}<i class="bi bi-check float-end mt-1" style="color:var(--text-muted);"></i>{% endif %}
+          <span class="status-label-line">
+            <span>{{ s | capitalize }}</span>
+            {% if sess.status == s %}
+            <i class="bi bi-check-circle-fill" style="font-size:14px; opacity:0.7;"></i>
+            {% endif %}
+          </span>
         </button>
       </form>
       {% endfor %}
     </div>
   </div>
   {% endif %}
+
 </div>
 {% endblock %}

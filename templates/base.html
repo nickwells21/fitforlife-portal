@@ -12,6 +12,154 @@
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% block head %}{% endblock %}
+  <style>
+    /* ─── Design tokens ─────────────────────────────────────────── */
+    :root {
+      --bg:           #080808;
+      --bg-surface:   #0f0f0f;
+      --bg-elevated:  #161616;
+      --accent:       #6366f1;
+      --accent-dim:   rgba(99,102,241,0.15);
+      --west:         #7c3aed;
+      --midtown:      #06b6d4;
+      --border:       rgba(255,255,255,0.07);
+      --border-mid:   rgba(255,255,255,0.10);
+      --text:         #EDEDED;
+      --text-soft:    rgba(255,255,255,0.55);
+      --text-muted:   rgba(255,255,255,0.30);
+      --text-faint:   rgba(255,255,255,0.20);
+      --radius-sm:    6px;
+      --radius-md:    10px;
+    }
+
+    /* ─── Sidebar: subtle vertical gradient ─────────────────────── */
+    .sidebar {
+      background: linear-gradient(180deg, #0d0d0d 0%, #080808 100%) !important;
+    }
+
+    /* ─── Brand area: accent bottom rule ────────────────────────── */
+    .sidebar-brand {
+      border-bottom: 1px solid rgba(99,102,241,0.2);
+      padding-bottom: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* ─── Brand logo: gradient square ───────────────────────────── */
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      color: #fff !important;
+      flex-shrink: 0;
+      /* Override any inherited text-fill so the bg shows through */
+      -webkit-text-fill-color: #fff !important;
+    }
+
+    /* ─── Brand name: gradient text ─────────────────────────────── */
+    .brand-name {
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ─── Nav section labels ─────────────────────────────────────── */
+    .sidebar-nav .nav-section {
+      font-size: 0.65rem;
+      font-variant: small-caps;
+      letter-spacing: 0.12em;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      padding: 0.85rem 0.75rem 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sidebar-nav .nav-section::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(99,102,241,0.18);
+    }
+
+    /* ─── Nav links: smooth active-indicator transition ─────────── */
+    .sidebar-nav .nav-link {
+      transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        border-left-color 0.18s ease,
+        padding-left 0.18s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .sidebar-nav .nav-link.active {
+      border-left: 2px solid var(--accent);
+    }
+
+    .sidebar-nav .nav-link:hover:not(.active) {
+      border-left-color: rgba(99,102,241,0.35);
+    }
+
+    /* ─── Calendar notification dot ─────────────────────────────── */
+    .nav-link-calendar-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-notif-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+      margin-left: 6px;
+      flex-shrink: 0;
+      box-shadow: 0 0 4px rgba(99,102,241,0.6);
+    }
+
+    /* ─── User avatar ring ───────────────────────────────────────── */
+    .user-avatar {
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.3) !important;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .user-avatar:hover {
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.6) !important;
+    }
+
+    /* ─── Sidebar footer build tag ───────────────────────────────── */
+    .sidebar-footer-build {
+      font-size: 10px;
+      color: var(--text-faint);
+      text-align: center;
+      padding: 0.25rem 0;
+      margin-top: 0.25rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── Topbar: bottom border + polished role gradient ─────────── */
+    .topbar {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-title {
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
 
@@ -38,11 +186,11 @@
       <li>
         {% if current_user.role == 'client' %}
         <a href="{{ url_for('client_calendar') }}" class="nav-link {% if request.endpoint == 'client_calendar' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i> My Schedule
+          <i class="bi bi-calendar3"></i> My Schedule<span class="nav-notif-dot" aria-hidden="true"></span>
         </a>
         {% else %}
         <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint == 'calendar_view' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i> Calendar
+          <i class="bi bi-calendar3"></i> Calendar<span class="nav-notif-dot" aria-hidden="true"></span>
         </a>
         {% endif %}
       </li>
@@ -94,6 +242,7 @@
         <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
         <span class="logout-label">Sign Out</span>
       </a>
+      <div class="sidebar-footer-build">FFL Portal v1.0</div>
     </div>
   </nav>
 

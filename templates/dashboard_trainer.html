@@ -1,100 +1,632 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+/* ── Trainer Dashboard Premium Styles ── */
+
+/* Hero greeting */
+.dash-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(124,58,237,0.08) 100%);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+.dash-hero::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -50px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(124,58,237,0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+.dash-hero-greeting {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.dash-hero-greeting span {
+  background: linear-gradient(90deg, #c4b5fd, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.dash-hero-date {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+.dash-hero-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Quick action buttons */
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+}
+.btn-action-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124,58,237,0.45);
+  color: #fff;
+  text-decoration: none;
+}
+.btn-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-mid);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn-action-secondary:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.18);
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Stats strip */
+.trainer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 575px) { .trainer-stats { grid-template-columns: repeat(3, 1fr); } }
+
+.trainer-stat {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.2rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.trainer-stat:hover { transform: translateY(-2px); border-color: var(--border-mid); }
+.trainer-stat::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.trainer-stat.purple::before { background: linear-gradient(180deg, #7c3aed, #a78bfa); }
+.trainer-stat.teal::before   { background: linear-gradient(180deg, #06b6d4, #22d3ee); }
+.trainer-stat.green::before  { background: linear-gradient(180deg, #22c55e, #4ade80); }
+
+.trainer-stat-icon {
+  font-size: 1.6rem;
+  opacity: 0.08;
+  position: absolute;
+  top: 0.8rem; right: 0.9rem;
+}
+.trainer-stat.purple .trainer-stat-icon { color: #7c3aed; }
+.trainer-stat.teal   .trainer-stat-icon { color: #06b6d4; }
+.trainer-stat.green  .trainer-stat-icon { color: #22c55e; }
+
+.trainer-stat-value {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.trainer-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Next session highlight */
+.next-session-card {
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(124,58,237,0.06) 100%);
+  border: 1px solid rgba(124,58,237,0.25);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.next-session-card::after {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(124,58,237,0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+.next-session-pill {
+  background: var(--west-dim);
+  color: #c4b5fd;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 99px;
+  border: 1px solid rgba(124,58,237,0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+.next-session-time {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.next-session-detail {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  margin-top: 0.25rem;
+}
+.next-session-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+.loc-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+}
+
+/* Two-column grid */
+.trainer-lower {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem;
+}
+@media (max-width: 991px) { .trainer-lower { grid-template-columns: 1fr; } }
+
+/* Premium card */
+.premium-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.premium-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.35rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.premium-card-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.premium-card-body { padding: 0.75rem 0; }
+.premium-card-empty {
+  padding: 1.5rem 1.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Session rows */
+.sess-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.35rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+.sess-row:last-child { border-bottom: none; }
+.sess-row:hover { background: rgba(255,255,255,0.025); }
+
+.sess-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 50px;
+}
+.sess-time-main {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.sess-time-sub {
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sess-loc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.avatar-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  background: var(--west-dim);
+  color: #c4b5fd;
+  border: 1px solid rgba(124,58,237,0.25);
+}
+
+.sess-info { flex: 1; min-width: 0; }
+.sess-client-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sess-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Status badges */
+.status-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.status-badge.scheduled  { background: var(--accent-dim);   color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.status-badge.completed  { background: var(--green-dim);    color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.status-badge.missed     { background: var(--red-dim);      color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.status-badge.cancelled  { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Done button */
+.btn-done {
+  background: var(--green-dim);
+  color: #4ade80;
+  border: 1px solid rgba(34,197,94,0.25);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.btn-done:hover {
+  background: rgba(34,197,94,0.2);
+  transform: scale(1.04);
+}
+
+/* Client roster grid */
+.client-roster {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 1rem 1.35rem;
+}
+@media (max-width: 575px) { .client-roster { grid-template-columns: 1fr; } }
+
+.client-roster-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  min-width: 0;
+}
+.client-roster-chip:hover {
+  background: var(--west-dim);
+  border-color: rgba(124,58,237,0.3);
+  color: #c4b5fd;
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.client-roster-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--west-dim);
+  color: #c4b5fd;
+  border: 1px solid rgba(124,58,237,0.2);
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
+
+<!-- Hero Greeting -->
+<div class="dash-hero">
   <div>
-    <div class="page-subtitle" style="margin-bottom:2px;">{{ month_name }}</div>
-    <h1 class="page-title">Hey, {{ current_user.name.split()[0] }}</h1>
+    <div class="dash-hero-greeting">
+      Hey, <span>{{ current_user.name.split()[0] }}</span>
+    </div>
+    <div class="dash-hero-date" id="hero-date">{{ month_name }}</div>
   </div>
-  <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
-    <i class="bi bi-plus-lg me-1"></i> Book Session
-  </a>
+  <div class="dash-hero-actions">
+    <a href="{{ url_for('new_session') }}" class="btn-action-primary">
+      <i class="bi bi-plus-circle-fill"></i> Book Session
+    </a>
+    <a href="{{ url_for('calendar_view') }}" class="btn-action-secondary">
+      <i class="bi bi-calendar3"></i> Calendar
+    </a>
+    <a href="{{ url_for('clients') }}" class="btn-action-secondary">
+      <i class="bi bi-people"></i> Clients
+    </a>
+  </div>
 </div>
 
-<div class="row g-3">
+<!-- Stats Strip -->
+<div class="trainer-stats">
+  <div class="trainer-stat purple">
+    <i class="bi bi-calendar-day-fill trainer-stat-icon"></i>
+    <div class="trainer-stat-value" data-count="{{ today_sessions|length }}">0</div>
+    <div class="trainer-stat-label">Today</div>
+  </div>
+  <div class="trainer-stat teal">
+    <i class="bi bi-calendar3 trainer-stat-icon"></i>
+    <div class="trainer-stat-value" data-count="{{ upcoming|length }}">0</div>
+    <div class="trainer-stat-label">Upcoming</div>
+  </div>
+  <div class="trainer-stat green">
+    <i class="bi bi-people-fill trainer-stat-icon"></i>
+    <div class="trainer-stat-value" data-count="{{ all_clients|length }}">0</div>
+    <div class="trainer-stat-label">Clients</div>
+  </div>
+</div>
 
-  <!-- Today -->
-  <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Today</span>
-      </div>
+<!-- Next Session Highlight -->
+{% if upcoming %}
+{% set nxt = upcoming[0] %}
+<div class="next-session-card">
+  <div style="flex:1; min-width:0;">
+    <div class="next-session-pill">
+      <i class="bi bi-lightning-charge-fill"></i> Up Next
+    </div>
+    <div class="next-session-time">{{ nxt.scheduled_at.strftime('%I:%M %p') }}</div>
+    <div class="next-session-detail">{{ nxt.scheduled_at.strftime('%A, %B %-d') }}</div>
+    <div class="next-session-badge">
+      <span class="loc-badge" style="background:{{ nxt.location.color }}22; color:{{ nxt.location.color }}; border:1px solid {{ nxt.location.color }}44;">
+        <i class="bi bi-geo-alt-fill me-1"></i>{{ nxt.location.name }}
+      </span>
+    </div>
+  </div>
+  <div style="text-align:right; flex-shrink:0;">
+    <div style="font-size:1.1rem; font-weight:700; color:var(--text);">{{ nxt.client.name }}</div>
+    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">{{ nxt.duration }} min session</div>
+    <a href="{{ url_for('session_detail', session_id=nxt.id) }}"
+       style="font-size:0.72rem; color:#c4b5fd; text-decoration:none; font-weight:600; margin-top:0.5rem; display:inline-block;">
+      View details <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Lower Two-Column Section -->
+<div class="trainer-lower">
+
+  <!-- Today's Sessions -->
+  <div class="premium-card">
+    <div class="premium-card-header">
+      <span class="premium-card-title">
+        <i class="bi bi-calendar-day me-1" style="color:#c4b5fd;"></i>
+        Today
+      </span>
+    </div>
+    <div class="premium-card-body">
       {% if today_sessions %}
         {% for sess in today_sessions %}
-        <div class="session-row">
-          <div class="session-time-col">
-            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M') }}</span>
-            <span class="time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
+        <div class="sess-row">
+          <div class="sess-time">
+            <span class="sess-time-main">{{ sess.scheduled_at.strftime('%I:%M').lstrip('0') or '12:00' }}</span>
+            <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
           </div>
-          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
-          <div class="session-label flex-grow-1">
-            <div class="name">{{ sess.client.name }}</div>
-            <div class="meta">{{ sess.location.name }} · {{ sess.duration }} min</div>
+          <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
+          <div class="avatar-sm">{{ sess.client.name[0] }}</div>
+          <div class="sess-info">
+            <div class="sess-client-name">{{ sess.client.name }}</div>
+            <div class="sess-meta">{{ sess.location.name }} &middot; {{ sess.duration }} min</div>
           </div>
           {% if sess.status == 'scheduled' %}
-          <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}">
+          <form method="POST" action="{{ url_for('update_session_status', session_id=sess.id) }}" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="status" value="completed">
-            <button class="btn btn-sm" style="background:var(--green-dim); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-size:11px; font-weight:600;">✓ Done</button>
+            <button type="submit" class="btn-done">&#x2713; Done</button>
           </form>
           {% else %}
-          <span class="status-chip {{ sess.status }}">{{ sess.status }}</span>
+          <span class="status-badge {{ sess.status }}">{{ sess.status }}</span>
           {% endif %}
         </div>
         {% endfor %}
       {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No sessions today.</p>
+        <div class="premium-card-empty">
+          <i class="bi bi-calendar-x" style="font-size:1.5rem; opacity:0.3; display:block; margin-bottom:0.5rem;"></i>
+          No sessions today
+        </div>
       {% endif %}
     </div>
   </div>
 
-  <!-- Upcoming -->
-  <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Upcoming</span>
-        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm">Calendar →</a>
-      </div>
+  <!-- Upcoming Sessions -->
+  <div class="premium-card">
+    <div class="premium-card-header">
+      <span class="premium-card-title">
+        <i class="bi bi-calendar-week me-1" style="color:#22d3ee;"></i>
+        Upcoming
+      </span>
+      <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; padding:0.25rem 0.65rem;">
+        Calendar <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+    <div class="premium-card-body">
       {% if upcoming %}
         {% for sess in upcoming %}
-        <div class="session-row">
-          <div class="session-time-col">
-            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M %p') }}</span>
-            <span class="time-sub">{{ sess.scheduled_at.strftime('%b %d') }}</span>
+        <div class="sess-row">
+          <div class="sess-time">
+            <span class="sess-time-main">{{ sess.scheduled_at.strftime('%I:%M').lstrip('0') or '12:00' }}</span>
+            <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%b %-d') }}</span>
           </div>
-          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
-          <div class="session-label flex-grow-1">
-            <div class="name">{{ sess.client.name }}</div>
-            <div class="meta">{{ sess.location.name }}</div>
+          <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
+          <div class="avatar-sm">{{ sess.client.name[0] }}</div>
+          <div class="sess-info">
+            <div class="sess-client-name">{{ sess.client.name }}</div>
+            <div class="sess-meta">{{ sess.location.name }}</div>
           </div>
-          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm">View</a>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No upcoming sessions.</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Clients -->
-  <div class="col-12">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Your Clients</span>
-        <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm">All →</a>
-      </div>
-      <div class="row g-2">
-        {% for client in all_clients %}
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-          <a href="{{ url_for('client_detail', client_id=client.id) }}" class="client-chip">
-            <div class="user-avatar" style="width:22px; height:22px; font-size:9px; flex-shrink:0;">{{ client.name[0] }}</div>
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ client.name.split()[0] }}</span>
+          <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.68rem; padding:0.2rem 0.55rem; white-space:nowrap;">
+            View
           </a>
         </div>
         {% endfor %}
-      </div>
+      {% else %}
+        <div class="premium-card-empty">
+          <i class="bi bi-calendar-check" style="font-size:1.5rem; opacity:0.3; display:block; margin-bottom:0.5rem;"></i>
+          No upcoming sessions
+        </div>
+      {% endif %}
     </div>
   </div>
 
 </div>
+
+<!-- Client Roster -->
+<div class="premium-card" style="margin-top:0.875rem;">
+  <div class="premium-card-header">
+    <span class="premium-card-title">
+      <i class="bi bi-people-fill me-1" style="color:#4ade80;"></i>
+      Your Clients
+    </span>
+    <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; padding:0.25rem 0.65rem;">
+      All <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+  {% if all_clients %}
+  <div class="client-roster">
+    {% for client in all_clients %}
+    <a href="{{ url_for('client_detail', client_id=client.id) }}" class="client-roster-chip">
+      <div class="chip-avatar">{{ client.name[0] }}</div>
+      <span>{{ client.name }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="premium-card-empty">No clients assigned yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Stat count-up animation ──
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function animateCount(el, target, duration) {
+    const start = performance.now();
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      el.textContent = Math.round(easeOut(progress) * target);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
+  }
+
+  const statEls = document.querySelectorAll('.trainer-stat-value[data-count]');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.count, 10);
+        animateCount(el, target, 800);
+        observer.unobserve(el);
+      }
+    });
+  }, { threshold: 0.3 });
+  statEls.forEach(el => observer.observe(el));
+
+  // ── Live date in hero ──
+  const heroDate = document.getElementById('hero-date');
+  if (heroDate) {
+    const now = new Date();
+    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    heroDate.textContent = now.toLocaleDateString(undefined, opts);
+  }
+})();
+</script>
 {% endblock %}

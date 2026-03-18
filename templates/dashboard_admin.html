@@ -1,107 +1,539 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+/* ── Admin Dashboard Premium Styles ── */
+
+/* Hero greeting */
+.dash-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(99,102,241,0.08) 100%);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+.dash-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.dash-hero-left {}
+.dash-hero-greeting {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.dash-hero-greeting span {
+  background: linear-gradient(90deg, #a5b4fc, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.dash-hero-date {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+.dash-hero-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Quick action buttons */
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+.btn-action-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+  color: #fff;
+  text-decoration: none;
+}
+.btn-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-mid);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn-action-secondary:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.18);
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* KPI stat cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.875rem;
+  margin-bottom: 2rem;
+}
+@media (max-width: 991px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 575px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.35rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-mid);
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.kpi-card.accent::before  { background: linear-gradient(180deg, #6366f1, #818cf8); }
+.kpi-card.green::before   { background: linear-gradient(180deg, #22c55e, #4ade80); }
+.kpi-card.teal::before    { background: linear-gradient(180deg, #06b6d4, #22d3ee); }
+.kpi-card.purple::before  { background: linear-gradient(180deg, #7c3aed, #a78bfa); }
+
+.kpi-card-icon {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  font-size: 2rem;
+  opacity: 0.07;
+  line-height: 1;
+}
+.kpi-card.accent  .kpi-card-icon { color: #6366f1; }
+.kpi-card.green   .kpi-card-icon { color: #22c55e; }
+.kpi-card.teal    .kpi-card-icon { color: #06b6d4; }
+.kpi-card.purple  .kpi-card-icon { color: #7c3aed; }
+
+.kpi-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.kpi-trend {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.kpi-card.accent  .kpi-trend { color: #818cf8; }
+.kpi-card.green   .kpi-trend { color: #4ade80; }
+.kpi-card.teal    .kpi-trend { color: #22d3ee; }
+.kpi-card.purple  .kpi-trend { color: #a78bfa; }
+
+/* Two-column lower layout */
+.dash-lower {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem;
+}
+@media (max-width: 991px) { .dash-lower { grid-template-columns: 1fr; } }
+
+/* Premium card */
+.premium-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.premium-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.35rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.premium-card-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.premium-card-body {
+  padding: 0.75rem 0;
+}
+.premium-card-empty {
+  padding: 1.5rem 1.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Session row — premium version */
+.sess-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.35rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+  cursor: default;
+}
+.sess-row:last-child { border-bottom: none; }
+.sess-row:hover { background: rgba(255,255,255,0.025); }
+
+.sess-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 46px;
+}
+.sess-time-main {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.sess-time-sub {
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sess-loc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Avatar circles */
+.avatar-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.avatar-client  { background: var(--accent-dim);  color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.avatar-trainer { background: var(--west-dim);     color: #a78bfa; border: 1px solid rgba(124,58,237,0.25); }
+
+.sess-info { flex: 1; min-width: 0; }
+.sess-client-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sess-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status badge */
+.status-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.status-badge.scheduled  { background: var(--accent-dim);   color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.status-badge.completed  { background: var(--green-dim);    color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.status-badge.missed     { background: var(--red-dim);      color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.status-badge.cancelled  { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Balance bars */
+.at-risk-row {
+  padding: 0.8rem 1.35rem;
+  border-bottom: 1px solid var(--border);
+}
+.at-risk-row:last-child { border-bottom: none; }
+.at-risk-row:hover { background: rgba(255,255,255,0.02); }
+
+.at-risk-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+.at-risk-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+.at-risk-name:hover { color: #a5b4fc; }
+.at-risk-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.balance-track {
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.balance-fill-bar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.balance-fill-bar.full { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.balance-fill-bar.mid  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.balance-fill-bar.low  { background: linear-gradient(90deg, #ef4444, #f87171); }
+.at-risk-remaining {
+  font-size: 0.67rem;
+  color: var(--amber);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="page-subtitle" style="margin-bottom:2px;">{{ month_name }} {{ year }}</div>
-    <h1 class="page-title">Dashboard</h1>
-  </div>
-  <a href="{{ url_for('new_session') }}" class="btn btn-ffl">
-    <i class="bi bi-plus-lg me-1"></i> Book Session
-  </a>
-</div>
 
-<!-- Stats -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon blue"><i class="bi bi-people"></i></div>
-      <div class="stat-value">{{ total_clients }}</div>
-      <div class="stat-label">Active Clients</div>
-    </div>
+<!-- Hero Greeting -->
+<div class="dash-hero">
+  <div class="dash-hero-left">
+    <div class="dash-hero-greeting">Welcome back, <span>{{ current_user.name.split()[0] }}</span></div>
+    <div class="dash-hero-date" id="hero-date">{{ month_name }} {{ year }}</div>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon purple"><i class="bi bi-person-badge"></i></div>
-      <div class="stat-value">{{ total_trainers }}</div>
-      <div class="stat-label">Trainers</div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
-      <div class="stat-value">{{ completed_this_month }}</div>
-      <div class="stat-label">Completed</div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon amber"><i class="bi bi-calendar2"></i></div>
-      <div class="stat-value">{{ sessions_this_month }}</div>
-      <div class="stat-label">Scheduled</div>
-    </div>
+  <div class="dash-hero-actions">
+    <a href="{{ url_for('new_session') }}" class="btn-action-primary">
+      <i class="bi bi-plus-circle-fill"></i> Book Session
+    </a>
+    <a href="{{ url_for('clients') }}" class="btn-action-secondary">
+      <i class="bi bi-person-plus-fill"></i> Clients
+    </a>
+    <a href="{{ url_for('admin_packages') }}" class="btn-action-secondary">
+      <i class="bi bi-layers-fill"></i> Packages
+    </a>
   </div>
 </div>
 
-<div class="row g-3">
+<!-- KPI Stats Bar -->
+<div class="kpi-grid">
+  <div class="kpi-card accent">
+    <i class="bi bi-people-fill kpi-card-icon"></i>
+    <div class="kpi-value" data-count="{{ total_clients }}">0</div>
+    <div class="kpi-label">Total Clients</div>
+    <div class="kpi-trend"><i class="bi bi-dot"></i>Active members</div>
+  </div>
+  <div class="kpi-card green">
+    <i class="bi bi-calendar-check-fill kpi-card-icon"></i>
+    <div class="kpi-value" data-count="{{ completed_this_month }}">0</div>
+    <div class="kpi-label">Completed This Month</div>
+    <div class="kpi-trend"><i class="bi bi-dot"></i>{{ month_name }}</div>
+  </div>
+  <div class="kpi-card teal">
+    <i class="bi bi-graph-up kpi-card-icon"></i>
+    <div class="kpi-value" data-count="{{ sessions_this_month }}">0</div>
+    <div class="kpi-label">Scheduled This Month</div>
+    <div class="kpi-trend"><i class="bi bi-dot"></i>All statuses</div>
+  </div>
+  <div class="kpi-card purple">
+    <i class="bi bi-person-badge-fill kpi-card-icon"></i>
+    <div class="kpi-value" data-count="{{ total_trainers }}">0</div>
+    <div class="kpi-label">Active Trainers</div>
+    <div class="kpi-trend"><i class="bi bi-dot"></i>On staff</div>
+  </div>
+</div>
 
-  <!-- Today's schedule -->
-  <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Today's Schedule</span>
-        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm">Calendar →</a>
-      </div>
+<!-- Lower Two-Column Section -->
+<div class="dash-lower">
+
+  <!-- Today's Schedule -->
+  <div class="premium-card">
+    <div class="premium-card-header">
+      <span class="premium-card-title">
+        <i class="bi bi-calendar-day me-1" style="color:#818cf8;"></i>
+        Today's Schedule
+      </span>
+      <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; padding:0.25rem 0.65rem;">
+        Calendar <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+    <div class="premium-card-body">
       {% if today_sessions %}
         {% for sess in today_sessions %}
-        <div class="session-row">
-          <div class="session-time-col">
-            <span class="time-main">{{ sess.scheduled_at.strftime('%I:%M') }}</span>
-            <span class="time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
+        <div class="sess-row">
+          <div class="sess-time">
+            <span class="sess-time-main">{{ sess.scheduled_at.strftime('%I:%M').lstrip('0') or '12:00' }}</span>
+            <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
           </div>
-          <div class="loc-dot" style="background:{{ sess.location.color }};"></div>
-          <div class="session-label flex-grow-1">
-            <div class="name">{{ sess.client.name }}</div>
-            <div class="meta">{{ sess.trainer.name }} · {{ sess.location.name }}</div>
+          <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
+          <div class="avatar-sm avatar-client">{{ sess.client.name[0] }}</div>
+          <div class="sess-info">
+            <div class="sess-client-name">{{ sess.client.name }}</div>
+            <div class="sess-meta">{{ sess.trainer.name }} &middot; {{ sess.location.name }}</div>
           </div>
-          <span class="status-chip {{ sess.status }}">{{ sess.status }}</span>
+          <span class="status-badge {{ sess.status }}">{{ sess.status }}</span>
         </div>
         {% endfor %}
       {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">No sessions today.</p>
+        <div class="premium-card-empty">
+          <i class="bi bi-calendar-x" style="font-size:1.5rem; opacity:0.3; display:block; margin-bottom:0.5rem;"></i>
+          No sessions today
+        </div>
       {% endif %}
     </div>
   </div>
 
-  <!-- Session balance alerts -->
-  <div class="col-lg-6">
-    <div class="ffl-card">
-      <div class="card-header-row">
-        <span class="card-title">Remaining — {{ month_name }}</span>
-        <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm">All Clients →</a>
-      </div>
+  <!-- Session Balance / At Risk -->
+  <div class="premium-card">
+    <div class="premium-card-header">
+      <span class="premium-card-title">
+        <i class="bi bi-bar-chart-fill me-1" style="color:#fbbf24;"></i>
+        Session Balance — {{ month_name }}
+      </span>
+      <a href="{{ url_for('clients') }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; padding:0.25rem 0.65rem;">
+        All Clients <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+    <div class="premium-card-body">
       {% if at_risk %}
         {% for item in at_risk %}
         {% set pct = ((item.completed / item.purchased) * 100)|int if item.purchased > 0 else 0 %}
-        <div style="margin-bottom:0.875rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <a href="{{ url_for('client_detail', client_id=item.client.id) }}" style="font-size:13px; font-weight:600; color:var(--text); text-decoration:none;">
+        <div class="at-risk-row">
+          <div class="at-risk-top">
+            <a href="{{ url_for('client_detail', client_id=item.client.id) }}" class="at-risk-name">
               {{ item.client.name }}
             </a>
-            <span style="font-size:11px; color:var(--text-muted);">{{ item.completed }}/{{ item.purchased }}</span>
+            <span class="at-risk-count">{{ item.completed }}/{{ item.purchased }}</span>
           </div>
-          <div class="balance-bar">
-            <div class="balance-fill {% if pct == 100 %}complete{% elif pct < 50 %}low{% endif %}" style="width:{{ pct }}%;"></div>
+          <div class="balance-track">
+            <div class="balance-fill-bar {% if pct == 100 %}full{% elif pct >= 50 %}mid{% else %}low{% endif %}"
+                 style="width:0%;"
+                 data-width="{{ pct }}%">
+            </div>
           </div>
-          <div style="font-size:10px; color:var(--amber); margin-top:3px;">{{ item.remaining }} session{{ 's' if item.remaining != 1 }} remaining</div>
+          <div class="at-risk-remaining">
+            <i class="bi bi-clock me-1"></i>{{ item.remaining }} session{{ 's' if item.remaining != 1 }} remaining
+          </div>
         </div>
         {% endfor %}
       {% else %}
-        <p style="font-size:13px; color:var(--text-muted); margin:0.5rem 0;">All clients on track this month.</p>
+        <div class="premium-card-empty">
+          <i class="bi bi-check-circle" style="font-size:1.5rem; color:#22c55e; opacity:0.5; display:block; margin-bottom:0.5rem;"></i>
+          All clients on track this month
+        </div>
       {% endif %}
     </div>
   </div>
 
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── KPI count-up animation ──
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function animateCount(el, target, duration) {
+    const start = performance.now();
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      el.textContent = Math.round(easeOut(progress) * target);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
+  }
+
+  const kpiEls = document.querySelectorAll('.kpi-value[data-count]');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.count, 10);
+        animateCount(el, target, 900);
+        observer.unobserve(el);
+      }
+    });
+  }, { threshold: 0.3 });
+  kpiEls.forEach(el => observer.observe(el));
+
+  // ── Balance bar animate in ──
+  const bars = document.querySelectorAll('.balance-fill-bar[data-width]');
+  const barObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const bar = entry.target;
+        // Small delay so CSS transition plays
+        setTimeout(() => { bar.style.width = bar.dataset.width; }, 120);
+        barObserver.unobserve(bar);
+      }
+    });
+  }, { threshold: 0.1 });
+  bars.forEach(b => barObserver.observe(b));
+
+  // ── Live date in hero ──
+  const heroDate = document.getElementById('hero-date');
+  if (heroDate) {
+    const now = new Date();
+    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    heroDate.textContent = now.toLocaleDateString(undefined, opts);
+  }
+})();
+</script>
 {% endblock %}

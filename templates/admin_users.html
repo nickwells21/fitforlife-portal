@@ -1,19 +1,351 @@
 {% extends 'base.html' %}
 {% block title %}Users — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --bg: #080808;
+    --bg-surface: #0f0f0f;
+    --bg-elevated: #161616;
+    --accent: #6366f1;
+    --accent-dim: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --border: rgba(255,255,255,0.07);
+    --border-mid: rgba(255,255,255,0.10);
+    --text: #EDEDED;
+    --text-soft: rgba(255,255,255,0.55);
+    --text-muted: rgba(255,255,255,0.30);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --role-admin:   #6366f1;
+    --role-trainer: #a855f7;
+    --role-client:  #14b8a6;
+  }
+
+  /* ── Stats row ── */
+  .users-stats-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .users-stat-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .stat-icon-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .stat-icon-circle.total   { background: var(--accent-dim);              color: var(--accent); }
+  .stat-icon-circle.admin   { background: rgba(99,102,241,0.15);           color: #6366f1; }
+  .stat-icon-circle.trainer { background: rgba(168,85,247,0.15);           color: #a855f7; }
+  .stat-icon-circle.client  { background: rgba(20,184,166,0.15);           color: #14b8a6; }
+
+  .stat-info-num {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-info-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* ── Users table panel ── */
+  .users-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .users-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.125rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .users-panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-add-user {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.475rem 1rem;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-add-user:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    color: #fff;
+  }
+
+  /* ── Table ── */
+  .users-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .users-table thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .users-table th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 0.625rem 1rem;
+    text-align: left;
+  }
+
+  .users-table th:last-child { text-align: right; }
+
+  .users-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+
+  .users-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .users-table tbody tr:hover {
+    background: rgba(255,255,255,0.025);
+  }
+
+  .users-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+  }
+
+  .users-table td:last-child { text-align: right; }
+
+  /* ── Avatar ── */
+  .user-avatar-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+
+  .user-avatar-circle.role-admin   { background: linear-gradient(135deg, #6366f1, #818cf8); }
+  .user-avatar-circle.role-trainer { background: linear-gradient(135deg, #a855f7, #c084fc); }
+  .user-avatar-circle.role-client  { background: linear-gradient(135deg, #14b8a6, #2dd4bf); }
+
+  .user-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .user-name-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ── Role badge ── */
+  .role-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 20px;
+    padding: 3px 9px;
+    display: inline-block;
+  }
+
+  .role-badge.admin   { background: rgba(99,102,241,0.15);  color: #a5b4fc; }
+  .role-badge.trainer { background: rgba(168,85,247,0.15);  color: #d8b4fe; }
+  .role-badge.client  { background: rgba(20,184,166,0.15);  color: #5eead4; }
+
+  /* ── Status badge ── */
+  .status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 3px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .status-badge.active   { background: var(--green-dim);             color: var(--green); }
+  .status-badge.inactive { background: rgba(255,255,255,0.05);       color: var(--text-muted); }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.active   { background: var(--green); }
+  .status-dot.inactive { background: var(--text-muted); }
+
+  /* ── Email ── */
+  .user-email {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── Trainerize link ── */
+  .trainerize-link {
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    transition: opacity 0.15s;
+  }
+
+  .trainerize-link:hover {
+    opacity: 0.8;
+    color: var(--accent);
+  }
+
+  .trainerize-none {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── Edit button ── */
+  .btn-user-edit {
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    color: var(--text-soft);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.75rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .btn-user-edit:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-subtitle" style="margin-bottom:2px;">Manage access</div>
     <h1 class="page-title">Users</h1>
   </div>
-  <a href="{{ url_for('admin_new_user') }}" class="btn btn-ffl">
-    <i class="bi bi-person-plus me-1"></i> Add User
-  </a>
 </div>
 
-<div class="ffl-card">
-  <table class="ffl-table">
+<!-- Stats row -->
+<div class="users-stats-row">
+  <div class="users-stat-card">
+    <div class="stat-icon-circle total"><i class="bi bi-people-fill"></i></div>
+    <div>
+      <div class="stat-info-num">{{ users | length }}</div>
+      <div class="stat-info-label">Total</div>
+    </div>
+  </div>
+  <div class="users-stat-card">
+    <div class="stat-icon-circle admin"><i class="bi bi-shield-fill"></i></div>
+    <div>
+      <div class="stat-info-num">{{ users | selectattr('role','eq','admin') | list | length }}</div>
+      <div class="stat-info-label">Admins</div>
+    </div>
+  </div>
+  <div class="users-stat-card">
+    <div class="stat-icon-circle trainer"><i class="bi bi-person-badge-fill"></i></div>
+    <div>
+      <div class="stat-info-num">{{ users | selectattr('role','eq','trainer') | list | length }}</div>
+      <div class="stat-info-label">Trainers</div>
+    </div>
+  </div>
+  <div class="users-stat-card">
+    <div class="stat-icon-circle client"><i class="bi bi-person-fill"></i></div>
+    <div>
+      <div class="stat-info-num">{{ users | selectattr('role','eq','client') | list | length }}</div>
+      <div class="stat-info-label">Clients</div>
+    </div>
+  </div>
+</div>
+
+<!-- Users table -->
+<div class="users-panel">
+  <div class="users-panel-header">
+    <div class="users-panel-title">
+      <i class="bi bi-person-lines-fill"></i> All Users
+    </div>
+    <a href="{{ url_for('admin_new_user') }}" class="btn-add-user">
+      <i class="bi bi-person-plus-fill"></i> Add User
+    </a>
+  </div>
+  <table class="users-table">
     <thead>
       <tr>
         <th>Name</th>
@@ -21,44 +353,48 @@
         <th>Email</th>
         <th>Trainerize</th>
         <th>Status</th>
-        <th style="text-align:right;">Edit</th>
+        <th>Edit</th>
       </tr>
     </thead>
     <tbody>
       {% for user in users %}
       <tr>
         <td>
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <div class="user-avatar" style="width:28px; height:28px; font-size:11px; flex-shrink:0;
-              {% if user.role == 'admin' %}background:var(--west);{% elif user.role == 'trainer' %}background:var(--midtown);{% endif %}">
-              {{ user.name[0] }}
-            </div>
-            <span style="font-weight:600; font-size:13px; color:var(--text);">{{ user.name }}</span>
+          <div class="user-name-cell">
+            <div class="user-avatar-circle role-{{ user.role }}">{{ user.name[0] }}</div>
+            <span class="user-name-text">{{ user.name }}</span>
           </div>
         </td>
         <td>
-          <span style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
-            {% if user.role == 'admin' %}color:#a78bfa;{% elif user.role == 'trainer' %}color:#22d3ee;{% else %}color:var(--text-muted);{% endif %}">
-            {{ user.role }}
-          </span>
+          <span class="role-badge {{ user.role }}">{{ user.role }}</span>
         </td>
-        <td style="color:var(--text-muted); font-size:13px;">{{ user.email }}</td>
+        <td>
+          <span class="user-email">{{ user.email }}</span>
+        </td>
         <td>
           {% if user.trainerize_url %}
-          <a href="{{ user.trainerize_url }}" target="_blank" style="font-size:11px; color:var(--accent);">Link →</a>
+          <a href="{{ user.trainerize_url }}" target="_blank" class="trainerize-link">
+            Link <i class="bi bi-box-arrow-up-right" style="font-size:9px;"></i>
+          </a>
           {% else %}
-          <span style="font-size:12px; color:var(--text-faint);">—</span>
+          <span class="trainerize-none">—</span>
           {% endif %}
         </td>
         <td>
           {% if user.is_active %}
-          <span style="font-size:11px; color:var(--green); font-weight:600;">Active</span>
+          <span class="status-badge active">
+            <span class="status-dot active"></span>Active
+          </span>
           {% else %}
-          <span style="font-size:11px; color:var(--text-faint); font-weight:600;">Inactive</span>
+          <span class="status-badge inactive">
+            <span class="status-dot inactive"></span>Inactive
+          </span>
           {% endif %}
         </td>
-        <td style="text-align:right;">
-          <a href="{{ url_for('admin_edit_user', user_id=user.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+        <td>
+          <a href="{{ url_for('admin_edit_user', user_id=user.id) }}" class="btn-user-edit">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
         </td>
       </tr>
       {% endfor %}

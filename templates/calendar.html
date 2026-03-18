@@ -3,6 +3,243 @@
 
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<style>
+/* ── Calendar page ───────────────────────────────────────────────────────── */
+
+:root {
+  --bg: #080808;
+  --bg-surface: #0f0f0f;
+  --bg-elevated: #161616;
+  --accent: #6366f1;
+  --accent-dim: rgba(99,102,241,0.15);
+  --west: #7c3aed;
+  --west-dim: rgba(124,58,237,0.15);
+  --midtown: #06b6d4;
+  --midtown-dim: rgba(6,182,212,0.15);
+  --border: rgba(255,255,255,0.07);
+  --border-mid: rgba(255,255,255,0.10);
+  --text: #EDEDED;
+  --text-soft: rgba(255,255,255,0.55);
+  --text-muted: rgba(255,255,255,0.30);
+  --text-faint: rgba(255,255,255,0.22);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Legend + book bar */
+.cal-legend-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cal-legend-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.loc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 5px 12px;
+  border-radius: 100px;
+  border: 1px solid;
+  line-height: 1;
+}
+
+.loc-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.loc-pill.west {
+  background: var(--west-dim);
+  border-color: rgba(124,58,237,0.30);
+  color: #c4b5fd;
+}
+
+.loc-pill.west .loc-pill-dot { background: var(--west); }
+
+.loc-pill.midtown {
+  background: var(--midtown-dim);
+  border-color: rgba(6,182,212,0.30);
+  color: #67e8f9;
+}
+
+.loc-pill.midtown .loc-pill-dot { background: var(--midtown); }
+
+.loc-pill.completed {
+  background: rgba(34,197,94,0.10);
+  border-color: rgba(34,197,94,0.25);
+  color: #4ade80;
+}
+
+.loc-pill.completed .loc-pill-dot { background: #22c55e; }
+
+.loc-pill.missed {
+  background: rgba(239,68,68,0.10);
+  border-color: rgba(239,68,68,0.25);
+  color: #f87171;
+}
+
+.loc-pill.missed .loc-pill-dot { background: #ef4444; }
+
+/* Calendar card wrapper */
+.cal-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ── FullCalendar dark overrides ─────────────────────────────────────────── */
+
+.fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--bg-elevated);
+  --fc-list-event-hover-bg-color: rgba(255,255,255,0.04);
+  --fc-today-bg-color: rgba(99,102,241,0.04);
+  --fc-now-indicator-color: #6366f1;
+  font-family: 'Inter', sans-serif;
+}
+
+.fc .fc-toolbar {
+  background: var(--bg-surface);
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0 !important;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.02em;
+}
+
+.fc .fc-button {
+  background: transparent !important;
+  border: 1px solid var(--border-mid) !important;
+  color: var(--text-soft) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all 0.15s ease !important;
+  padding: 5px 10px !important;
+}
+
+.fc .fc-button:hover {
+  background: var(--bg-elevated) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.fc .fc-button-active,
+.fc .fc-button-primary.fc-button-active {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.fc .fc-button:focus {
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
+}
+
+.fc .fc-col-header-cell {
+  background: var(--bg-surface) !important;
+  border-color: var(--border) !important;
+  padding: 0.5rem 0 !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: var(--text-muted) !important;
+}
+
+.fc .fc-timegrid-slot {
+  border-color: var(--border) !important;
+}
+
+.fc .fc-timegrid-slot-label-cushion {
+  color: var(--text-faint) !important;
+  font-size: 11px !important;
+  font-weight: 500;
+}
+
+.fc .fc-scrollgrid {
+  border-color: var(--border) !important;
+}
+
+.fc .fc-scrollgrid-section > td {
+  border-color: var(--border) !important;
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+  padding: 4px 6px;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: #6366f1;
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 11px;
+}
+
+.fc .fc-event {
+  border-radius: 5px !important;
+  border: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+}
+
+.fc .fc-event:hover {
+  filter: brightness(1.18);
+  cursor: pointer;
+}
+
+.fc .fc-list-event:hover td {
+  background: rgba(255,255,255,0.04) !important;
+}
+
+.fc .fc-list-day-cushion {
+  background: var(--bg-surface) !important;
+}
+
+.fc .fc-list-table {
+  border-color: var(--border) !important;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: var(--border) !important;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -19,8 +256,8 @@
 </div>
 
 {% if current_user.role in ('admin', 'trainer') %}
-<!-- Filters + Legend -->
-<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+<!-- Filters row -->
+<div style="margin-bottom:0.875rem;">
   <div class="filter-bar">
     <select class="filter-select" id="filterLocation" onchange="refreshCalendar()">
       <option value="">All Locations</option>
@@ -41,17 +278,26 @@
       <option value="missed">Missed</option>
     </select>
   </div>
-  <div class="legend-row" style="margin-bottom:0;">
-    {% for loc in locations %}
-    <div class="legend-item"><span class="legend-dot" style="background:{{ loc.color }};"></span>{{ loc.name }}</div>
-    {% endfor %}
-    <div class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span>Completed</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>Missed</div>
+</div>
+
+<!-- Legend bar -->
+<div class="cal-legend-bar">
+  <div class="cal-legend-pills">
+    <span class="loc-pill west"><span class="loc-pill-dot"></span>West Mobile</span>
+    <span class="loc-pill midtown"><span class="loc-pill-dot"></span>Midtown</span>
+    <span class="loc-pill completed"><span class="loc-pill-dot"></span>Completed</span>
+    <span class="loc-pill missed"><span class="loc-pill-dot"></span>Missed</span>
   </div>
+  <a href="{{ url_for('new_session') }}" class="btn btn-ffl btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Book Session
+  </a>
 </div>
 {% endif %}
 
-<div id="calendar"></div>
+<!-- Calendar card -->
+<div class="cal-card">
+  <div id="calendar" style="padding: 0.75rem 1rem 1rem;"></div>
+</div>
 
 <!-- Session Detail Modal -->
 <div class="modal fade" id="sessionModal" tabindex="-1">

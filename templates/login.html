@@ -1,35 +1,276 @@
 {% extends 'base.html' %}
 {% block title %}Sign In — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+  /* ── Login page reset ───────────────────────────────────────────── */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ── Full-viewport wrapper (houses canvas + centered box) ───────── */
+  .login-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+    background: #080808;
+    overflow: hidden;
+  }
+
+  /* ── Glassmorphic login card ─────────────────────────────────────── */
+  .login-box {
+    position: relative;
+    z-index: 10;
+    width: 380px;
+    max-width: calc(100vw - 2rem);
+    padding: 2.5rem;
+    background: rgba(15, 15, 15, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 20px;
+    box-shadow:
+      0 0 60px rgba(99, 102, 241, 0.12),
+      0 24px 48px rgba(0, 0, 0, 0.6);
+  }
+
+  /* ── Logo block ─────────────────────────────────────────────────── */
+  .login-logo-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+
+  .login-logo-ring {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Animated ambient glow behind logo */
+  .login-logo-ring::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(124,58,237,0.10) 55%, transparent 75%);
+    animation: logo-pulse 3.2s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  @keyframes logo-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1);    }
+    50%       { opacity: 1.0; transform: scale(1.12); }
+  }
+
+  .login-logo {
+    position: relative;
+    z-index: 1;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* Subtle text-shadow via drop-filter for glow */
+    filter: drop-shadow(0 0 12px rgba(99,102,241,0.55));
+  }
+
+  /* ── Headings ────────────────────────────────────────────────────── */
+  .login-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text, #EDEDED);
+    text-align: center;
+    margin-bottom: 0.3rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted, rgba(255,255,255,0.30));
+    text-align: center;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1.75rem;
+  }
+
+  /* ── Flash alert ────────────────────────────────────────────────── */
+  .ffl-alert.danger {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-radius: var(--radius-md, 10px);
+    padding: 0.65rem 0.875rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Form labels ────────────────────────────────────────────────── */
+  .login-box .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-soft, rgba(255,255,255,0.55));
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+
+  /* ── Form inputs ────────────────────────────────────────────────── */
+  .login-box .form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #EDEDED;
+    border-radius: var(--radius-md, 10px);
+    padding: 0.65rem 0.875rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    width: 100%;
+  }
+
+  .login-box .form-control::placeholder {
+    color: var(--text-muted, rgba(255,255,255,0.30));
+  }
+
+  .login-box .form-control:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    color: #EDEDED;
+    outline: none;
+  }
+
+  /* Override Bootstrap's autofill styles */
+  .login-box .form-control:-webkit-autofill,
+  .login-box .form-control:-webkit-autofill:hover,
+  .login-box .form-control:-webkit-autofill:focus {
+    -webkit-text-fill-color: #EDEDED;
+    -webkit-box-shadow: 0 0 0 1000px #111116 inset;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* ── Submit button ──────────────────────────────────────────────── */
+  .login-btn {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    border: none;
+    border-radius: var(--radius-md, 10px);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
+  }
+
+  .login-btn:hover,
+  .login-btn:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.55);
+    filter: brightness(1.08);
+    outline: none;
+  }
+
+  .login-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+  }
+
+  /* ── Divider + footer text ──────────────────────────────────────── */
+  .login-footer {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border, rgba(255,255,255,0.07));
+    text-align: center;
+  }
+
+  .login-footer span {
+    font-size: 11px;
+    color: var(--text-muted, rgba(255,255,255,0.30));
+    letter-spacing: 0.03em;
+  }
+</style>
+{% endblock %}
+
 {% block auth_content %}
 <div class="login-wrapper">
   <div class="login-box">
-    <div class="login-logo">FFL</div>
+
+    <!-- Logo -->
+    <div class="login-logo-wrap">
+      <div class="login-logo-ring">
+        <div class="login-logo">FFL</div>
+      </div>
+    </div>
+
+    <!-- Headings -->
     <div class="login-title">Fit For Life</div>
     <div class="login-subtitle">Client &amp; Coach Portal</div>
 
+    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}{% for category, message in messages %}
-        <div class="ffl-alert danger" style="margin-bottom:1rem;">{{ message }}</div>
-      {% endfor %}{% endif %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="ffl-alert danger">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
     {% endwith %}
 
+    <!-- Login form — field names + CSRF token preserved exactly -->
     <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
       <div style="margin-bottom:0.875rem;">
         <label class="form-label" for="email">Email</label>
-        <input type="email" name="email" id="email" class="form-control" placeholder="you@example.com" required autofocus autocomplete="email">
+        <input
+          type="email"
+          name="email"
+          id="email"
+          class="form-control"
+          placeholder="you@example.com"
+          required
+          autofocus
+          autocomplete="email"
+        >
       </div>
+
       <div style="margin-bottom:1.5rem;">
         <label class="form-label" for="password">Password</label>
-        <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        <input
+          type="password"
+          name="password"
+          id="password"
+          class="form-control"
+          placeholder="••••••••"
+          required
+          autocomplete="current-password"
+        >
       </div>
-      <button type="submit" class="btn btn-ffl w-100" style="padding:0.6rem 1rem !important;">Sign In</button>
+
+      <button type="submit" class="login-btn">Sign In</button>
     </form>
 
-    <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); text-align:center;">
-      <span style="font-size:11px; color:var(--text-faint);">Contact Nick to get access · fitforlife.com</span>
+    <!-- Footer -->
+    <div class="login-footer">
+      <span>Contact Nick to get access · fitforlife.com</span>
     </div>
+
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/beams-bg.js') }}"></script>
 {% endblock %}

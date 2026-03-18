@@ -1,6 +1,236 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Edit' if user else 'New' }} User — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --bg: #080808;
+    --bg-surface: #0f0f0f;
+    --bg-elevated: #161616;
+    --accent: #6366f1;
+    --accent-dim: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --border: rgba(255,255,255,0.07);
+    --border-mid: rgba(255,255,255,0.10);
+    --text: #EDEDED;
+    --text-soft: rgba(255,255,255,0.55);
+    --text-muted: rgba(255,255,255,0.30);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  /* ── Form card ── */
+  .user-form-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+
+  /* ── Field labels ── */
+  .user-form-card .form-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-soft);
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+
+  .form-label-hint {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ── Inputs ── */
+  .user-form-card .form-control,
+  .user-form-card .form-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-mid);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    padding: 0.6rem 0.875rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+
+  .user-form-card .form-control:focus,
+  .user-form-card .form-select:focus {
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    color: var(--text);
+    outline: none;
+  }
+
+  .user-form-card .form-control::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* ── Role select with color indicator ── */
+  .role-select-wrapper {
+    position: relative;
+  }
+
+  .role-dot {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    transition: background 0.15s;
+  }
+
+  .user-form-card .form-select#role-select {
+    padding-left: 1.875rem;
+  }
+
+  /* ── Password field with toggle ── */
+  .password-field-wrapper {
+    position: relative;
+  }
+
+  .password-field-wrapper .form-control {
+    padding-right: 2.75rem;
+  }
+
+  .btn-pw-toggle {
+    position: absolute;
+    right: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    padding: 0.25rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-pw-toggle:hover {
+    color: var(--text-soft);
+  }
+
+  /* ── Active checkbox ── */
+  .active-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .active-checkbox-row:hover {
+    border-color: var(--border-mid);
+  }
+
+  .active-checkbox-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .active-checkbox-label {
+    font-size: 13px;
+    color: var(--text-soft);
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+  }
+
+  /* ── Form footer ── */
+  .user-form-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-user-submit {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 1.5rem;
+    letter-spacing: 0.03em;
+    transition: opacity 0.15s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .btn-user-submit:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    color: #fff;
+  }
+
+  .btn-user-cancel {
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 1.25rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-user-cancel:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-mid);
+    color: var(--text-soft);
+  }
+
+  /* ── Section divider label ── */
+  .form-section-divider {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.125rem;
+    margin-top: 0.25rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -14,49 +244,141 @@
 
 <div class="row">
   <div class="col-lg-6">
-    <div class="ffl-card">
+    <div class="user-form-card">
       <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div style="display:flex; flex-direction:column; gap:0.875rem;">
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+
+          <div class="form-section-divider">Account Info</div>
+
           <div>
-            <label class="form-label">Full Name</label>
-            <input type="text" name="name" class="form-control" value="{{ user.name if user else '' }}" required placeholder="First Last">
+            <label class="form-label" for="user-name">Full Name</label>
+            <input type="text" id="user-name" name="name" class="form-control"
+              value="{{ user.name if user else '' }}" required placeholder="First Last">
           </div>
+
           <div>
-            <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}" required placeholder="email@example.com">
+            <label class="form-label" for="user-email">Email</label>
+            <input type="email" id="user-email" name="email" class="form-control"
+              value="{{ user.email if user else '' }}" required placeholder="email@example.com">
           </div>
+
           <div>
-            <label class="form-label">Role</label>
-            <select name="role" class="form-select" required>
-              {% for r in ['client','trainer','admin'] %}
-              <option value="{{ r }}" {% if user and user.role == r %}selected{% endif %}>{{ r | capitalize }}</option>
-              {% endfor %}
-            </select>
+            <label class="form-label" for="role-select">Role</label>
+            <div class="role-select-wrapper">
+              <div class="role-dot" id="role-dot"></div>
+              <select name="role" id="role-select" class="form-select" required>
+                {% for r in ['client','trainer','admin'] %}
+                <option value="{{ r }}" {% if user and user.role == r %}selected{% endif %}>{{ r | capitalize }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
+
+          <div class="form-section-divider">Security</div>
+
           <div>
-            <label class="form-label">Password {% if user %}<span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(leave blank to keep current)</span>{% endif %}</label>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" {% if not user %}required{% endif %}>
+            <label class="form-label" for="pw-field">
+              Password
+              {% if user %}
+              <span class="form-label-hint">(leave blank to keep current)</span>
+              {% endif %}
+            </label>
+            <div class="password-field-wrapper">
+              <input type="password" id="pw-field" name="password" class="form-control"
+                placeholder="••••••••" {% if not user %}required{% endif %}>
+              <button type="button" class="btn-pw-toggle" id="pw-toggle-1" aria-label="Show/hide password">
+                <i class="bi bi-eye" id="pw-icon-1"></i>
+              </button>
+            </div>
           </div>
+
+          <div class="form-section-divider">Options</div>
+
           <div>
-            <label class="form-label">Trainerize URL <span style="color:var(--text-faint); text-transform:none; letter-spacing:0; font-weight:400;">(optional — for client portal button)</span></label>
-            <input type="url" name="trainerize_url" class="form-control" value="{{ user.trainerize_url or '' }}" placeholder="https://…">
+            <label class="form-label" for="trainerize-url">
+              Trainerize URL
+              <span class="form-label-hint">(optional — for client portal button)</span>
+            </label>
+            <input type="url" id="trainerize-url" name="trainerize_url" class="form-control"
+              value="{{ user.trainerize_url or '' }}" placeholder="https://…">
           </div>
+
           {% if user %}
-          <div style="display:flex; align-items:center; gap:0.5rem;">
-            <input type="checkbox" name="is_active" id="is_active" {% if user.is_active %}checked{% endif %}
-              style="width:14px; height:14px; accent-color:var(--accent); cursor:pointer;">
-            <label for="is_active" style="font-size:13px; color:var(--text-soft); cursor:pointer; margin:0;">Account active</label>
+          <div>
+            <label class="active-checkbox-row" for="is_active">
+              <input type="checkbox" name="is_active" id="is_active" {% if user.is_active %}checked{% endif %}>
+              <span class="active-checkbox-label">Account active — user can log in</span>
+              <i class="bi bi-toggle-on" style="font-size:18px; color:{% if user.is_active %}var(--green){% else %}var(--text-muted){% endif %};" id="active-icon"></i>
+            </label>
           </div>
           {% endif %}
+
         </div>
 
-        <div style="display:flex; gap:0.5rem; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-          <button type="submit" class="btn btn-ffl">{{ 'Save Changes' if user else 'Create User' }}</button>
-          <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">Cancel</a>
+        <div class="user-form-footer">
+          <button type="submit" class="btn-user-submit">
+            <i class="bi bi-check2-circle"></i>
+            {{ 'Save Changes' if user else 'Create User' }}
+          </button>
+          <a href="{{ url_for('admin_users') }}" class="btn-user-cancel">
+            <i class="bi bi-x"></i> Cancel
+          </a>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<script>
+  /* ── Password show/hide toggle ── */
+  (function() {
+    var pwField = document.getElementById('pw-field');
+    var pwToggle = document.getElementById('pw-toggle-1');
+    var pwIcon = document.getElementById('pw-icon-1');
+
+    if (pwToggle && pwField) {
+      pwToggle.addEventListener('click', function() {
+        var isText = pwField.type === 'text';
+        pwField.type = isText ? 'password' : 'text';
+        pwIcon.className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
+      });
+    }
+  })();
+
+  /* ── Role dot color ── */
+  (function() {
+    var roleSelect = document.getElementById('role-select');
+    var roleDot = document.getElementById('role-dot');
+    var roleColors = {
+      admin:   '#6366f1',
+      trainer: '#a855f7',
+      client:  '#14b8a6'
+    };
+
+    function updateDot() {
+      if (roleDot && roleSelect) {
+        roleDot.style.background = roleColors[roleSelect.value] || 'var(--text-muted)';
+      }
+    }
+
+    if (roleSelect) {
+      roleSelect.addEventListener('change', updateDot);
+      updateDot();
+    }
+  })();
+
+  /* ── Active toggle icon ── */
+  (function() {
+    var checkbox = document.getElementById('is_active');
+    var icon = document.getElementById('active-icon');
+
+    if (checkbox && icon) {
+      checkbox.addEventListener('change', function() {
+        icon.className = this.checked ? 'bi bi-toggle-on' : 'bi bi-toggle-off';
+        icon.style.color = this.checked ? 'var(--green)' : 'var(--text-muted)';
+      });
+    }
+  })();
+</script>
 {% endblock %}
