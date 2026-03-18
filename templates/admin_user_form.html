@@ -228,6 +228,19 @@
     margin-bottom: 0.125rem;
     margin-top: 0.25rem;
   }
+
+  @media (max-width: 768px) {
+    /* Form card → full width with reduced padding */
+    .user-form-card { padding: 1rem !important; }
+
+    /* Role select wrapper → ensure full width */
+    .role-select-wrapper { width: 100%; }
+
+    /* Form footer buttons → full width stack */
+    .user-form-footer { flex-direction: column; gap: 0.5rem; }
+    .btn-user-submit,
+    .btn-user-cancel { width: 100%; text-align: center; justify-content: center; }
+  }
 </style>
 {% endblock %}
 

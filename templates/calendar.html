@@ -239,6 +239,37 @@
 .fc-theme-standard th {
   border-color: var(--border) !important;
 }
+
+@media (max-width: 768px) {
+  /* Legend bar → wrap */
+  .cal-legend-bar { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .cal-legend-pills { flex-wrap: wrap; gap: 0.3rem; }
+
+  /* Filter bar → stack */
+  .filter-bar { flex-direction: column; gap: 0.5rem; }
+  .filter-select { width: 100%; }
+
+  /* FullCalendar toolbar → reduce size */
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem !important; }
+  .fc .fc-toolbar-title { font-size: 0.9rem !important; }
+  .fc .fc-button { font-size: 10px !important; padding: 0.25rem 0.5rem !important; }
+
+  /* Events in calendar → compact text */
+  .fc .fc-event { font-size: 9px !important; padding: 1px 4px !important; }
+
+  /* Modal → full width on mobile */
+  #sessionModal .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100vw - 1rem) !important;
+    width: calc(100vw - 1rem) !important;
+  }
+
+  /* Book session button in legend → full width */
+  .cal-legend-bar > a.btn { width: 100%; justify-content: center; }
+
+  /* Calendar card padding */
+  .cal-card { padding: 0 !important; border-radius: var(--radius-md); overflow: hidden; }
+}
 </style>
 {% endblock %}
 

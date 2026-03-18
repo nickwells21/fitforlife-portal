@@ -458,6 +458,28 @@
   width: 10px; height: 10px;
   border-radius: 3px;
 }
+
+@media (max-width: 768px) {
+  .section-heading { font-size: 1rem; }
+  .loc-legend-bar { flex-wrap: wrap; gap: 0.3rem; }
+  .loc-pill { font-size: 10px; }
+
+  /* FullCalendar mobile */
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 0.35rem; padding: 0.5rem !important; }
+  .fc .fc-toolbar-title { font-size: 0.85rem !important; }
+  .fc .fc-button { font-size: 10px !important; padding: 0.2rem 0.4rem !important; }
+  .fc .fc-event { font-size: 9px !important; }
+
+  /* Balance strip → wrap */
+  .bal-strip { flex-wrap: wrap; gap: 0.5rem; }
+
+  /* Client session modal → full width */
+  .sess-modal {
+    width: calc(100vw - 2rem) !important;
+    max-width: 100% !important;
+    padding: 1.25rem !important;
+  }
+}
 </style>
 {% endblock %}
 

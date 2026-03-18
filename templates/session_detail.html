@@ -307,6 +307,33 @@
   justify-content: space-between;
   flex: 1;
 }
+
+@media (max-width: 768px) {
+  /* Hero card — tighter padding, smaller time display */
+  .sd-hero { padding: 1.25rem !important; }
+  .sd-hero-time { font-size: 2rem !important; }
+
+  /* Details grid → 1 column */
+  .sd-details-grid { grid-template-columns: 1fr !important; }
+
+  /* Notes section already spans full width via grid-column:1/-1;
+     with a 1-column grid that still works correctly */
+
+  /* Breadcrumb — slightly smaller on mobile */
+  .sd-breadcrumb { font-size: 11px; }
+
+  /* Page header action buttons → stack vertically */
+  .page-header > div[style*="display:flex"] {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .page-header > div[style*="display:flex"] a,
+  .page-header > div[style*="display:flex"] button {
+    width: 100%;
+    justify-content: center;
+  }
+}
 </style>
 {% endblock %}
 

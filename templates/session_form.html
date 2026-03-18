@@ -207,6 +207,36 @@
   justify-content: space-between;
   flex: 1;
 }
+
+@media (max-width: 768px) {
+  /* Collapse the 2-column form grid to 1 column */
+  #sessionForm > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Full-span items should still span the single column */
+  #sessionForm > div[style*="grid-template-columns"] > div[style*="grid-column"] {
+    grid-column: 1 !important;
+  }
+
+  /* Duration pills wrap nicely */
+  .duration-pills { flex-wrap: wrap !important; gap: 0.375rem !important; }
+  .dur-pill { min-width: calc(33.333% - 0.375rem); text-align: center; }
+
+  /* Right panel: remove offset so it sits flush */
+  .offset-lg-1 { margin-left: 0 !important; }
+
+  /* Status buttons: tighten padding on small screens */
+  .status-update-btn { padding: 0.5rem !important; }
+
+  /* Submit row wraps */
+  #sessionForm > div[style*="display:flex"][style*="margin-top"] {
+    flex-wrap: wrap;
+    gap: 0.4rem !important;
+  }
+
+  /* Location badge */
+  #locationBadge { font-size: 11px; }
+}
 </style>
 {% endblock %}
 

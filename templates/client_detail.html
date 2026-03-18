@@ -375,6 +375,44 @@
   opacity: 0.3;
 }
 .empty-state p { font-size: 13px; margin: 0; }
+
+@media (max-width: 768px) {
+  /* Profile header card → vertical stack */
+  .profile-header-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+  .profile-header-left { flex-wrap: wrap; }
+  .profile-avatar {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 1.25rem !important;
+    border-radius: 14px !important;
+  }
+  .profile-header-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .profile-header-actions a,
+  .profile-header-actions button {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Stats row → 2 columns at mid-range */
+  .detail-stats-row { grid-template-columns: 1fr 1fr !important; }
+
+  /* Session rows — allow wrapping on tight layouts */
+  .sess-row { flex-wrap: wrap; gap: 0.4rem; }
+
+  /* Section body — allow horizontal scroll if content overflows */
+  .detail-section__body { overflow-x: auto; }
+}
+@media (max-width: 480px) {
+  .detail-stats-row { grid-template-columns: 1fr !important; }
+}
 </style>
 {% endblock %}
 

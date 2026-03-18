@@ -292,6 +292,26 @@
     border-color: var(--accent);
     color: var(--accent);
   }
+
+  @media (max-width: 768px) {
+    /* Stats row → 2 col grid */
+    .users-stats-row { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+
+    /* Table → horizontal scroll */
+    .users-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Hide email column on small screens */
+    .users-table th:nth-child(3),
+    .users-table td:nth-child(3) { display: none; }
+
+    /* Avatar + name compress */
+    .user-name-cell { gap: 0.4rem !important; }
+  }
+
+  @media (max-width: 480px) {
+    /* Stats row → 1 col */
+    .users-stats-row { grid-template-columns: 1fr !important; }
+  }
 </style>
 {% endblock %}
 

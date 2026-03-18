@@ -5,7 +5,7 @@
 <style>
 /* ══════════════════════════════════════════════════════════════════════════════
    Client Dashboard — FFL Portal
-   All layout, hero, stats, gallery, promos, events
+   All layout, hero, stats, notifications, streaks, promos, events, progress
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Shared ─────────────────────────────────────────────────────────────────── */
@@ -560,166 +560,105 @@
 .feed-desc   { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 .feed-footer { font-size: 10px; color: var(--text-faint); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
 
-/* ══════════════════════════════════════════════════════════════════════════════
-   Gallery — Embla Carousel
-   ══════════════════════════════════════════════════════════════════════════════ */
-.ffl-gallery-section {
-  margin-bottom: 2rem;
-  outline: none;
+/* Notifications */
+.notif-panel { padding: 1rem 1.25rem !important; }
+.notif-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; }
+.notif-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 100px;
+  min-width: 18px;
+  text-align: center;
+}
+.notif-list { display:flex; flex-direction:column; gap:0.5rem; }
+.notif-item {
+  display:flex; align-items:flex-start; gap:0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+  position: relative;
+}
+.notif-item.notif-unread {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-dim);
+}
+.notif-item.notif-unread.notif-streak {
+  border-left-color: var(--amber);
+  background: var(--amber-dim);
+}
+.notif-icon { font-size: 1.1rem; flex-shrink: 0; line-height: 1.3; margin-top: 1px; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-msg { font-size: 13px; color: var(--text); line-height: 1.4; }
+.notif-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.notif-dismiss {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; padding: 2px 4px; border-radius: 4px;
+  transition: all 0.1s ease; flex-shrink: 0;
+  font-size: 14px; line-height: 1;
+}
+.notif-dismiss:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+@media (max-width: 480px) {
+  .notif-item { gap: 0.5rem; padding: 0.5rem; }
+  .notif-msg { font-size: 12px; }
 }
 
-.ffl-gallery-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 1.125rem;
-  gap: 1rem;
-}
+/* Streak Card */
+.streak-card { text-align: center; padding: 1.25rem !important; }
+.streak-fires { margin-bottom: 0.25rem; line-height: 1; }
+.streak-number { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em; color: var(--amber); line-height: 1; }
+.streak-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+.streak-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
-.ffl-gallery-heading {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--text);
-  margin: 0 0 4px 0;
-  line-height: 1.15;
-}
-
-.ffl-gallery-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin: 0;
-}
-
-.ffl-gallery-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* Quarter Progress */
+.quarter-progress-card { padding: 1.25rem !important; }
+.qp-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; gap:0.5rem; }
+.qp-pct-badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(99,102,241,0.25);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
   flex-shrink: 0;
 }
-
-.ffl-gallery__prev,
-.ffl-gallery__next {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-mid);
-  color: var(--text-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
-  padding: 0;
-  line-height: 1;
+.qp-timeline { display:grid; grid-template-columns: repeat(4, 1fr); gap:0.5rem; }
+.qp-quarter { text-align:center; }
+.qp-q-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:4px; }
+.qp-q-bar { height:6px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:4px; }
+.qp-q-fill { height:100%; background:rgba(255,255,255,0.15); border-radius:100px; transition: width 1s ease; }
+.qp-done .qp-q-label { color:var(--green); }
+.qp-done .qp-q-fill { background:var(--green); width:100%; }
+.qp-active .qp-q-label { color:var(--accent); }
+.qp-active .qp-q-fill { background: linear-gradient(90deg, #6366f1, #7c3aed); }
+.qp-q-date { font-size:9px; color:var(--text-faint); white-space:nowrap; }
+.qp-main-bar-wrap { background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; }
+.qp-main-bar { height:10px; background:rgba(255,255,255,0.06); border-radius:100px; overflow:hidden; }
+.qp-main-fill {
+  height:100%;
+  width: var(--qp-pct, 0%);
+  background: linear-gradient(90deg, #6366f1, #7c3aed, #a78bfa);
+  border-radius:100px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
-
-.ffl-gallery__prev:hover:not(:disabled),
-.ffl-gallery__next:hover:not(:disabled) {
-  background: rgba(99,102,241,0.15);
-  border-color: rgba(99,102,241,0.35);
-  color: #a5b4fc;
+.qp-main-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 20px; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  border-radius: 100px;
 }
-
-.ffl-gallery__prev:disabled,
-.ffl-gallery__next:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+@media (max-width: 480px) {
+  .qp-timeline { grid-template-columns: repeat(2, 1fr); gap: 0.375rem; }
+  .qp-q-date { font-size: 8px; }
 }
-
-/* Embla viewport */
-.ffl-gallery {
-  overflow: hidden;
-}
-
-.ffl-gallery__viewport {
-  overflow: hidden;
-}
-
-.ffl-gallery__container {
-  display: flex;
-  gap: 1rem;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.ffl-gallery__slide {
-  flex: 0 0 calc(50% - 0.5rem);
-  min-width: 0;
-}
-
-/* Gallery card */
-.gallery-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  height: 100%;
-  transition: border-color 0.2s, transform 0.2s;
-  cursor: default;
-}
-
-.gallery-card:hover {
-  border-color: var(--border-mid);
-  transform: translateY(-2px);
-}
-
-.gallery-card__img-wrap {
-  aspect-ratio: 3 / 2;
-  overflow: hidden;
-  border-radius: 12px 12px 0 0;
-}
-
-.gallery-card__img-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.4s ease;
-}
-
-.gallery-card:hover .gallery-card__img-wrap img {
-  transform: scale(1.05);
-}
-
-.gallery-card__body {
-  padding: 1rem 1.125rem 1.125rem;
-}
-
-.gallery-card__title {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.02em;
-  margin-bottom: 6px;
-  line-height: 1.2;
-}
-
-.gallery-card__desc {
-  font-size: 12px;
-  color: var(--text-soft);
-  line-height: 1.55;
-  margin-bottom: 0.75rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.gallery-card__link {
-  font-size: 11px;
-  font-weight: 700;
-  color: #818cf8;
-  text-decoration: none;
-  letter-spacing: 0.01em;
-  transition: color 0.15s;
-}
-
-.gallery-card__link:hover { color: #a5b4fc; }
 
 /* ── Mobile ────────────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
@@ -730,19 +669,53 @@
   .stats-row           { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
   .stat-value          { font-size: 1.5rem; }
   .stat-card           { padding: 1rem 0.5rem; }
-  .ffl-gallery__slide  { flex: 0 0 calc(85% - 0.5rem); }
-  .ffl-gallery-heading { font-size: 1.1rem; }
 }
 
 @media (min-width: 768px) {
-  .ffl-gallery__slide  { flex: 0 0 calc(33.333% - 0.667rem); }
   .client-hero         { padding: 2.5rem 0 0.5rem; }
   .hero-greeting       { font-size: 3rem; }
   .hero-right          { margin-top: 0; }
 }
 
-@media (min-width: 1200px) {
-  .ffl-gallery__slide  { flex: 0 0 calc(25% - 0.75rem); }
+/* ── Enhanced Mobile (≤ 480px) — stack stats, fix next-session layout ─────── */
+@media (max-width: 480px) {
+  /* Stats row → single column on very small screens */
+  .stats-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.625rem;
+  }
+
+  /* Hero: tighten greeting further */
+  .hero-greeting { font-size: 1.65rem !important; }
+  .client-hero   { padding: 1rem 0 0.25rem !important; }
+
+  /* Next session card: reduce large time display */
+  .nsc-time    { font-size: 2rem !important; }
+  .nsc-cta-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+
+  /* Next session trainer row: prevent overflow */
+  .nsc-trainer-row { flex-wrap: wrap; }
+
+  /* This Month / Bulletin two-column row → force stack */
+  .row.g-3 > [class*="col-md-"] {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Upcoming session rows: prevent trainer label overflow */
+  .ur-trainer { display: none; }
+}
+
+/* ── Tablet (481px – 767px) — 2-column stats ─────────────────────────────── */
+@media (min-width: 481px) and (max-width: 767px) {
+  /* Stats: 2 columns with the ring card spanning full width */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .stats-row .stat-card:first-child {
+    grid-column: 1 / -1;
+  }
 }
 </style>
 {% endblock %}
@@ -804,10 +777,33 @@
   </div>
 
   <!-- Streak -->
-  <div class="stat-card">
-    <div class="stat-icon" style="color:#fcd34d;">🔥</div>
-    <div class="stat-value" style="color:#fcd34d;">{{ streak }}</div>
-    <div class="stat-label">Week Streak</div>
+  <div class="streak-card ffl-card">
+    <div class="streak-fires">
+      {% if streak == 0 %}
+        <span style="font-size:1.5rem; opacity:0.3;">🔥</span>
+      {% elif streak <= 2 %}
+        <span style="font-size:1.75rem;">🔥</span>
+      {% elif streak <= 4 %}
+        <span style="font-size:1.75rem;">🔥🔥</span>
+      {% elif streak <= 9 %}
+        <span style="font-size:1.75rem;">🔥🔥🔥</span>
+      {% elif streak <= 14 %}
+        <span style="font-size:1.75rem;">🔥🔥🔥🔥</span>
+      {% else %}
+        <span style="font-size:1.75rem;">🔥🔥🔥🔥🔥</span>
+      {% endif %}
+    </div>
+    <div class="streak-number">{{ streak }}</div>
+    <div class="streak-label">Week Streak</div>
+    {% if streak == 0 %}
+    <div class="streak-sub">Complete a session to start!</div>
+    {% elif streak < 3 %}
+    <div class="streak-sub">Keep it going! 💪</div>
+    {% elif streak < 10 %}
+    <div class="streak-sub">You're on fire! 🏋️</div>
+    {% else %}
+    <div class="streak-sub">Absolutely elite! ⚡</div>
+    {% endif %}
   </div>
 
   <!-- Total Sessions -->
@@ -818,6 +814,40 @@
   </div>
 
 </div>
+
+<!-- ─── Notifications ────────────────────────────────────────────────────── -->
+{% if notifications %}
+<div class="notif-panel ffl-card" style="margin-bottom:1rem;">
+  <div class="notif-header">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <i class="bi bi-bell-fill" style="color:var(--accent); font-size:0.875rem;"></i>
+      <span class="card-title" style="margin:0;">Notifications</span>
+      {% if unread_notif_count > 0 %}
+      <span class="notif-badge">{{ unread_notif_count }}</span>
+      {% endif %}
+    </div>
+    <span style="font-size:11px; color:var(--text-muted);">{{ notifications|length }} recent</span>
+  </div>
+  <div class="notif-list">
+    {% for n in notifications %}
+    <div class="notif-item {% if not n.is_read %}notif-unread{% endif %}" data-notif-id="{{ n.id }}">
+      <div class="notif-icon {% if n.notif_type == 'streak_milestone' %}notif-streak{% elif n.notif_type == 'session_completed' %}notif-complete{% endif %}">
+        {% if n.notif_type == 'streak_milestone' %}🔥{% elif n.notif_type == 'session_completed' %}💪{% else %}<i class="bi bi-info-circle"></i>{% endif %}
+      </div>
+      <div class="notif-body">
+        <div class="notif-msg">{{ n.message }}</div>
+        <div class="notif-time">{{ n.created_at.strftime('%b %d') }}</div>
+      </div>
+      {% if not n.is_read %}
+      <button class="notif-dismiss" onclick="dismissNotif({{ n.id }}, this)" title="Mark read">
+        <i class="bi bi-x"></i>
+      </button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <!-- ─── Next Session ──────────────────────────────────────────────────────── -->
 <div class="next-session-card">
@@ -1057,106 +1087,55 @@
 
 </div>
 
-<!-- ─── Gallery — Your Training Programs ─────────────────────────────────── -->
-<section class="ffl-gallery-section mt-4" aria-label="Training Programs">
-  <div class="ffl-gallery-header">
+<!-- ─── 2026 Program Year Progress ───────────────────────────────────────── -->
+<div class="ffl-card quarter-progress-card mt-3" style="margin-bottom:1rem;">
+  <div class="qp-header">
     <div>
-      <h2 class="ffl-gallery-heading">Your Training Programs</h2>
-      <p class="ffl-gallery-sub">Services available at West Mobile &amp; Midtown</p>
-    </div>
-    <div class="ffl-gallery-controls">
-      <button class="ffl-gallery__prev" aria-label="Previous slide" type="button">
-        <i class="bi bi-arrow-left"></i>
-      </button>
-      <button class="ffl-gallery__next" aria-label="Next slide" type="button">
-        <i class="bi bi-arrow-right"></i>
-      </button>
-    </div>
-  </div>
-
-  <div class="ffl-gallery">
-    <div class="ffl-gallery__viewport">
-      <div class="ffl-gallery__container">
-
-        <!-- 1. 1-on-1 Personal Training -->
-        <div class="ffl-gallery__slide">
-          <div class="gallery-card">
-            <div class="gallery-card__img-wrap">
-              <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop&auto=format"
-                   alt="1-on-1 Personal Training" loading="lazy">
-            </div>
-            <div class="gallery-card__body">
-              <div class="gallery-card__title">1-on-1 Personal Training</div>
-              <div class="gallery-card__desc">Tailored programming and real-time coaching designed to your exact goals, pace, and lifestyle.</div>
-              <a href="mailto:nick@fitforlife.com?subject=1-on-1 Personal Training" class="gallery-card__link">Learn More &rarr;</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. HIIT & Conditioning -->
-        <div class="ffl-gallery__slide">
-          <div class="gallery-card">
-            <div class="gallery-card__img-wrap">
-              <img src="https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=600&h=400&fit=crop&auto=format"
-                   alt="HIIT & Conditioning" loading="lazy">
-            </div>
-            <div class="gallery-card__body">
-              <div class="gallery-card__title">HIIT &amp; Conditioning</div>
-              <div class="gallery-card__desc">High-intensity interval training that maximizes calorie burn and builds athletic endurance fast.</div>
-              <a href="mailto:nick@fitforlife.com?subject=HIIT and Conditioning" class="gallery-card__link">Learn More &rarr;</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Strength Training -->
-        <div class="ffl-gallery__slide">
-          <div class="gallery-card">
-            <div class="gallery-card__img-wrap">
-              <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=400&fit=crop&auto=format"
-                   alt="Strength Training" loading="lazy">
-            </div>
-            <div class="gallery-card__body">
-              <div class="gallery-card__title">Strength Training</div>
-              <div class="gallery-card__desc">Progressive overload programming to build lean muscle, increase strength, and transform your physique.</div>
-              <a href="mailto:nick@fitforlife.com?subject=Strength Training" class="gallery-card__link">Learn More &rarr;</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. Nutrition Coaching -->
-        <div class="ffl-gallery__slide">
-          <div class="gallery-card">
-            <div class="gallery-card__img-wrap">
-              <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&h=400&fit=crop&auto=format"
-                   alt="Nutrition Coaching" loading="lazy">
-            </div>
-            <div class="gallery-card__body">
-              <div class="gallery-card__title">Nutrition Coaching</div>
-              <div class="gallery-card__desc">Custom meal strategies and macros coaching to fuel performance and accelerate body composition change.</div>
-              <a href="mailto:nick@fitforlife.com?subject=Nutrition Coaching" class="gallery-card__link">Learn More &rarr;</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Athletic Performance -->
-        <div class="ffl-gallery__slide">
-          <div class="gallery-card">
-            <div class="gallery-card__img-wrap">
-              <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=400&fit=crop&auto=format"
-                   alt="Athletic Performance" loading="lazy">
-            </div>
-            <div class="gallery-card__body">
-              <div class="gallery-card__title">Athletic Performance</div>
-              <div class="gallery-card__desc">Sport-specific training protocols to build explosive power, agility, and competitive edge.</div>
-              <a href="mailto:nick@fitforlife.com?subject=Athletic Performance Training" class="gallery-card__link">Learn More &rarr;</a>
-            </div>
-          </div>
-        </div>
-
+      <div class="card-title" style="margin-bottom:2px;">2026 Program Year</div>
+      <div style="font-size:12px; color:var(--text-muted);">
+        {% if quarter_progress.active %}
+          {{ quarter_progress.name }} · {{ quarter_progress.label }} · {{ quarter_progress.pct }}% complete
+        {% else %}
+          {{ quarter_progress.label }}
+        {% endif %}
       </div>
     </div>
+    {% if quarter_progress.active %}
+    <div class="qp-pct-badge">{{ quarter_progress.pct }}%</div>
+    {% endif %}
   </div>
-</section>
+
+  <!-- Quarter timeline -->
+  <div class="qp-timeline">
+    {% for q in quarter_progress.quarters %}
+    {% set qi = loop.index0 %}
+    <div class="qp-quarter {% if quarter_progress.index == qi %}qp-active{% elif quarter_progress.index is not none and qi < quarter_progress.index %}qp-done{% endif %}">
+      <div class="qp-q-label">{{ q.name }}</div>
+      <div class="qp-q-bar">
+        <div class="qp-q-fill"
+          style="width: {% if quarter_progress.index == qi %}{{ quarter_progress.pct }}%{% elif quarter_progress.index is not none and qi < quarter_progress.index %}100%{% else %}0%{% endif %}">
+        </div>
+      </div>
+      <div class="qp-q-date">{{ q.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if quarter_progress.active %}
+  <!-- Current quarter progress bar -->
+  <div style="margin-top:1rem;">
+    <div class="qp-main-bar-wrap">
+      <div class="qp-main-bar">
+        <div class="qp-main-fill" style="--qp-pct: {{ quarter_progress.pct }}%;"></div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:11px; color:var(--text-muted);">
+      <span>{{ quarter_progress.start.strftime('%b %d') }}</span>
+      <span>{{ quarter_progress.end.strftime('%b %d') }}</span>
+    </div>
+  </div>
+  {% endif %}
+</div>
 
 {% endblock %}
 
@@ -1220,8 +1199,27 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<!-- Embla Carousel CDN -->
-<script src="https://cdn.jsdelivr.net/npm/embla-carousel/embla-carousel.umd.js"></script>
-<!-- Gallery init -->
-<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+<script>
+function dismissNotif(id, btn) {
+  fetch('/notifications/dismiss/' + id, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+    }
+  }).then(r => {
+    if (r.ok) {
+      const item = btn.closest('.notif-item');
+      item.classList.remove('notif-unread');
+      btn.remove();
+      // Update badge
+      const badge = document.querySelector('.notif-badge');
+      if (badge) {
+        const n = parseInt(badge.textContent) - 1;
+        if (n <= 0) badge.remove();
+        else badge.textContent = n;
+      }
+    }
+  });
+}
+</script>
 {% endblock %}

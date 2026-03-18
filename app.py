@@ -124,6 +124,19 @@ class Event(db.Model):
     location = db.relationship('Location')
 
 
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.String(400), nullable=False)
+    notif_type = db.Column(db.String(50), default='session_completed')
+    session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=True)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -160,6 +173,48 @@ STATUS_COLORS = {
     'missed': '#dc2626',
     'cancelled': '#9ca3af',
 }
+
+# 2026 FFL Program Year — update dates to match your actual schedule
+PROGRAM_QUARTERS = [
+    {'name': 'Q1', 'label': 'Jan – Mar', 'start': datetime(2026, 1, 6), 'end': datetime(2026, 3, 29)},
+    {'name': 'Q2', 'label': 'Apr – Jun', 'start': datetime(2026, 4, 6), 'end': datetime(2026, 6, 28)},
+    {'name': 'Q3', 'label': 'Jul – Sep', 'start': datetime(2026, 7, 6), 'end': datetime(2026, 9, 27)},
+    {'name': 'Q4', 'label': 'Oct – Dec', 'start': datetime(2026, 10, 5), 'end': datetime(2026, 12, 20)},
+]
+
+
+def get_program_quarter_progress(now_dt=None):
+    """Returns the current quarter and percentage through it."""
+    if now_dt is None:
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+    for i, q in enumerate(PROGRAM_QUARTERS):
+        if q['start'] <= now_dt <= q['end']:
+            total_secs = (q['end'] - q['start']).total_seconds()
+            elapsed_secs = (now_dt - q['start']).total_seconds()
+            pct = min(100, max(0, int(elapsed_secs / total_secs * 100)))
+            return {
+                'index': i,
+                'name': q['name'],
+                'label': q['label'],
+                'pct': pct,
+                'start': q['start'],
+                'end': q['end'],
+                'quarters': PROGRAM_QUARTERS,
+                'active': True,
+            }
+    # Between quarters or before/after program year
+    # Find the next upcoming quarter
+    next_q = next((q for q in PROGRAM_QUARTERS if q['start'] > now_dt), None)
+    return {
+        'index': None,
+        'name': None,
+        'label': 'Program Break' if not next_q else f'Next: {next_q["name"]}',
+        'pct': 0,
+        'start': None,
+        'end': next_q['start'] if next_q else None,
+        'quarters': PROGRAM_QUARTERS,
+        'active': False,
+    }
 
 
 def check_conflict(trainer_id, location_id, start_dt, end_dt, exclude_session_id=None):
@@ -342,6 +397,16 @@ def dashboard():
             Event.event_date >= now
         ).order_by(Event.event_date).limit(6).all()
 
+        # Notifications (most recent 8, unread first)
+        notifications = Notification.query.filter_by(
+            user_id=current_user.id
+        ).order_by(Notification.is_read.asc(), Notification.created_at.desc()).limit(8).all()
+        unread_notif_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+
+        # Program year quarter progress
+        now_naive = now.replace(tzinfo=None)
+        quarter_progress = get_program_quarter_progress(now_naive)
+
         return render_template('dashboard_client.html',
             upcoming=upcoming,
             next_session=next_session,
@@ -357,6 +422,9 @@ def dashboard():
             events=events,
             month_name=month_name[month],
             now=now,
+            notifications=notifications,
+            unread_notif_count=unread_notif_count,
+            quarter_progress=quarter_progress,
         )
 
     elif current_user.role == 'trainer':
@@ -634,7 +702,38 @@ def update_session_status(session_id):
     sess = Session.query.get_or_404(session_id)
     new_status = request.form.get('status')
     if new_status in ('completed', 'missed', 'cancelled', 'scheduled'):
+        old_status = sess.status
         sess.status = new_status
+
+        # Auto-create notification when a session is marked completed
+        if new_status == 'completed' and old_status != 'completed':
+            date_str = sess.scheduled_at.strftime('%b %d').replace(' 0', ' ')
+            notif = Notification(
+                user_id=sess.client_id,
+                message=f'Session completed {date_str} with {sess.trainer.name}. Great work! 💪',
+                notif_type='session_completed',
+                session_id=sess.id
+            )
+            db.session.add(notif)
+
+            # Check for streak milestones after this completion
+            streak = get_session_streak(sess.client_id)
+            milestone_msgs = {
+                1:  '🔥 Your streak starts now — keep it going!',
+                3:  '🔥🔥🔥 3-week streak — you\'re building momentum!',
+                5:  '🔥 5-week streak — incredible consistency!',
+                10: '⚡ 10-week streak — you are unstoppable!',
+                15: '🏅 15-week streak — elite level dedication!',
+                20: '🏆 20-week streak — absolute legend!',
+            }
+            if streak in milestone_msgs:
+                db.session.add(Notification(
+                    user_id=sess.client_id,
+                    message=milestone_msgs[streak],
+                    notif_type='streak_milestone',
+                    session_id=sess.id
+                ))
+
         db.session.commit()
         flash(f'Session marked as {new_status}.', 'success')
     return redirect(request.referrer or url_for('calendar_view'))
@@ -648,6 +747,26 @@ def delete_session(session_id):
     db.session.commit()
     flash('Session deleted.', 'success')
     return redirect(url_for('calendar_view'))
+
+
+@app.route('/notifications/dismiss/<int:notif_id>', methods=['POST'])
+@login_required
+def dismiss_notification(notif_id):
+    notif = Notification.query.get_or_404(notif_id)
+    if notif.user_id != current_user.id:
+        abort(403)
+    notif.is_read = True
+    db.session.commit()
+    return ('', 204)
+
+
+@app.route('/api/notifications/unread-count')
+@login_required
+def api_notifications_unread_count():
+    if current_user.role != 'client':
+        return jsonify({'count': 0})
+    count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    return jsonify({'count': count})
 
 
 # ─── Clients ─────────────────────────────────────────────────────────────────

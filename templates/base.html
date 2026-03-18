@@ -152,6 +152,26 @@
       border-bottom: 1px solid var(--border);
     }
 
+    /* ─── Mobile dashboard home button ──────────────────────────── */
+    .topbar-home-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 15px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .topbar-home-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
     .topbar-title {
       background: linear-gradient(135deg, #6366f1, #a78bfa);
       -webkit-background-clip: text;
@@ -258,6 +278,10 @@
         <span class="topbar-title">{{ current_user.role | capitalize }}</span>
       </div>
       <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('dashboard') }}" class="d-md-none topbar-home-btn" aria-label="Dashboard"
+           title="Dashboard">
+          <i class="bi bi-house-fill" aria-hidden="true"></i>
+        </a>
         <span class="topbar-user">{{ current_user.name }}</span>
         <a href="{{ url_for('logout') }}" class="logout-btn" aria-label="Sign out">
           <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
