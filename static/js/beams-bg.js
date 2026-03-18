@@ -1,6 +1,7 @@
 /**
- * beams-bg.js — FFL Login page animated beam background
+ * beams-bg.js — FFL animated beam background
  * Vanilla JS port of BeamsBackground React component
+ * Supports login page (.login-wrapper) and portal interior (.app-wrapper)
  */
 
 (function () {
@@ -16,11 +17,20 @@
     { x: 0.75, y:  0.55, angle: 215, width: 1.4, hue: 202, speed: 0.58, opacity: 0.35 },
   ];
 
-  function initBeams(containerEl) {
-    // Create canvas and insert it as the first child of the container
+  /**
+   * @param {HTMLElement} containerEl
+   * @param {object}      [options]
+   * @param {number}      [options.opacityScale=1.0]  — multiply all beam opacities (0–1)
+   * @param {boolean}     [options.fixed=false]       — use position:fixed (portal) vs absolute (login)
+   */
+  function initBeams(containerEl, options) {
+    options = options || {};
+    const opacityScale = (options.opacityScale !== undefined) ? options.opacityScale : 1.0;
+    const useFixed     = !!options.fixed;
+
     const canvas = document.createElement('canvas');
     canvas.style.cssText = [
-      'position: absolute',
+      'position: ' + (useFixed ? 'fixed' : 'absolute'),
       'inset: 0',
       'width: 100%',
       'height: 100%',
@@ -34,8 +44,13 @@
     let rafId = null;
 
     function resize() {
-      canvas.width  = containerEl.offsetWidth;
-      canvas.height = containerEl.offsetHeight;
+      if (useFixed) {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      } else {
+        canvas.width  = containerEl.offsetWidth;
+        canvas.height = containerEl.offsetHeight;
+      }
     }
 
     function drawBackground() {
@@ -50,7 +65,7 @@
       radial.addColorStop(0.5, 'rgba(30,157,241,0.04)');
       radial.addColorStop(1,   'rgba(8,8,8,0)');
 
-      ctx.fillStyle = '#080808';
+      ctx.fillStyle = useFixed ? 'rgba(0,0,0,0)' : '#080808';
       ctx.fillRect(0, 0, w, h);
 
       ctx.fillStyle = radial;
@@ -64,25 +79,18 @@
       const beamLength = diag * 1.5;
       const beamWidth  = Math.min(w, h) * (beam.width / 100);
 
-      // Pulse opacity with sin
-      const pulseOpacity = beam.opacity * (0.7 + 0.3 * Math.sin(tick * beam.speed));
+      const pulseOpacity = beam.opacity * opacityScale * (0.7 + 0.3 * Math.sin(tick * beam.speed));
 
-      // Origin in canvas coordinates
       const ox = beam.x * w;
       const oy = beam.y * h;
-
-      // Convert angle to radians (angle is the direction the beam travels)
       const rad = (beam.angle * Math.PI) / 180;
 
       ctx.save();
       ctx.translate(ox, oy);
       ctx.rotate(rad);
 
-      // The beam rect: starts well behind origin, extends beamLength forward
-      // We centre the beam width on the travel axis
       const startOffset = -beamLength * 0.25;
 
-      // Create gradient along the beam length (local x after rotation = along beam)
       const grad = ctx.createLinearGradient(startOffset, 0, startOffset + beamLength, 0);
       grad.addColorStop(0,    `hsla(${beam.hue},85%,65%,0)`);
       grad.addColorStop(0.10, `hsla(${beam.hue},85%,65%,0)`);
@@ -107,17 +115,14 @@
       rafId = requestAnimationFrame(frame);
     }
 
-    // Handle resize
     const ro = new ResizeObserver(() => resize());
-    ro.observe(containerEl);
+    ro.observe(useFixed ? document.body : containerEl);
     resize();
 
-    // Also handle window resize as fallback
     window.addEventListener('resize', resize);
 
     frame();
 
-    // Return teardown function
     return function destroy() {
       cancelAnimationFrame(rafId);
       ro.disconnect();
@@ -126,11 +131,17 @@
     };
   }
 
-  // Auto-init when DOM is ready
   function autoInit() {
-    const wrapper = document.querySelector('.login-wrapper');
-    if (wrapper) {
-      initBeams(wrapper);
+    // Login page
+    const login = document.querySelector('.login-wrapper');
+    if (login) {
+      initBeams(login, { opacityScale: 1.0, fixed: false });
+      return;
+    }
+    // Portal interior (admin/client/trainer)
+    const app = document.querySelector('.app-wrapper');
+    if (app) {
+      initBeams(app, { opacityScale: 0.12, fixed: true });
     }
   }
 
@@ -140,6 +151,5 @@
     autoInit();
   }
 
-  // Expose for manual usage
   window.initBeams = initBeams;
 })();

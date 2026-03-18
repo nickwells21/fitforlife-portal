@@ -113,7 +113,7 @@ a:hover { color: var(--text); }
   margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
-  background: var(--bg);
+  background: transparent;
 }
 
 .content-area {
