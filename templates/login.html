@@ -43,59 +43,21 @@
   .login-logo-wrap {
     display: flex;
     justify-content: center;
-    margin-bottom: 1.25rem;
-  }
-
-  .login-logo-ring {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Animated ambient glow behind logo */
-  .login-logo-ring::before {
-    content: '';
-    position: absolute;
-    inset: -20px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(30,157,241,0.25) 0%, rgba(30,157,241,0.08) 55%, transparent 75%);
-    animation: logo-pulse 3.2s ease-in-out infinite;
-    z-index: 0;
-  }
-
-  @keyframes logo-pulse {
-    0%, 100% { opacity: 0.6; transform: scale(1);    }
-    50%       { opacity: 1.0; transform: scale(1.08); }
+    margin-bottom: 1.5rem;
   }
 
   .login-logo-img {
-    position: relative;
-    z-index: 1;
-    width: 110px;
-    height: 110px;
+    width: 220px;
+    height: 220px;
     object-fit: contain;
-    filter: drop-shadow(0 0 16px rgba(30,157,241,0.45));
+    border-radius: 16px;
+    filter: drop-shadow(0 0 24px rgba(30,157,241,0.5));
+    animation: logo-pulse 3.2s ease-in-out infinite;
   }
 
-  /* ── Headings ────────────────────────────────────────────────────── */
-  .login-title {
-    font-size: 1.85rem;
-    font-weight: 800;
-    color: var(--text, #EDEDED);
-    text-align: center;
-    letter-spacing: -0.02em;
-    margin-bottom: 0.3rem;
-  }
-
-  .login-subtitle {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text-muted, rgba(255,255,255,0.30));
-    text-align: center;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 1.75rem;
+  @keyframes logo-pulse {
+    0%, 100% { filter: drop-shadow(0 0 18px rgba(30,157,241,0.4)); }
+    50%       { filter: drop-shadow(0 0 32px rgba(30,157,241,0.75)); }
   }
 
   /* ── Flash alert ────────────────────────────────────────────────── */
@@ -200,7 +162,7 @@
   @media (max-width: 768px) {
     .login-wrapper { padding: 1rem; align-items: flex-start; padding-top: 3rem; }
     .login-box { width: 100% !important; max-width: 100% !important; padding: 1.75rem 1.25rem !important; border-radius: 14px; }
-    .login-logo-img { width: 90px !important; height: 90px !important; }
+    .login-logo-img { width: 170px !important; height: 170px !important; }
     .login-title { font-size: 1.5rem !important; }
   }
   @media (max-width: 480px) {
@@ -215,16 +177,10 @@
 
     <!-- Logo -->
     <div class="login-logo-wrap">
-      <div class="login-logo-ring">
-        <img src="{{ url_for('static', filename='img/ffl-logo.png') }}"
-             alt="Fit For Life"
-             class="login-logo-img">
-      </div>
+      <img src="{{ url_for('static', filename='img/ffl-logo-main.jpg') }}"
+           alt="Fit For Life"
+           class="login-logo-img">
     </div>
-
-    <!-- Headings -->
-    <div class="login-title">Fit For Life</div>
-    <div class="login-subtitle">Client &amp; Coach Portal</div>
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
