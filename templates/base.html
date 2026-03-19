@@ -329,6 +329,15 @@
         {% endif %}
       </li>
 
+      {% if current_user.role == 'client' %}
+      <li>
+        <a href="#" class="nav-link" onclick="event.preventDefault(); toggleChatWidget();" id="sidebarChatLink">
+          <i class="bi bi-chat-dots"></i><span class="nav-label"> Chat</span>
+          <span class="msg-unread-badge" id="chatWidgetBadgeSidebar" style="display:none;"></span>
+        </a>
+      </li>
+      {% endif %}
+
       {% if current_user.role in ('admin', 'trainer') %}
       <li>
         <a href="{{ url_for('clients') }}" class="nav-link {% if request.endpoint in ('clients','client_detail') %}active{% endif %}">
@@ -523,14 +532,17 @@ function toggleChatWidget() {
   widgetOpen = !widgetOpen;
   const panel = document.getElementById('chatWidgetPanel');
   const icon = document.getElementById('chatToggleIcon');
+  const sidebarLink = document.getElementById('sidebarChatLink');
   if (widgetOpen) {
     panel.classList.add('open');
     icon.className = 'bi bi-x-lg';
+    if (sidebarLink) sidebarLink.classList.add('active');
     if (activeChatRecipientId) loadWidgetMessages(activeChatRecipientId);
     startWidgetPoll();
   } else {
     panel.classList.remove('open');
     icon.className = 'bi bi-chat-dots-fill';
+    if (sidebarLink) sidebarLink.classList.remove('active');
     stopWidgetPoll();
   }
 }
@@ -575,11 +587,13 @@ async function updateWidgetBadge() {
   const res = await fetch('/api/messages/unread-count');
   const data = await res.json();
   const badge = document.getElementById('chatWidgetBadge');
+  const sidebarBadge = document.getElementById('chatWidgetBadgeSidebar');
   if (data.count > 0) {
-    badge.textContent = data.count;
-    badge.style.display = 'flex';
+    if (badge) { badge.textContent = data.count; badge.style.display = 'flex'; }
+    if (sidebarBadge) { sidebarBadge.textContent = data.count; sidebarBadge.style.display = 'inline-flex'; }
   } else {
-    badge.style.display = 'none';
+    if (badge) badge.style.display = 'none';
+    if (sidebarBadge) sidebarBadge.style.display = 'none';
   }
 }
 
