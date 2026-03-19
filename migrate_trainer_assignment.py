@@ -80,7 +80,7 @@ with app.app_context():
             print(line)
 
     # Step 3: Summary
-    print("\n─── Trainer Assignments ────────────────────────────────────────")
+    print("\n=== Trainer Assignments ===")
     all_users = User.query.filter(User.role.in_(['admin', 'trainer'])).order_by(User.role, User.name).all()
     for t in all_users:
         clients = User.query.filter_by(trainer_id=t.id).all()

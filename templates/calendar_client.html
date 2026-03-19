@@ -2,7 +2,6 @@
 {% block title %}My Schedule — Fit For Life{% endblock %}
 
 {% block head %}
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
 <style>
 /* ── Client calendar styles ─────────────────────────────────────────────── */
 
@@ -27,6 +26,7 @@
   --radius-lg: 14px;
 }
 
+/* ── Page header ─────────────────────────────────────────────────────────── */
 .cal-header {
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
   margin-top: 2px;
 }
 
-/* Balance strip */
+/* ── Balance strip ───────────────────────────────────────────────────────── */
 .bal-strip {
   display: flex;
   align-items: center;
@@ -113,7 +113,7 @@
   transition: width 0.8s ease;
 }
 
-/* Section heading */
+/* ── Section heading ─────────────────────────────────────────────────────── */
 .section-heading {
   font-size: 13px;
   font-weight: 700;
@@ -123,7 +123,7 @@
   margin-bottom: 0.75rem;
 }
 
-/* Location legend pills */
+/* ── Location legend pills ───────────────────────────────────────────────── */
 .loc-legend-bar {
   display: flex;
   align-items: center;
@@ -157,7 +157,6 @@
   border-color: rgba(124,58,237,0.30);
   color: #69c0f5;
 }
-
 .loc-pill.west .loc-pill-dot { background: var(--west); }
 
 .loc-pill.midtown {
@@ -165,7 +164,6 @@
   border-color: rgba(6,182,212,0.30);
   color: #67e8f9;
 }
-
 .loc-pill.midtown .loc-pill-dot { background: var(--midtown); }
 
 .loc-pill.completed {
@@ -173,7 +171,6 @@
   border-color: rgba(34,197,94,0.25);
   color: #4ade80;
 }
-
 .loc-pill.completed .loc-pill-dot { background: #22c55e; }
 
 .loc-pill.missed {
@@ -181,10 +178,273 @@
   border-color: rgba(239,68,68,0.25);
   color: #f87171;
 }
-
 .loc-pill.missed .loc-pill-dot { background: #ef4444; }
 
-/* Empty state */
+/* ── Calendar container card ─────────────────────────────────────────────── */
+.month-cal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ── Calendar toolbar ────────────────────────────────────────────────────── */
+.mcal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mcal-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mcal-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.mcal-nav-btn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mcal-nav-btn:focus-visible {
+  outline: 2px solid rgba(30,157,241,0.5);
+  outline-offset: 1px;
+}
+
+.mcal-month-label {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+  min-width: 130px;
+  text-align: center;
+}
+
+.mcal-selects {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.mcal-select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-family: 'Open Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  padding-right: 22px;
+}
+
+.mcal-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.mcal-select option {
+  background: #1a1a1a;
+  color: var(--text);
+}
+
+/* ── Day-of-week header row ──────────────────────────────────────────────── */
+.mcal-dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.mcal-dow-cell {
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ── Month grid ──────────────────────────────────────────────────────────── */
+.mcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.mcal-day {
+  min-height: 100px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 5px 4px;
+  background: var(--bg-surface);
+  vertical-align: top;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  transition: background 0.1s;
+}
+
+/* Remove right border on last column */
+.mcal-day:nth-child(7n) {
+  border-right: none;
+}
+
+/* Remove bottom border on last row cells */
+.mcal-day.last-row {
+  border-bottom: none;
+}
+
+.mcal-day.out-of-month {
+  background: rgba(255,255,255,0.012);
+}
+
+.mcal-day.today {
+  border-left: 2px solid var(--accent);
+  background: rgba(30,157,241,0.04);
+}
+
+.mcal-day-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 1px 2px;
+  align-self: flex-start;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mcal-day.out-of-month .mcal-day-num {
+  color: var(--text-faint);
+  opacity: 0.5;
+}
+
+.mcal-day.today .mcal-day-num {
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+}
+
+.mcal-day.in-month .mcal-day-num {
+  color: var(--text);
+}
+
+/* ── Session chips ───────────────────────────────────────────────────────── */
+.mcal-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  transition: filter 0.12s;
+  font-family: 'Open Sans', sans-serif;
+}
+
+.mcal-chip:hover {
+  filter: brightness(1.2);
+}
+
+.mcal-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mcal-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Status color themes for chips */
+.mcal-chip.status-scheduled {
+  background: rgba(30,157,241,0.2);
+  color: #93d4f8;
+}
+.mcal-chip.status-scheduled .mcal-chip-dot { background: #1e9df1; }
+
+.mcal-chip.status-completed {
+  background: rgba(34,197,94,0.15);
+  color: #86efac;
+}
+.mcal-chip.status-completed .mcal-chip-dot { background: #4ade80; }
+
+.mcal-chip.status-missed {
+  background: rgba(239,68,68,0.12);
+  color: #fca5a5;
+}
+.mcal-chip.status-missed .mcal-chip-dot { background: #f87171; }
+
+.mcal-chip.status-cancelled {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+}
+.mcal-chip.status-cancelled .mcal-chip-dot { background: #888; }
+
+/* "+N more" overflow link */
+.mcal-overflow {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.12s;
+  align-self: flex-start;
+}
+
+.mcal-overflow:hover {
+  background: var(--accent-dim);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
 .cal-empty-state {
   text-align: center;
   padding: 3rem 1rem;
@@ -209,132 +469,14 @@
   color: var(--text-muted);
 }
 
-/* ── FullCalendar dark overrides ─────────────────────────────────────────── */
-
-.fc {
-  --fc-border-color: rgba(255,255,255,0.07);
-  --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: var(--bg-elevated);
-  --fc-list-event-hover-bg-color: rgba(255,255,255,0.04);
-  --fc-today-bg-color: rgba(30,157,241,0.06);
-  --fc-now-indicator-color: #1e9df1;
-  font-family: 'Open Sans', sans-serif;
-}
-
-.fc .fc-toolbar {
-  background: var(--bg-surface);
-  padding: 0.875rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0 !important;
-}
-
-.fc .fc-toolbar-title {
-  font-size: 1rem !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.02em !important;
-  color: var(--text) !important;
-}
-
-.fc .fc-button {
-  background: transparent !important;
-  border: 1px solid var(--border-mid) !important;
-  color: var(--text-soft) !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 5px 10px !important;
-  border-radius: 6px !important;
-  transition: all 0.15s ease !important;
-}
-
-.fc .fc-button:hover {
-  background: rgba(255,255,255,0.06) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-}
-
-.fc .fc-button-active,
-.fc .fc-button-primary.fc-button-active {
-  background: var(--accent-dim) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-}
-
-.fc .fc-button:focus {
-  box-shadow: 0 0 0 2px rgba(30,157,241,0.35) !important;
-}
-
-.fc .fc-col-header-cell-cushion {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  padding: 6px 4px;
-}
-
-.fc .fc-col-header-cell {
-  background: var(--bg-surface) !important;
-  border-color: var(--border) !important;
-}
-
-.fc .fc-daygrid-day-number {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-soft);
-  padding: 4px 6px;
-}
-
-.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background: #1e9df1;
-  color: #fff;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-size: 11px;
-}
-
-.fc .fc-event {
-  border-radius: 5px !important;
-  border: none !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  padding: 2px 5px !important;
-  cursor: pointer;
-}
-
-.fc .fc-event:hover {
-  filter: brightness(1.18);
-}
-
-.fc .fc-event .fc-event-title {
-  font-weight: 600;
-}
-
-.fc .fc-list-day-cushion {
-  background: var(--bg-surface) !important;
-}
-
-.fc .fc-list-event:hover td {
-  background: rgba(255,255,255,0.04) !important;
-}
-
-.fc-theme-standard td,
-.fc-theme-standard th {
-  border-color: rgba(255,255,255,0.07) !important;
-}
-
-/* Session detail modal */
+/* ── Session detail modal ─────────────────────────────────────────────────── */
 .sess-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.65);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  z-index: 1000;
+  z-index: 1050;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,6 +501,7 @@
   transform: translateY(14px) scale(0.98);
   transition: transform 0.2s, opacity 0.2s;
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  position: relative;
 }
 
 .sess-modal-overlay.active .sess-modal {
@@ -367,7 +510,8 @@
 
 .modal-close {
   position: absolute;
-  top: 0.875rem; right: 1rem;
+  top: 0.875rem;
+  right: 1rem;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -435,57 +579,142 @@
 .modal-status-chip.scheduled  { background: rgba(30,157,241,0.12); color: #93d4f8; border: 1px solid rgba(30,157,241,0.25); }
 .modal-status-chip.completed  { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
 .modal-status-chip.missed     { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.modal-status-chip.cancelled  { background: rgba(255,255,255,0.05); color: #888; border: 1px solid rgba(255,255,255,0.12); }
 
-/* Legacy legend kept for any references */
-.cal-legend {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+/* ── Day-overflow popover ─────────────────────────────────────────────────── */
+.mcal-popover {
+  position: fixed;
+  z-index: 1040;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 0.625rem 0.75rem;
+  min-width: 180px;
+  max-width: 260px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+  display: none;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.mcal-popover.visible {
+  display: block;
+}
+
+.mcal-popover-date {
   font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.mcal-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
   font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.1s;
 }
 
-.legend-dot {
-  width: 10px; height: 10px;
-  border-radius: 3px;
+.mcal-popover-item:hover {
+  color: var(--text);
 }
 
+.mcal-popover-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────────────── */
+.mcal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--text-muted);
+  font-size: 13px;
+  gap: 0.5rem;
+}
+
+.mcal-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-mid);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .section-heading { font-size: 1rem; }
   .loc-legend-bar { flex-wrap: wrap; gap: 0.3rem; }
   .loc-pill { font-size: 10px; }
-
-  /* FullCalendar mobile */
-  .fc .fc-toolbar { flex-wrap: wrap; gap: 0.35rem; padding: 0.5rem !important; }
-  .fc .fc-toolbar-title { font-size: 0.85rem !important; }
-  .fc .fc-button { font-size: 10px !important; padding: 0.2rem 0.4rem !important; }
-  .fc .fc-event { font-size: 9px !important; }
-
-  /* Balance strip → wrap */
   .bal-strip { flex-wrap: wrap; gap: 0.5rem; }
 
-  /* Client session modal → full width */
+  .mcal-toolbar {
+    padding: 0.625rem 0.75rem;
+    gap: 0.375rem;
+  }
+
+  .mcal-month-label {
+    font-size: 0.875rem;
+    min-width: 110px;
+  }
+
+  .mcal-select { font-size: 11px; padding: 3px 22px 3px 6px; }
+
+  .mcal-day {
+    min-height: 60px;
+    padding: 3px 3px 2px;
+  }
+
+  .mcal-chip {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+
+  .mcal-day-num {
+    font-size: 10px;
+    width: 17px;
+    height: 17px;
+  }
+
+  .mcal-dow-cell {
+    font-size: 9px;
+    padding: 4px 2px;
+  }
+
+  /* On very small screens abbreviate to 1 letter (handled in JS) */
+  .mcal-dow-cell.abbr-1 { letter-spacing: 0; }
+
   .sess-modal {
     width: calc(100vw - 2rem) !important;
     max-width: 100% !important;
     padding: 1.25rem !important;
   }
 }
+
+@media (max-width: 480px) {
+  .mcal-selects { display: none; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Header -->
+<!-- Page header -->
 <div class="cal-header">
   <div>
     <div class="cal-title">My Schedule</div>
@@ -534,37 +763,92 @@
   <span class="loc-pill missed"><span class="loc-pill-dot"></span>Missed</span>
 </div>
 
-<!-- Calendar card -->
-<div class="ffl-card" style="padding:0; overflow:hidden;">
-  <div id="clientCalendar" style="padding:0.75rem 1rem 1rem;"></div>
-  <!-- Empty state (shown via JS when no events exist) -->
-  <div class="cal-empty-state" id="calEmptyState" style="display:none;">
-    <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
-    <div class="empty-title">No sessions scheduled yet</div>
-    <div class="empty-body">Your trainer will add upcoming sessions — check back soon.</div>
+<!-- Month calendar card -->
+<div class="month-cal-card">
+
+  <!-- Toolbar -->
+  <div class="mcal-toolbar">
+    <!-- Left: prev / label / next -->
+    <div class="mcal-nav-group">
+      <button class="mcal-nav-btn" id="calPrev" aria-label="Previous month">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <span class="mcal-month-label" id="calMonthLabel">Loading…</span>
+      <button class="mcal-nav-btn" id="calNext" aria-label="Next month">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Right: month + year selects -->
+    <div class="mcal-selects">
+      <select class="mcal-select" id="calMonthSelect" aria-label="Select month">
+        <option value="0">January</option>
+        <option value="1">February</option>
+        <option value="2">March</option>
+        <option value="3">April</option>
+        <option value="4">May</option>
+        <option value="5">June</option>
+        <option value="6">July</option>
+        <option value="7">August</option>
+        <option value="8">September</option>
+        <option value="9">October</option>
+        <option value="10">November</option>
+        <option value="11">December</option>
+      </select>
+      <select class="mcal-select" id="calYearSelect" aria-label="Select year">
+        <!-- Populated by JS -->
+      </select>
+    </div>
   </div>
+
+  <!-- Day-of-week headers -->
+  <div class="mcal-dow-row" aria-hidden="true">
+    <div class="mcal-dow-cell">Sun</div>
+    <div class="mcal-dow-cell">Mon</div>
+    <div class="mcal-dow-cell">Tue</div>
+    <div class="mcal-dow-cell">Wed</div>
+    <div class="mcal-dow-cell">Thu</div>
+    <div class="mcal-dow-cell">Fri</div>
+    <div class="mcal-dow-cell">Sat</div>
+  </div>
+
+  <!-- Grid container — filled by JS -->
+  <div class="mcal-grid" id="calGrid" role="grid" aria-label="Monthly calendar">
+    <!-- Loading state -->
+    <div class="mcal-loading" style="grid-column: span 7;">
+      <div class="mcal-spinner"></div>
+      <span>Loading sessions…</span>
+    </div>
+  </div>
+
+</div><!-- /.month-cal-card -->
+
+<!-- Day-overflow popover (singleton, repositioned by JS) -->
+<div class="mcal-popover" id="calPopover" role="tooltip" aria-live="polite">
+  <div class="mcal-popover-date" id="calPopoverDate"></div>
+  <div id="calPopoverList"></div>
 </div>
 
 <!-- Session detail modal -->
-<div class="sess-modal-overlay" id="sessModal">
-  <div class="sess-modal" style="position:relative;">
-    <button class="modal-close" id="modalClose">&times;</button>
+<div class="sess-modal-overlay" id="sessModal" role="dialog" aria-modal="true" aria-labelledby="mTime">
+  <div class="sess-modal">
+    <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
     <div class="modal-time" id="mTime"></div>
     <div class="modal-date" id="mDate"></div>
     <div class="modal-detail-row">
-      <i class="bi bi-person"></i>
+      <i class="bi bi-person" aria-hidden="true"></i>
       <span id="mTrainer"></span>
     </div>
     <div class="modal-detail-row">
-      <i class="bi bi-geo-alt"></i>
+      <i class="bi bi-geo-alt" aria-hidden="true"></i>
       <span id="mLocation"></span>
     </div>
     <div class="modal-detail-row">
-      <i class="bi bi-clock"></i>
+      <i class="bi bi-clock" aria-hidden="true"></i>
       <span id="mDuration"></span>
     </div>
     <div id="mNotes" class="modal-detail-row" style="display:none;">
-      <i class="bi bi-chat-left-text"></i>
+      <i class="bi bi-chat-left-text" aria-hidden="true"></i>
       <span id="mNotesText"></span>
     </div>
     <div><span class="modal-status-chip" id="mStatus"></span></div>
@@ -574,76 +858,411 @@
 {% endblock %}
 
 {% block scripts %}
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const calEl = document.getElementById('clientCalendar');
-  const modal = document.getElementById('sessModal');
-  const modalClose = document.getElementById('modalClose');
+(function () {
+  'use strict';
 
-  const calendar = new FullCalendar.Calendar(calEl, {
-    initialView: 'dayGridMonth',
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,listMonth'
-    },
-    buttonText: {
-      today: 'Today',
-      month: 'Month',
-      list:  'List'
-    },
-    height: 'auto',
-    firstDay: 1, // Monday start
-    events: '/api/sessions',
-    eventsSet: function(events) {
-      const emptyState = document.getElementById('calEmptyState');
-      if (emptyState) {
-        emptyState.style.display = (events.length === 0) ? 'block' : 'none';
+  /* ── Constants ─────────────────────────────────────────────────────────── */
+
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  const CHIPS_MAX = 3; // max chips visible per cell before "+N more"
+
+  /* Dot colours by status */
+  const STATUS_DOT = {
+    scheduled: '#1e9df1',
+    completed: '#4ade80',
+    missed:    '#f87171',
+    cancelled: '#888888'
+  };
+
+  /* ── State ──────────────────────────────────────────────────────────────── */
+
+  const today      = new Date();
+  let viewYear     = today.getFullYear();
+  let viewMonth    = today.getMonth(); // 0-indexed
+  let allSessions  = [];               // raw API array, kept in memory
+  let sessionMap   = {};               // { "YYYY-MM-DD": [session, …] }
+
+  /* ── DOM refs ───────────────────────────────────────────────────────────── */
+
+  const grid          = document.getElementById('calGrid');
+  const monthLabel    = document.getElementById('calMonthLabel');
+  const prevBtn       = document.getElementById('calPrev');
+  const nextBtn       = document.getElementById('calNext');
+  const monthSelect   = document.getElementById('calMonthSelect');
+  const yearSelect    = document.getElementById('calYearSelect');
+  const modal         = document.getElementById('sessModal');
+  const modalClose    = document.getElementById('modalClose');
+  const popover       = document.getElementById('calPopover');
+  const popoverDate   = document.getElementById('calPopoverDate');
+  const popoverList   = document.getElementById('calPopoverList');
+
+  /* ── Helpers ────────────────────────────────────────────────────────────── */
+
+  /** Zero-pad a number to 2 digits */
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  /** "YYYY-MM-DD" from a Date object */
+  function dateKey(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  /** Parse ISO datetime string → local Date without timezone shift
+   *  The server stores datetimes as UTC-naive ISO strings; we display them as-is.
+   */
+  function parseISO(str) {
+    // str may be "2026-03-19T09:00:00" or "2026-03-19T09:00:00+00:00"
+    // We want the wall-clock time as displayed, not adjusted for local TZ
+    const m = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return new Date(str);
+    return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]);
+  }
+
+  /** Format time as "9:00am" */
+  function fmtTime(date) {
+    let h = date.getHours();
+    const m = date.getMinutes();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${h}:${pad2(m)}${ampm}`;
+  }
+
+  /** First name from full name string */
+  function firstName(name) {
+    if (!name) return '';
+    return name.split(' ')[0];
+  }
+
+  /** Duration in minutes between two Date objects */
+  function durationMin(start, end) {
+    return end ? Math.round((end - start) / 60000) : 60;
+  }
+
+  /* ── Build session map ──────────────────────────────────────────────────── */
+
+  function buildSessionMap(sessions) {
+    const map = {};
+    sessions.forEach(function (s) {
+      const d = parseISO(s.start);
+      const key = dateKey(d);
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
+    });
+    return map;
+  }
+
+  /* ── Year select population ─────────────────────────────────────────────── */
+
+  function populateYearSelect() {
+    const baseYear = today.getFullYear();
+    for (let y = baseYear - 2; y <= baseYear + 2; y++) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      if (y === viewYear) opt.selected = true;
+      yearSelect.appendChild(opt);
+    }
+  }
+
+  /* ── Sync toolbar controls to current view ──────────────────────────────── */
+
+  function syncToolbar() {
+    monthLabel.textContent = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
+    monthSelect.value = viewMonth;
+    yearSelect.value  = viewYear;
+  }
+
+  /* ── Render month grid ──────────────────────────────────────────────────── */
+
+  function renderGrid() {
+    syncToolbar();
+    grid.innerHTML = '';
+
+    const firstDay  = new Date(viewYear, viewMonth, 1);
+    const lastDay   = new Date(viewYear, viewMonth + 1, 0);
+    const startDow  = firstDay.getDay(); // 0=Sun
+    const totalDays = lastDay.getDate();
+
+    // How many rows do we need?
+    const cellCount = startDow + totalDays;
+    const rows      = Math.ceil(cellCount / 7);
+    const totalCells = rows * 7;
+
+    const todayKey = dateKey(today);
+
+    for (let i = 0; i < totalCells; i++) {
+      const dayOffset = i - startDow;  // negative = prev month, ≥ totalDays = next month
+      const cellDate  = new Date(viewYear, viewMonth, 1 + dayOffset);
+      const key       = dateKey(cellDate);
+      const inMonth   = (dayOffset >= 0 && dayOffset < totalDays);
+      const isToday   = (key === todayKey);
+      const isLastRow = (i >= totalCells - 7);
+
+      const cell = document.createElement('div');
+      cell.className = [
+        'mcal-day',
+        inMonth ? 'in-month' : 'out-of-month',
+        isToday ? 'today' : '',
+        isLastRow ? 'last-row' : ''
+      ].filter(Boolean).join(' ');
+
+      cell.setAttribute('role', 'gridcell');
+      cell.setAttribute('aria-label', cellDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
+
+      // Day number
+      const numEl = document.createElement('div');
+      numEl.className = 'mcal-day-num';
+      numEl.textContent = cellDate.getDate();
+      cell.appendChild(numEl);
+
+      // Sessions for this cell
+      const daySessions = sessionMap[key] || [];
+
+      if (daySessions.length > 0) {
+        const visible = daySessions.slice(0, CHIPS_MAX);
+        const overflow = daySessions.length - visible.length;
+
+        visible.forEach(function (s) {
+          const chip = buildChip(s);
+          cell.appendChild(chip);
+        });
+
+        if (overflow > 0) {
+          const more = document.createElement('div');
+          more.className = 'mcal-overflow';
+          more.textContent = `+${overflow} more`;
+          more.setAttribute('role', 'button');
+          more.setAttribute('tabindex', '0');
+          more.addEventListener('click', function (e) {
+            e.stopPropagation();
+            showPopover(e, key, cellDate, daySessions);
+          });
+          more.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              showPopover(e, key, cellDate, daySessions);
+            }
+          });
+          cell.appendChild(more);
+        }
       }
-    },
-    eventClick: function(info) {
-      const p = info.event.extendedProps;
-      const start = info.event.start;
-      const end = info.event.end;
-      const durationMin = end ? Math.round((end - start) / 60000) : 60;
 
-      document.getElementById('mTime').textContent = start.toLocaleTimeString('en-US', {
-        hour: 'numeric', minute: '2-digit', hour12: true
-      });
-      document.getElementById('mDate').textContent = start.toLocaleDateString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric'
-      });
-      document.getElementById('mTrainer').textContent = p.trainer;
-      document.getElementById('mLocation').textContent = p.location;
-      document.getElementById('mDuration').textContent = durationMin + ' min session';
+      grid.appendChild(cell);
+    }
+  }
 
-      const notesRow = document.getElementById('mNotes');
-      if (p.notes) {
-        document.getElementById('mNotesText').textContent = p.notes;
-        notesRow.style.display = 'flex';
-      } else {
-        notesRow.style.display = 'none';
+  /* ── Build a session chip element ──────────────────────────────────────── */
+
+  function buildChip(s) {
+    const status = (s.extendedProps && s.extendedProps.status) || 'scheduled';
+    const startDt = parseISO(s.start);
+    const trainerFirst = firstName((s.extendedProps && s.extendedProps.trainer) || s.title || '');
+    const timeStr = fmtTime(startDt);
+    const dot = STATUS_DOT[status] || STATUS_DOT.scheduled;
+
+    const chip = document.createElement('div');
+    chip.className = `mcal-chip status-${status}`;
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('tabindex', '0');
+    chip.setAttribute('aria-label', `${status} session at ${timeStr}`);
+
+    const dotEl = document.createElement('span');
+    dotEl.className = 'mcal-chip-dot';
+    dotEl.style.background = dot;
+
+    const textEl = document.createElement('span');
+    textEl.className = 'mcal-chip-text';
+    textEl.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr;
+
+    chip.appendChild(dotEl);
+    chip.appendChild(textEl);
+
+    chip.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openModal(s);
+    });
+    chip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openModal(s);
       }
+    });
 
-      const chip = document.getElementById('mStatus');
-      chip.textContent = p.status.charAt(0).toUpperCase() + p.status.slice(1);
-      chip.className = 'modal-status-chip ' + p.status;
+    return chip;
+  }
 
-      modal.classList.add('active');
+  /* ── Session detail modal ───────────────────────────────────────────────── */
+
+  function openModal(s) {
+    const p       = s.extendedProps || {};
+    const startDt = parseISO(s.start);
+    const endDt   = s.end ? parseISO(s.end) : null;
+    const mins    = durationMin(startDt, endDt);
+    const status  = p.status || 'scheduled';
+
+    document.getElementById('mTime').textContent = fmtTime(startDt);
+    document.getElementById('mDate').textContent = startDt.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric'
+    });
+    document.getElementById('mTrainer').textContent  = p.trainer   || '—';
+    document.getElementById('mLocation').textContent = p.location  || '—';
+    document.getElementById('mDuration').textContent = `${mins} min session`;
+
+    const notesRow = document.getElementById('mNotes');
+    if (p.notes) {
+      document.getElementById('mNotesText').textContent = p.notes;
+      notesRow.style.display = 'flex';
+    } else {
+      notesRow.style.display = 'none';
+    }
+
+    const chip = document.getElementById('mStatus');
+    chip.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    chip.className   = `modal-status-chip ${status}`;
+
+    closePopover();
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    modal.classList.remove('active');
+  }
+
+  /* ── Day-overflow popover ───────────────────────────────────────────────── */
+
+  function showPopover(e, key, cellDate, sessions) {
+    popoverDate.textContent = cellDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    popoverList.innerHTML = '';
+
+    sessions.forEach(function (s) {
+      const p = s.extendedProps || {};
+      const status = p.status || 'scheduled';
+      const startDt = parseISO(s.start);
+      const dot = STATUS_DOT[status] || STATUS_DOT.scheduled;
+      const trainerFirst = firstName(p.trainer || '');
+      const timeStr = fmtTime(startDt);
+
+      const item = document.createElement('div');
+      item.className = 'mcal-popover-item';
+
+      const dotEl = document.createElement('span');
+      dotEl.className = 'mcal-popover-dot';
+      dotEl.style.background = dot;
+
+      const label = document.createElement('span');
+      label.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr;
+
+      item.appendChild(dotEl);
+      item.appendChild(label);
+      item.addEventListener('click', function () {
+        closePopover();
+        openModal(s);
+      });
+      popoverList.appendChild(item);
+    });
+
+    // Position near the click/element
+    const rect = (e.currentTarget || e.target).getBoundingClientRect();
+    const pWidth = 220;
+    let left = rect.left;
+    let top  = rect.bottom + 6;
+
+    if (left + pWidth > window.innerWidth - 12) {
+      left = window.innerWidth - pWidth - 12;
+    }
+    if (top + 180 > window.innerHeight) {
+      top = rect.top - 6;
+      popover.style.transform = 'translateY(-100%)';
+    } else {
+      popover.style.transform = '';
+    }
+
+    popover.style.left = `${Math.max(8, left)}px`;
+    popover.style.top  = `${top}px`;
+    popover.classList.add('visible');
+  }
+
+  function closePopover() {
+    popover.classList.remove('visible');
+  }
+
+  /* ── Navigation ─────────────────────────────────────────────────────────── */
+
+  function goToPrevMonth() {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderGrid();
+  }
+
+  function goToNextMonth() {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderGrid();
+  }
+
+  /* ── Fetch sessions from API ────────────────────────────────────────────── */
+
+  function fetchSessions() {
+    fetch('/api/sessions', {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error('API error ' + res.status);
+      return res.json();
+    })
+    .then(function (data) {
+      allSessions = Array.isArray(data) ? data : [];
+      sessionMap  = buildSessionMap(allSessions);
+      renderGrid();
+    })
+    .catch(function (err) {
+      console.error('Calendar: failed to load sessions', err);
+      // Still render the empty grid so nav works
+      renderGrid();
+    });
+  }
+
+  /* ── Event listeners ────────────────────────────────────────────────────── */
+
+  prevBtn.addEventListener('click', goToPrevMonth);
+  nextBtn.addEventListener('click', goToNextMonth);
+
+  monthSelect.addEventListener('change', function () {
+    viewMonth = parseInt(this.value, 10);
+    renderGrid();
+  });
+
+  yearSelect.addEventListener('change', function () {
+    viewYear = parseInt(this.value, 10);
+    renderGrid();
+  });
+
+  modalClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeModal(); closePopover(); }
+  });
+
+  // Close popover when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!popover.contains(e.target) && !e.target.classList.contains('mcal-overflow')) {
+      closePopover();
     }
   });
 
-  calendar.render();
+  /* ── Boot ───────────────────────────────────────────────────────────────── */
 
-  // Close modal
-  modalClose.addEventListener('click', () => modal.classList.remove('active'));
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.classList.remove('active');
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') modal.classList.remove('active');
-  });
-});
+  populateYearSelect();
+  syncToolbar();   // show label immediately (before fetch resolves)
+  fetchSessions(); // async — renders grid on completion
+
+})();
 </script>
 {% endblock %}
