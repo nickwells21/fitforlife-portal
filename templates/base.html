@@ -44,22 +44,14 @@
       margin-bottom: 0.5rem;
     }
 
-    /* ─── Brand logo: gradient square ───────────────────────────── */
-    .brand-logo {
+    /* ─── Brand logo: neon FFL photo ────────────────────────────── */
+    .brand-logo-img {
       width: 38px;
       height: 38px;
       border-radius: var(--radius-sm);
-      background: linear-gradient(135deg, #1e9df1, #69c0f5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 1rem;
-      letter-spacing: 0.04em;
-      color: #fff !important;
+      object-fit: cover;
       flex-shrink: 0;
-      /* Override any inherited text-fill so the bg shows through */
-      -webkit-text-fill-color: #fff !important;
+      filter: drop-shadow(0 0 6px rgba(30,157,241,0.4));
     }
 
     /* ─── Brand name: gradient text ─────────────────────────────── */
@@ -202,7 +194,9 @@
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-logo">FFL</div>
+      <img src="{{ url_for('static', filename='img/ffl-logo-main.jpg') }}"
+           alt="Fit For Life"
+           class="brand-logo-img">
       <div class="brand-text">
         <div class="brand-name">Fit For Life</div>
         <div class="brand-role">{{ current_user.role }}</div>

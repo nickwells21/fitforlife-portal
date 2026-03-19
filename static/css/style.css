@@ -149,19 +149,13 @@ a:hover { color: var(--text); }
   justify-content: flex-start;
 }
 
-.brand-logo {
-  width: 28px;
-  height: 28px;
-  background: var(--accent);
+.brand-logo-img {
+  width: 36px;
+  height: 36px;
   border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 11px;
-  color: white;
-  letter-spacing: -0.02em;
+  object-fit: cover;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 5px rgba(30,157,241,0.35));
 }
 
 .brand-name {
