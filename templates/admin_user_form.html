@@ -79,6 +79,8 @@
     color: var(--text-muted);
   }
 
+  #trainer-assign-section { transition: opacity 0.2s; }
+
   /* ── Role select with color indicator ── */
   .role-select-wrapper {
     position: relative;
@@ -308,6 +310,22 @@
 
           <div class="form-section-divider">Options</div>
 
+          <div id="trainer-assign-section" style="display:none;">
+            <label class="form-label" for="trainer-assign-select">
+              Assigned Trainer
+              <span class="form-label-hint">(which trainer works with this client)</span>
+            </label>
+            <select name="trainer_id" id="trainer-assign-select" class="form-select">
+              <option value="">— Unassigned —</option>
+              {% for t in trainers %}
+              <option value="{{ t.id }}"
+                {% if user and user.trainer_id == t.id %}selected{% endif %}>
+                {{ t.name }} ({{ t.role }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div>
             <label class="form-label" for="trainerize-url">
               Trainerize URL
@@ -359,10 +377,11 @@
     }
   })();
 
-  /* ── Role dot color ── */
+  /* ── Role dot color + trainer section visibility ── */
   (function() {
     var roleSelect = document.getElementById('role-select');
     var roleDot = document.getElementById('role-dot');
+    var trainerSection = document.getElementById('trainer-assign-section');
     var roleColors = {
       admin:   '#1e9df1',
       trainer: '#1e9df1',
@@ -375,9 +394,16 @@
       }
     }
 
+    function updateTrainerSection() {
+      if (trainerSection && roleSelect) {
+        trainerSection.style.display = roleSelect.value === 'client' ? 'block' : 'none';
+      }
+    }
+
     if (roleSelect) {
-      roleSelect.addEventListener('change', updateDot);
+      roleSelect.addEventListener('change', function() { updateDot(); updateTrainerSection(); });
       updateDot();
+      updateTrainerSection();
     }
   })();
 

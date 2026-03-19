@@ -476,7 +476,8 @@ def dashboard():
             db.func.date(Session.scheduled_at) == today
         ).order_by(Session.scheduled_at).all()
 
-        all_clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+        # Only show clients assigned to this trainer
+        all_clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
 
         return render_template('dashboard_trainer.html',
             upcoming=upcoming,
@@ -569,6 +570,8 @@ def api_sessions():
 
     if current_user.role == 'client':
         query = query.filter(Session.client_id == current_user.id)
+    elif current_user.role == 'trainer':
+        query = query.filter(Session.trainer_id == current_user.id)
 
     sessions = query.all()
     events = []
@@ -632,7 +635,10 @@ def api_check_conflict():
 @staff_required
 def new_session():
     trainers = User.query.filter_by(role='trainer', is_active=True).all()
-    clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    if current_user.role == 'trainer':
+        clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
+    else:
+        clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
     locations = Location.query.all()
 
     if request.method == 'POST':
@@ -812,7 +818,10 @@ def api_notifications_unread_count():
 def clients():
     now = datetime.now(timezone.utc)
     month, year = now.month, now.year
-    all_clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    if current_user.role == 'trainer':
+        all_clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
+    else:
+        all_clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
 
     client_data = []
     for c in all_clients:
@@ -835,6 +844,9 @@ def client_detail(client_id):
     client = User.query.get_or_404(client_id)
     if client.role != 'client':
         abort(404)
+    # Trainers can only view their own assigned clients
+    if current_user.role == 'trainer' and client.trainer_id != current_user.id:
+        abort(403)
 
     now = datetime.now(timezone.utc)
     month, year = now.month, now.year
@@ -872,12 +884,27 @@ def client_detail(client_id):
 @admin_required
 def admin_users():
     users = User.query.order_by(User.role, User.name).all()
-    return render_template('admin_users.html', users=users)
+    trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
+    return render_template('admin_users.html', users=users, trainers=trainers)
+
+
+@app.route('/admin/users/<int:user_id>/assign-trainer', methods=['POST'])
+@admin_required
+def admin_assign_trainer(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.role != 'client':
+        abort(400)
+    raw = request.form.get('trainer_id', '').strip()
+    user.trainer_id = int(raw) if raw else None
+    db.session.commit()
+    flash(f'Trainer assignment updated for {user.name}.', 'success')
+    return redirect(url_for('admin_users'))
 
 
 @app.route('/admin/users/new', methods=['GET', 'POST'])
 @admin_required
 def admin_new_user():
+    trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
     if request.method == 'POST':
         name = request.form['name'].strip()
         email = request.form['email'].strip().lower()
@@ -888,19 +915,22 @@ def admin_new_user():
         if User.query.filter_by(email=email).first():
             flash('Email already in use.', 'danger')
         else:
-            user = User(name=name, email=email, role=role, trainerize_url=trainerize_url)
+            raw = request.form.get('trainer_id', '').strip()
+            trainer_id = int(raw) if raw and role == 'client' else None
+            user = User(name=name, email=email, role=role, trainerize_url=trainerize_url, trainer_id=trainer_id)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             flash(f'{role.capitalize()} account created for {name}.', 'success')
             return redirect(url_for('admin_users'))
-    return render_template('admin_user_form.html', user=None)
+    return render_template('admin_user_form.html', user=None, trainers=trainers)
 
 
 @app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_user(user_id):
     user = User.query.get_or_404(user_id)
+    trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
     if request.method == 'POST':
         user.name = request.form['name'].strip()
         user.email = request.form['email'].strip().lower()
@@ -909,10 +939,14 @@ def admin_edit_user(user_id):
         user.is_active = 'is_active' in request.form
         if request.form.get('password'):
             user.set_password(request.form['password'])
+        # Trainer assignment (clients only)
+        if user.role == 'client':
+            raw = request.form.get('trainer_id', '').strip()
+            user.trainer_id = int(raw) if raw else None
         db.session.commit()
         flash('User updated.', 'success')
         return redirect(url_for('admin_users'))
-    return render_template('admin_user_form.html', user=user)
+    return render_template('admin_user_form.html', user=user, trainers=trainers)
 
 
 # ─── Admin: Packages ─────────────────────────────────────────────────────────

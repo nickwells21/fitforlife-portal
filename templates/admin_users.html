@@ -249,6 +249,34 @@
     color: var(--text-muted);
   }
 
+  /* ── Trainer assign cell ── */
+  .trainer-assign-form { display: flex; align-items: center; gap: 0.4rem; }
+  .trainer-assign-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-mid);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    padding: 0.3rem 0.5rem;
+    max-width: 130px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .trainer-assign-select:focus { border-color: var(--accent); outline: none; }
+  .btn-assign-save {
+    background: var(--accent-dim);
+    border: 1px solid rgba(30,157,241,0.25);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-assign-save:hover { background: rgba(30,157,241,0.25); }
+
   /* ── Trainerize link ── */
   .trainerize-link {
     font-size: 11px;
@@ -300,9 +328,11 @@
     /* Table → horizontal scroll */
     .users-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-    /* Hide email column on small screens */
+    /* Hide email + trainer columns on small screens */
     .users-table th:nth-child(3),
-    .users-table td:nth-child(3) { display: none; }
+    .users-table td:nth-child(3),
+    .users-table th:nth-child(4),
+    .users-table td:nth-child(4) { display: none; }
 
     /* Avatar + name compress */
     .user-name-cell { gap: 0.4rem !important; }
@@ -371,7 +401,7 @@
         <th>Name</th>
         <th>Role</th>
         <th>Email</th>
-        <th>Trainerize</th>
+        <th>Trainer</th>
         <th>Status</th>
         <th>Edit</th>
       </tr>
@@ -392,10 +422,17 @@
           <span class="user-email">{{ user.email }}</span>
         </td>
         <td>
-          {% if user.trainerize_url %}
-          <a href="{{ user.trainerize_url }}" target="_blank" class="trainerize-link">
-            Link <i class="bi bi-box-arrow-up-right" style="font-size:9px;"></i>
-          </a>
+          {% if user.role == 'client' %}
+          <form method="POST" action="{{ url_for('admin_assign_trainer', user_id=user.id) }}" class="trainer-assign-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="trainer_id" class="trainer-assign-select">
+              <option value="">— Unassigned —</option>
+              {% for t in trainers %}
+              <option value="{{ t.id }}" {% if user.trainer_id == t.id %}selected{% endif %}>{{ t.name.split()[0] }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn-assign-save">Save</button>
+          </form>
           {% else %}
           <span class="trainerize-none">—</span>
           {% endif %}
