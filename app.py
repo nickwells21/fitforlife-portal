@@ -374,6 +374,11 @@ def dashboard():
             days_until_next = None
 
         purchased, completed, remaining = get_month_balance(current_user.id, month, year)
+        sessions_this_month = completed  # alias for template stat card
+        total_sessions = Session.query.filter(
+            Session.client_id == current_user.id,
+            Session.status == 'completed'
+        ).count()
         month_dots = get_month_session_dots(current_user.id, month, year)
         week_days = get_week_sessions(current_user.id)
         streak = get_session_streak(current_user.id)
@@ -414,6 +419,8 @@ def dashboard():
             purchased=purchased,
             completed=completed,
             remaining=remaining,
+            sessions_this_month=sessions_this_month,
+            total_sessions=total_sessions,
             month_dots=month_dots,
             week_days=week_days,
             streak=streak,
