@@ -108,6 +108,115 @@
   margin-bottom: 2px;
 }
 
+/* ── Repeat section ─────────────────────────────────────────── */
+.repeat-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.repeat-toggle-row:hover { border-color: var(--border-mid); }
+.repeat-toggle-row input[type="checkbox"] {
+  width: 15px; height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer; flex-shrink: 0;
+}
+.repeat-toggle-label {
+  font-size: 13px; color: var(--text-soft);
+  cursor: pointer; margin: 0; flex: 1;
+}
+.repeat-toggle-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.repeat-panel {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.875rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+  margin-top: -4px;
+}
+.repeat-panel.open { display: flex; }
+
+.repeat-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.375rem;
+}
+
+/* Day pills */
+.day-pills {
+  display: flex;
+  gap: 0.3rem;
+}
+.day-pill {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1.5px solid var(--border-mid);
+  transition: all 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+.day-pill:hover { border-color: var(--accent); color: var(--text); }
+.day-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(30,157,241,0.35);
+}
+
+/* Frequency pills (reuse dur-pill style) */
+.freq-pills {
+  display: flex; gap: 0.4rem;
+}
+
+/* Weeks input */
+.repeat-weeks-row {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.repeat-weeks-input {
+  width: 64px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+}
+.repeat-weeks-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.repeat-summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  min-height: 1.4em;
+}
+
 /* ── Submit button ──────────────────────────────────────────── */
 .btn-sf-submit {
   background: linear-gradient(135deg, #1e9df1, #0a7abf);
@@ -325,6 +434,61 @@
               onchange="checkConflict()">
           </div>
 
+          {% if not sess %}
+          <div style="grid-column: 1 / -1;">
+            <input type="hidden" name="repeat" id="repeatHidden" value="0">
+            <input type="hidden" name="repeat_days" id="repeatDaysHidden" value="">
+            <input type="hidden" name="repeat_frequency" id="repeatFreqHidden" value="1">
+            <input type="hidden" name="repeat_weeks" id="repeatWeeksHidden" value="4">
+
+            <!-- Toggle row -->
+            <label class="repeat-toggle-row" for="repeatToggle" style="border-radius: var(--radius-md);" id="repeatToggleRow">
+              <input type="checkbox" id="repeatToggle">
+              <span class="repeat-toggle-label"><i class="bi bi-arrow-repeat me-1"></i> Repeat this session</span>
+              <i class="bi bi-chevron-down repeat-toggle-icon" id="repeatChevron"></i>
+            </label>
+
+            <!-- Repeat panel -->
+            <div class="repeat-panel" id="repeatPanel">
+
+              <!-- Days of week -->
+              <div>
+                <div class="repeat-section-label">Days of the week</div>
+                <div class="day-pills" id="dayPills">
+                  <div class="day-pill" data-day="6" title="Sunday">S</div>
+                  <div class="day-pill" data-day="0" title="Monday">M</div>
+                  <div class="day-pill" data-day="1" title="Tuesday">T</div>
+                  <div class="day-pill" data-day="2" title="Wednesday">W</div>
+                  <div class="day-pill" data-day="3" title="Thursday">T</div>
+                  <div class="day-pill" data-day="4" title="Friday">F</div>
+                  <div class="day-pill" data-day="5" title="Saturday">S</div>
+                </div>
+              </div>
+
+              <!-- Frequency -->
+              <div>
+                <div class="repeat-section-label">Frequency</div>
+                <div class="freq-pills">
+                  <div class="dur-pill active" id="freq1" data-freq="1">Every week</div>
+                  <div class="dur-pill" id="freq2" data-freq="2">Every 2 weeks</div>
+                </div>
+              </div>
+
+              <!-- Duration -->
+              <div>
+                <div class="repeat-section-label">Duration</div>
+                <div class="repeat-weeks-row">
+                  <span style="font-size:13px; color:var(--text-soft);">For</span>
+                  <input type="number" class="repeat-weeks-input" id="repeatWeeksInput" min="1" max="52" value="4">
+                  <span style="font-size:13px; color:var(--text-soft);">weeks</span>
+                </div>
+                <div class="repeat-summary" id="repeatSummary"></div>
+              </div>
+
+            </div>
+          </div>
+          {% endif %}
+
           <div style="grid-column: 1 / -1;">
             <label class="form-label" for="notes">Notes <span style="color:var(--text-faint); font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></label>
             <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Any notes for this session…">{{ sess.notes or '' }}</textarea>
@@ -501,6 +665,97 @@ document.addEventListener('DOMContentLoaded', () => {
   initDurationPills();
   updateLocationBadge();
   {% if sess %}checkConflict();{% endif %}
+  {% if not sess %}initRepeat();{% endif %}
 });
+
+{% if not sess %}
+/* ── Repeat section ──────────────────────────────────────────── */
+function initRepeat() {
+  const toggle     = document.getElementById('repeatToggle');
+  const panel      = document.getElementById('repeatPanel');
+  const chevron    = document.getElementById('repeatChevron');
+  const hidden     = document.getElementById('repeatHidden');
+  const daysHidden = document.getElementById('repeatDaysHidden');
+  const freqHidden = document.getElementById('repeatFreqHidden');
+  const weeksHidden = document.getElementById('repeatWeeksHidden');
+  const weeksInput = document.getElementById('repeatWeeksInput');
+  const summary    = document.getElementById('repeatSummary');
+  const dayPills   = document.querySelectorAll('.day-pill');
+  const freqPills  = document.querySelectorAll('[data-freq]');
+  const toggleRow  = document.getElementById('repeatToggleRow');
+
+  let selectedDays = new Set();
+  let selectedFreq = 1;
+
+  // Toggle panel open/close
+  toggle.addEventListener('change', () => {
+    const on = toggle.checked;
+    hidden.value = on ? '1' : '0';
+    panel.classList.toggle('open', on);
+    chevron.className = on ? 'bi bi-chevron-up repeat-toggle-icon' : 'bi bi-chevron-down repeat-toggle-icon';
+    toggleRow.style.borderRadius = on
+      ? 'var(--radius-md) var(--radius-md) 0 0'
+      : 'var(--radius-md)';
+    if (on) autoSelectStartDay();
+    updateSummary();
+  });
+
+  // Day pill clicks
+  dayPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const d = parseInt(pill.dataset.day);
+      if (selectedDays.has(d)) { selectedDays.delete(d); pill.classList.remove('active'); }
+      else { selectedDays.add(d); pill.classList.add('active'); }
+      daysHidden.value = Array.from(selectedDays).join(',');
+      updateSummary();
+    });
+  });
+
+  // Frequency pill clicks
+  freqPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      freqPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedFreq = parseInt(pill.dataset.freq);
+      freqHidden.value = selectedFreq;
+      updateSummary();
+    });
+  });
+
+  // Weeks input
+  weeksInput.addEventListener('input', () => {
+    weeksHidden.value = weeksInput.value;
+    updateSummary();
+  });
+
+  // Auto-select the start date's day of week when date changes
+  document.getElementById('scheduled_at').addEventListener('change', () => {
+    if (toggle.checked) autoSelectStartDay();
+  });
+
+  function autoSelectStartDay() {
+    const val = document.getElementById('scheduled_at').value;
+    if (!val) return;
+    const d = new Date(val);
+    // JS getDay(): 0=Sun..6=Sat → convert to Python weekday: Mon=0..Sun=6
+    const jsDay = d.getDay();
+    const pyDay = jsDay === 0 ? 6 : jsDay - 1;
+    const pill = document.querySelector(`.day-pill[data-day="${pyDay}"]`);
+    if (pill && !selectedDays.has(pyDay)) {
+      pill.click();
+    }
+  }
+
+  function updateSummary() {
+    if (!toggle.checked || selectedDays.size === 0) { summary.textContent = ''; return; }
+    const dayNames = { 0:'Mon', 1:'Tue', 2:'Wed', 3:'Thu', 4:'Fri', 5:'Sat', 6:'Sun' };
+    const days = Array.from(selectedDays).sort().map(d => dayNames[d]).join(', ');
+    const freq = selectedFreq === 1 ? 'weekly' : 'every 2 weeks';
+    const weeks = parseInt(weeksInput.value) || 4;
+    const count = selectedDays.size * weeks;
+    summary.textContent = `${days} — ${freq} for ${weeks} weeks (${count} sessions)`;
+  }
+}
+{% endif %}
 </script>
 {% endblock %}

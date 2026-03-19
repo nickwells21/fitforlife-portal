@@ -649,29 +649,77 @@ def new_session():
         duration = int(request.form.get('duration', 60))
         notes = request.form.get('notes', '').strip()
 
-        end_dt = scheduled_at + timedelta(minutes=duration)
-        conflicts = check_conflict(trainer_id, location_id, scheduled_at, end_dt)
+        # ── Repeat logic ───────────────────────────────────────────────
+        repeat_on = request.form.get('repeat') == '1'
+        if repeat_on:
+            repeat_days = [int(d) for d in request.form.getlist('repeat_days')]
+            repeat_frequency = int(request.form.get('repeat_frequency', 1))
+            repeat_weeks = min(int(request.form.get('repeat_weeks', 4)), 52)
 
-        if conflicts:
-            msgs = []
-            for c in conflicts:
-                t = 'Trainer' if c.trainer_id == trainer_id else 'Location'
-                msgs.append(f'{t} conflict: {c.trainer.name} + {c.client.name} at {c.location.name} ({c.scheduled_at.strftime("%I:%M %p")})')
-            flash('Conflict detected — ' + '; '.join(msgs), 'danger')
+            if not repeat_days:
+                flash('Select at least one day to repeat on.', 'danger')
+            else:
+                # Build list of all datetimes to create
+                session_times = []
+                session_time = scheduled_at.time()
+                for day_num in repeat_days:
+                    days_ahead = (day_num - scheduled_at.weekday()) % 7
+                    first_date = scheduled_at.date() + timedelta(days=days_ahead)
+                    for week in range(repeat_weeks):
+                        dt = datetime.combine(first_date + timedelta(weeks=week * repeat_frequency), session_time)
+                        session_times.append(dt)
+                session_times.sort()
+
+                created, skipped = 0, []
+                for dt in session_times:
+                    end_dt = dt + timedelta(minutes=duration)
+                    if check_conflict(trainer_id, location_id, dt, end_dt):
+                        skipped.append(dt.strftime('%a %b %-d %-I:%M %p'))
+                    else:
+                        db.session.add(Session(
+                            trainer_id=trainer_id,
+                            client_id=client_id,
+                            location_id=location_id,
+                            scheduled_at=dt,
+                            duration=duration,
+                            notes=notes,
+                            created_by_id=current_user.id
+                        ))
+                        created += 1
+                db.session.commit()
+                if created:
+                    msg = f'{created} session{"s" if created != 1 else ""} booked!'
+                    if skipped:
+                        msg += f' {len(skipped)} skipped due to conflicts: {", ".join(skipped[:3])}{"…" if len(skipped) > 3 else ""}.'
+                    flash(msg, 'success')
+                else:
+                    flash('No sessions created — all slots had conflicts.', 'danger')
+                return redirect(url_for('calendar_view'))
         else:
-            sess = Session(
-                trainer_id=trainer_id,
-                client_id=client_id,
-                location_id=location_id,
-                scheduled_at=scheduled_at,
-                duration=duration,
-                notes=notes,
-                created_by_id=current_user.id
-            )
-            db.session.add(sess)
-            db.session.commit()
-            flash('Session booked!', 'success')
-            return redirect(url_for('calendar_view'))
+            # ── Single session ─────────────────────────────────────────
+            end_dt = scheduled_at + timedelta(minutes=duration)
+            conflicts = check_conflict(trainer_id, location_id, scheduled_at, end_dt)
+
+            if conflicts:
+                msgs = []
+                for c in conflicts:
+                    t = 'Trainer' if c.trainer_id == trainer_id else 'Location'
+                    msgs.append(f'{t} conflict: {c.trainer.name} + {c.client.name} at {c.location.name} ({c.scheduled_at.strftime("%I:%M %p")})')
+                flash('Conflict detected — ' + '; '.join(msgs), 'danger')
+            else:
+                sess = Session(
+                    trainer_id=trainer_id,
+                    client_id=client_id,
+                    location_id=location_id,
+                    scheduled_at=scheduled_at,
+                    duration=duration,
+                    notes=notes,
+                    created_by_id=current_user.id
+                )
+                db.session.add(sess)
+                db.session.commit()
+                flash('Session booked!', 'success')
+                return redirect(url_for('calendar_view'))
 
     prefill_date = request.args.get('date', '')
     prefill_trainer = request.args.get('trainer_id', str(current_user.id) if current_user.role == 'trainer' else '')
