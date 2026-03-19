@@ -324,7 +324,7 @@
         </a>
         {% else %}
         <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint == 'calendar_view' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i><span class="nav-label"> Calendar</span><span class="nav-notif-dot" aria-hidden="true"></span>
+          <i class="bi bi-calendar3"></i><span class="nav-label"> Calendar</span>
         </a>
         {% endif %}
       </li>
@@ -383,6 +383,12 @@
         </a>
       </li>
       {% endif %}
+
+      <li style="margin-top:auto; padding-top:0.5rem;">
+        <a href="https://fitforlife.com" target="_blank" rel="noopener" class="nav-link" style="color:var(--text-muted);">
+          <i class="bi bi-house-door"></i><span class="nav-label"> Main Website</span>
+        </a>
+      </li>
     </ul>
 
     <div class="sidebar-footer">
