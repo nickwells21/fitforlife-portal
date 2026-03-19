@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% block title %}Training Groups — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+:root {
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+}
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.group-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.group-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-card-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.group-card-trainer {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.group-card-body { padding: 0.75rem 1.1rem 1rem; }
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.2);
+  color: var(--text-soft);
+  margin: 0.15rem;
+}
+
+.group-actions {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0 1.1rem 0.875rem;
+}
+
+.btn-edit-group {
+  flex: 1;
+  padding: 0.375rem 0;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-soft);
+  border: 1px solid var(--border-mid);
+  transition: all 0.15s;
+  text-align: center;
+}
+.btn-edit-group:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-delete-group {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.btn-delete-group:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+
+/* Modal overrides */
+.modal-content {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+}
+.modal-header { border-bottom: 1px solid var(--border); padding: 1rem 1.25rem; }
+.modal-footer { border-top: 1px solid var(--border); padding: 0.75rem 1.25rem; }
+.modal-body { padding: 1.25rem; }
+.modal-title { font-size: 0.9rem; font-weight: 700; }
+.btn-close { filter: invert(1) opacity(0.5); }
+
+.client-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.375rem;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.client-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.625rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.12s;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+.client-check-item:hover { border-color: var(--border-mid); }
+.client-check-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+}
+
+.form-label-sm {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+@media (max-width: 575px) {
+  .group-grid { grid-template-columns: 1fr; }
+  .client-check-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-subtitle" style="margin-bottom:2px;">Admin-controlled · Trainers cannot modify</div>
+    <h1 class="page-title">Training Groups</h1>
+  </div>
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newGroupModal"
+          style="background:linear-gradient(135deg,#1e9df1,#69c0f5); border:none; font-size:13px; font-weight:600; border-radius:8px; padding:0.5rem 1.1rem;">
+    <i class="bi bi-plus-circle me-1"></i> New Group
+  </button>
+</div>
+
+{% if groups %}
+<div class="group-grid">
+  {% for g in groups %}
+  <div class="group-card">
+    <div class="group-card-header">
+      <div>
+        <div class="group-card-name">{{ g.name }}</div>
+        <div class="group-card-trainer">
+          {% if g.trainer %}
+          <i class="bi bi-person-fill me-1" style="color:var(--accent);"></i>{{ g.trainer.name }}
+          {% else %}
+          <span style="color:var(--text-muted);">Unassigned</span>
+          {% endif %}
+        </div>
+      </div>
+      <span style="font-size:0.7rem; font-weight:700; background:rgba(245,158,11,0.12); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); padding:0.2rem 0.6rem; border-radius:99px;">
+        {{ g.memberships.count() }} members
+      </span>
+    </div>
+
+    <div class="group-card-body">
+      {% set members = g.client_list %}
+      {% if members %}
+        {% for member in members %}
+        {% if member %}
+        <span class="member-chip">
+          <i class="bi bi-person" style="font-size:0.7rem; color:#f59e0b;"></i>
+          {{ member.name }}
+        </span>
+        {% endif %}
+        {% endfor %}
+      {% else %}
+        <span style="font-size:0.78rem; color:var(--text-muted);">No members yet</span>
+      {% endif %}
+    </div>
+
+    <div class="group-actions">
+      <button type="button" class="btn-edit-group"
+              onclick="openEditModal({{ g.id }}, '{{ g.name | e }}', {{ g.trainer_id or 'null' }}, [{{ g.client_list | map(attribute='id') | select | join(',') }}])"
+              data-bs-toggle="modal" data-bs-target="#editGroupModal">
+        <i class="bi bi-pencil me-1"></i> Edit
+      </button>
+      <form method="POST" action="{{ url_for('admin_delete_group', group_id=g.id) }}"
+            onsubmit="return confirm('Delete {{ g.name }}? This cannot be undone.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-delete-group"><i class="bi bi-trash"></i></button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="ffl-card" style="text-align:center; padding:3rem 2rem; color:var(--text-muted);">
+  <i class="bi bi-people" style="font-size:2.5rem; opacity:0.3; display:block; margin-bottom:0.75rem;"></i>
+  <div style="font-size:0.9rem; font-weight:600; margin-bottom:0.3rem;">No groups yet</div>
+  <div style="font-size:0.8rem;">Create your first training group to organize clients.</div>
+</div>
+{% endif %}
+
+<!-- New Group Modal -->
+<div class="modal fade" id="newGroupModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin_new_group') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2" style="color:var(--accent);"></i>New Training Group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label class="form-label-sm">Group Name</label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. Group 1"
+                   style="background:var(--bg-surface); border:1px solid var(--border-mid); color:var(--text); font-size:13px;">
+          </div>
+          <div>
+            <label class="form-label-sm">Assign Trainer</label>
+            <select name="trainer_id" class="form-select"
+                    style="background:var(--bg-surface); border:1px solid var(--border-mid); color:var(--text); font-size:13px;">
+              <option value="">— Unassigned —</option>
+              {% for t in trainers %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label-sm">Members</label>
+            <div class="client-check-grid">
+              {% for c in clients %}
+              <label class="client-check-item">
+                <input type="checkbox" name="client_ids" value="{{ c.id }}">
+                {{ c.name }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm"
+                  style="background:linear-gradient(135deg,#1e9df1,#69c0f5); border:none; color:#fff; font-weight:600; padding:0.4rem 1rem; border-radius:6px;">
+            Create Group
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal fade" id="editGroupModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editGroupForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2" style="color:var(--accent);"></i>Edit Group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+          <div>
+            <label class="form-label-sm">Group Name</label>
+            <input type="text" name="name" id="editGroupName" class="form-control" required
+                   style="background:var(--bg-surface); border:1px solid var(--border-mid); color:var(--text); font-size:13px;">
+          </div>
+          <div>
+            <label class="form-label-sm">Assign Trainer</label>
+            <select name="trainer_id" id="editGroupTrainer" class="form-select"
+                    style="background:var(--bg-surface); border:1px solid var(--border-mid); color:var(--text); font-size:13px;">
+              <option value="">— Unassigned —</option>
+              {% for t in trainers %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label-sm">Members</label>
+            <div class="client-check-grid" id="editClientChecks">
+              {% for c in clients %}
+              <label class="client-check-item">
+                <input type="checkbox" name="client_ids" value="{{ c.id }}" class="edit-client-cb">
+                {{ c.name }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm"
+                  style="background:linear-gradient(135deg,#1e9df1,#69c0f5); border:none; color:#fff; font-weight:600; padding:0.4rem 1rem; border-radius:6px;">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditModal(groupId, name, trainerId, memberIds) {
+  document.getElementById('editGroupForm').action = `/admin/groups/${groupId}/edit`;
+  document.getElementById('editGroupName').value = name;
+
+  const trainerSel = document.getElementById('editGroupTrainer');
+  trainerSel.value = trainerId || '';
+
+  document.querySelectorAll('.edit-client-cb').forEach(cb => {
+    cb.checked = memberIds.includes(parseInt(cb.value));
+  });
+}
+</script>
+{% endblock %}

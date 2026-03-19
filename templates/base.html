@@ -286,6 +286,11 @@
           <i class="bi bi-star"></i><span class="nav-label"> Events</span>
         </a>
       </li>
+      <li>
+        <a href="{{ url_for('admin_groups') }}" class="nav-link {% if 'group' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-people-fill"></i><span class="nav-label"> Groups</span>
+        </a>
+      </li>
       {% endif %}
 
     </ul>

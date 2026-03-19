@@ -77,6 +77,32 @@ class Location(db.Model):
     sessions = db.relationship('Session', backref='location', lazy='dynamic')
 
 
+class TrainingGroup(db.Model):
+    __tablename__ = 'training_groups'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    memberships = db.relationship('GroupMembership', backref='group', lazy='dynamic',
+                                  cascade='all, delete-orphan')
+    trainer = db.relationship('User', foreign_keys='TrainingGroup.trainer_id')
+
+    @property
+    def client_list(self):
+        return [db.session.get(User, m.client_id) for m in self.memberships.all()]
+
+
+class GroupMembership(db.Model):
+    __tablename__ = 'group_memberships'
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('training_groups.id'), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    __table_args__ = (db.UniqueConstraint('group_id', 'client_id', name='uq_group_client'),)
+
+    client = db.relationship('User', foreign_keys='GroupMembership.client_id')
+
+
 class Session(db.Model):
     __tablename__ = 'sessions'
     id = db.Column(db.Integer, primary_key=True)
@@ -87,8 +113,11 @@ class Session(db.Model):
     duration = db.Column(db.Integer, default=60)  # minutes
     status = db.Column(db.String(20), default='scheduled')  # scheduled, completed, missed, cancelled
     notes = db.Column(db.Text)
+    group_id = db.Column(db.Integer, db.ForeignKey('training_groups.id'), nullable=True)
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    training_group = db.relationship('TrainingGroup', foreign_keys='Session.group_id')
 
     @property
     def end_time(self):
@@ -479,10 +508,13 @@ def dashboard():
         # Only show clients assigned to this trainer
         all_clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
 
+        my_groups = TrainingGroup.query.filter_by(trainer_id=current_user.id).order_by(TrainingGroup.name).all()
+
         return render_template('dashboard_trainer.html',
             upcoming=upcoming,
             today_sessions=today_sessions,
             all_clients=all_clients,
+            my_groups=my_groups,
             month_name=month_name[month]
         )
 
@@ -592,6 +624,8 @@ def api_sessions():
                 'status': s.status,
                 'notes': s.notes or '',
                 'session_id': s.id,
+                'group_id': s.group_id,
+                'group_name': s.training_group.name if s.group_id else None,
             }
         })
     return jsonify(events)
@@ -637,88 +671,87 @@ def new_session():
     trainers = User.query.filter_by(role='trainer', is_active=True).all()
     if current_user.role == 'trainer':
         clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
+        booking_groups = TrainingGroup.query.filter_by(trainer_id=current_user.id).order_by(TrainingGroup.name).all()
     else:
         clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+        booking_groups = TrainingGroup.query.order_by(TrainingGroup.name).all()
     locations = Location.query.all()
 
     if request.method == 'POST':
         trainer_id = int(request.form['trainer_id'])
-        client_id = int(request.form['client_id'])
         location_id = int(request.form['location_id'])
         scheduled_at = datetime.fromisoformat(request.form['scheduled_at'])
         duration = int(request.form.get('duration', 60))
         notes = request.form.get('notes', '').strip()
 
-        # ── Repeat logic ───────────────────────────────────────────────
+        # ── Determine clients ──────────────────────────────────────────
+        booking_type = request.form.get('booking_type', 'individual')
+        sess_group_id = None
+        if booking_type == 'group' and request.form.get('group_id'):
+            grp = TrainingGroup.query.get_or_404(int(request.form['group_id']))
+            client_ids = [m.client_id for m in grp.memberships.all()]
+            sess_group_id = grp.id
+            if not client_ids:
+                flash('That group has no members.', 'danger')
+                client_ids = []
+        else:
+            cid = request.form.get('client_id')
+            client_ids = [int(cid)] if cid else []
+
+        # ── Determine session times ────────────────────────────────────
         repeat_on = request.form.get('repeat') == '1'
         if repeat_on:
             repeat_days = [int(d) for d in request.form.getlist('repeat_days')]
             repeat_frequency = int(request.form.get('repeat_frequency', 1))
             repeat_weeks = min(int(request.form.get('repeat_weeks', 4)), 52)
-
             if not repeat_days:
                 flash('Select at least one day to repeat on.', 'danger')
+                session_times = []
             else:
-                # Build list of all datetimes to create
                 session_times = []
                 session_time = scheduled_at.time()
                 for day_num in repeat_days:
                     days_ahead = (day_num - scheduled_at.weekday()) % 7
                     first_date = scheduled_at.date() + timedelta(days=days_ahead)
                     for week in range(repeat_weeks):
-                        dt = datetime.combine(first_date + timedelta(weeks=week * repeat_frequency), session_time)
-                        session_times.append(dt)
+                        session_times.append(datetime.combine(
+                            first_date + timedelta(weeks=week * repeat_frequency), session_time))
                 session_times.sort()
+        else:
+            session_times = [scheduled_at]
 
-                created, skipped = 0, []
-                for dt in session_times:
-                    end_dt = dt + timedelta(minutes=duration)
-                    if check_conflict(trainer_id, location_id, dt, end_dt):
-                        skipped.append(dt.strftime('%a %b %-d %-I:%M %p'))
-                    else:
+        # ── Create sessions ────────────────────────────────────────────
+        if client_ids and session_times:
+            created, skipped = 0, []
+            for dt in session_times:
+                end_dt = dt + timedelta(minutes=duration)
+                if check_conflict(trainer_id, location_id, dt, end_dt):
+                    skipped.append(dt.strftime('%a %b %-d'))
+                else:
+                    for cid in client_ids:
                         db.session.add(Session(
                             trainer_id=trainer_id,
-                            client_id=client_id,
+                            client_id=cid,
                             location_id=location_id,
                             scheduled_at=dt,
                             duration=duration,
                             notes=notes,
+                            group_id=sess_group_id,
                             created_by_id=current_user.id
                         ))
                         created += 1
-                db.session.commit()
-                if created:
+            db.session.commit()
+
+            if created == 0:
+                flash('No sessions created — all time slots had conflicts.', 'danger')
+            else:
+                if created == 1 and len(session_times) == 1:
+                    flash('Session booked!', 'success')
+                else:
                     msg = f'{created} session{"s" if created != 1 else ""} booked!'
                     if skipped:
-                        msg += f' {len(skipped)} skipped due to conflicts: {", ".join(skipped[:3])}{"…" if len(skipped) > 3 else ""}.'
+                        msg += f' {len(skipped)} slot{"s" if len(skipped) > 1 else ""} skipped due to conflicts: {", ".join(skipped[:4])}{"…" if len(skipped) > 4 else ""}.'
                     flash(msg, 'success')
-                else:
-                    flash('No sessions created — all slots had conflicts.', 'danger')
-                return redirect(url_for('calendar_view'))
-        else:
-            # ── Single session ─────────────────────────────────────────
-            end_dt = scheduled_at + timedelta(minutes=duration)
-            conflicts = check_conflict(trainer_id, location_id, scheduled_at, end_dt)
-
-            if conflicts:
-                msgs = []
-                for c in conflicts:
-                    t = 'Trainer' if c.trainer_id == trainer_id else 'Location'
-                    msgs.append(f'{t} conflict: {c.trainer.name} + {c.client.name} at {c.location.name} ({c.scheduled_at.strftime("%I:%M %p")})')
-                flash('Conflict detected — ' + '; '.join(msgs), 'danger')
-            else:
-                sess = Session(
-                    trainer_id=trainer_id,
-                    client_id=client_id,
-                    location_id=location_id,
-                    scheduled_at=scheduled_at,
-                    duration=duration,
-                    notes=notes,
-                    created_by_id=current_user.id
-                )
-                db.session.add(sess)
-                db.session.commit()
-                flash('Session booked!', 'success')
                 return redirect(url_for('calendar_view'))
 
     prefill_date = request.args.get('date', '')
@@ -729,6 +762,7 @@ def new_session():
         trainers=trainers,
         clients=clients,
         locations=locations,
+        booking_groups=booking_groups,
         prefill_date=prefill_date,
         prefill_trainer=prefill_trainer
     )
@@ -857,6 +891,62 @@ def api_notifications_unread_count():
         return jsonify({'count': 0})
     count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
     return jsonify({'count': count})
+
+
+# ─── Admin Groups ─────────────────────────────────────────────────────────────
+
+@app.route('/admin/groups')
+@admin_required
+def admin_groups():
+    groups = TrainingGroup.query.order_by(TrainingGroup.name).all()
+    trainers = User.query.filter_by(role='trainer', is_active=True).order_by(User.name).all()
+    clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    return render_template('admin_groups.html', groups=groups, trainers=trainers, clients=clients)
+
+
+@app.route('/admin/groups/new', methods=['POST'])
+@admin_required
+def admin_new_group():
+    name = request.form.get('name', '').strip()
+    tid = request.form.get('trainer_id') or None
+    trainer_id = int(tid) if tid else None
+    if not name:
+        flash('Group name is required.', 'danger')
+        return redirect(url_for('admin_groups'))
+    group = TrainingGroup(name=name, trainer_id=trainer_id)
+    db.session.add(group)
+    db.session.flush()
+    for cid in request.form.getlist('client_ids'):
+        db.session.add(GroupMembership(group_id=group.id, client_id=int(cid)))
+    db.session.commit()
+    flash(f'Group "{name}" created.', 'success')
+    return redirect(url_for('admin_groups'))
+
+
+@app.route('/admin/groups/<int:group_id>/edit', methods=['POST'])
+@admin_required
+def admin_edit_group(group_id):
+    group = TrainingGroup.query.get_or_404(group_id)
+    group.name = request.form.get('name', group.name).strip()
+    tid = request.form.get('trainer_id') or None
+    group.trainer_id = int(tid) if tid else None
+    GroupMembership.query.filter_by(group_id=group.id).delete()
+    for cid in request.form.getlist('client_ids'):
+        db.session.add(GroupMembership(group_id=group.id, client_id=int(cid)))
+    db.session.commit()
+    flash(f'Group "{group.name}" updated.', 'success')
+    return redirect(url_for('admin_groups'))
+
+
+@app.route('/admin/groups/<int:group_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_group(group_id):
+    group = TrainingGroup.query.get_or_404(group_id)
+    name = group.name
+    db.session.delete(group)
+    db.session.commit()
+    flash(f'Group "{name}" deleted.', 'success')
+    return redirect(url_for('admin_groups'))
 
 
 # ─── Clients ─────────────────────────────────────────────────────────────────

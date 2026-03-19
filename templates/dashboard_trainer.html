@@ -640,6 +640,44 @@
 
 </div>
 
+<!-- Training Groups -->
+{% if my_groups %}
+<div class="premium-card" style="margin-top:0.875rem;">
+  <div class="premium-card-header">
+    <span class="premium-card-title">
+      <i class="bi bi-people-fill me-1" style="color:#f59e0b;"></i>
+      Training Groups
+    </span>
+    <a href="{{ url_for('new_session') }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; padding:0.25rem 0.65rem;">
+      Book <i class="bi bi-plus ms-1"></i>
+    </a>
+  </div>
+  <div class="premium-card-body" style="padding:0.75rem 1.35rem;">
+    <div style="display:flex; flex-direction:column; gap:0.625rem;">
+      {% for g in my_groups %}
+      <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.18); border-radius:var(--radius-md); padding:0.75rem 1rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.45rem;">
+          <span style="font-size:0.8rem; font-weight:700; color:var(--text);">{{ g.name }}</span>
+          <span style="font-size:0.68rem; color:#f59e0b; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.2); padding:0.15rem 0.55rem; border-radius:99px; font-weight:600;">
+            {{ g.memberships.count() }} members
+          </span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+          {% for member in g.client_list %}
+          {% if member %}
+          <span style="font-size:0.7rem; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-soft); padding:0.15rem 0.55rem; border-radius:99px;">
+            {{ member.name.split()[0] }}
+          </span>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Client Roster -->
 <div class="premium-card" style="margin-top:0.875rem;">
   <div class="premium-card-header">

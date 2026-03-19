@@ -847,6 +847,10 @@
       <i class="bi bi-clock" aria-hidden="true"></i>
       <span id="mDuration"></span>
     </div>
+    <div id="mGroupRow" style="display:none; align-items:center; gap:0.5rem; font-size:0.75rem; color:var(--text-soft);">
+      <i class="bi bi-people-fill" style="color:#f59e0b; font-size:0.8rem;"></i>
+      <span id="mGroupName"></span>
+    </div>
     <div id="mNotes" class="modal-detail-row" style="display:none;">
       <i class="bi bi-chat-left-text" aria-hidden="true"></i>
       <span id="mNotesText"></span>
@@ -1076,7 +1080,8 @@
 
     const textEl = document.createElement('span');
     textEl.className = 'mcal-chip-text';
-    textEl.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr;
+    const groupLabel = (s.extendedProps && s.extendedProps.group_name) ? ' · Group' : '';
+    textEl.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}${groupLabel}` : timeStr;
 
     chip.appendChild(dotEl);
     chip.appendChild(textEl);
@@ -1110,7 +1115,16 @@
     });
     document.getElementById('mTrainer').textContent  = p.trainer   || '—';
     document.getElementById('mLocation').textContent = p.location  || '—';
-    document.getElementById('mDuration').textContent = `${mins} min session`;
+    document.getElementById('mDuration').textContent = `${mins} min ${p.group_name ? 'group ' : ''}session`;
+    const mGroupRow = document.getElementById('mGroupRow');
+    if (mGroupRow) {
+      if (p.group_name) {
+        mGroupRow.style.display = 'flex';
+        document.getElementById('mGroupName').textContent = p.group_name;
+      } else {
+        mGroupRow.style.display = 'none';
+      }
+    }
 
     const notesRow = document.getElementById('mNotes');
     if (p.notes) {

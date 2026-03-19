@@ -346,6 +346,30 @@
   /* Location badge */
   #locationBadge { font-size: 11px; }
 }
+
+/* ── Booking type toggle ─────────────────────────────────────── */
+.booking-type-btn {
+  flex: 1;
+  padding: 0.45rem 0.875rem;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-mid);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.booking-type-btn:hover { color: var(--text); border-color: var(--accent); }
+.booking-type-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
 </style>
 {% endblock %}
 
@@ -383,15 +407,43 @@
           </div>
 
           <div>
-            <label class="form-label" for="client_id">Client</label>
-            <select name="client_id" id="client_id" class="form-select" required>
-              <option value="">Select client…</option>
-              {% for c in clients %}
-              <option value="{{ c.id }}" {% if sess and sess.client_id == c.id %}selected{% endif %}>
-                {{ c.name }}
-              </option>
-              {% endfor %}
-            </select>
+            <input type="hidden" name="booking_type" id="bookingTypeHidden" value="individual">
+            {% if not sess and booking_groups %}
+            <div style="display:flex; gap:0.4rem; margin-bottom:0.5rem;">
+              <button type="button" class="booking-type-btn active" id="btnIndividual" onclick="setBookingType('individual')">
+                <i class="bi bi-person-fill"></i> Individual
+              </button>
+              <button type="button" class="booking-type-btn" id="btnGroup" onclick="setBookingType('group')">
+                <i class="bi bi-people-fill"></i> Group
+              </button>
+            </div>
+            {% endif %}
+
+            <div id="clientSelectWrap">
+              <label class="form-label" for="client_id">Client</label>
+              <select name="client_id" id="client_id" class="form-select" required>
+                <option value="">Select client…</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {% if sess and sess.client_id == c.id %}selected{% endif %}>
+                  {{ c.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            {% if not sess and booking_groups %}
+            <div id="groupSelectWrap" style="display:none;">
+              <label class="form-label" for="group_id">Training Group</label>
+              <select name="group_id" id="group_id" class="form-select">
+                <option value="">Select group…</option>
+                {% for g in booking_groups %}
+                <option value="{{ g.id }}">
+                  {{ g.name }} ({{ g.memberships.count() }} members: {{ g.client_list | map(attribute='name') | map('truncate', 12, True, '') | join(', ') }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
           </div>
 
           <div>
@@ -667,6 +719,28 @@ document.addEventListener('DOMContentLoaded', () => {
   {% if sess %}checkConflict();{% endif %}
   {% if not sess %}initRepeat();{% endif %}
 });
+
+function setBookingType(type) {
+  document.getElementById('bookingTypeHidden').value = type;
+  const clientWrap = document.getElementById('clientSelectWrap');
+  const groupWrap  = document.getElementById('groupSelectWrap');
+  const clientSel  = document.getElementById('client_id');
+  const btnInd     = document.getElementById('btnIndividual');
+  const btnGrp     = document.getElementById('btnGroup');
+  if (type === 'group') {
+    clientWrap.style.display = 'none';
+    if (groupWrap) groupWrap.style.display = 'block';
+    if (clientSel) clientSel.removeAttribute('required');
+    if (btnInd) btnInd.classList.remove('active');
+    if (btnGrp) btnGrp.classList.add('active');
+  } else {
+    clientWrap.style.display = 'block';
+    if (groupWrap) groupWrap.style.display = 'none';
+    if (clientSel) clientSel.setAttribute('required', '');
+    if (btnInd) btnInd.classList.add('active');
+    if (btnGrp) btnGrp.classList.remove('active');
+  }
+}
 
 {% if not sess %}
 /* ── Repeat section ──────────────────────────────────────────── */
