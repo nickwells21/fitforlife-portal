@@ -1122,6 +1122,15 @@ def api_messages_unread_count():
     return jsonify({'count': count})
 
 
+@app.route('/chat')
+@login_required
+def chat():
+    """Full-screen chat page for clients."""
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    return render_template('chat.html')
+
+
 @app.route('/messages')
 @login_required
 def messages_inbox():

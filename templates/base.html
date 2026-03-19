@@ -331,7 +331,7 @@
 
       {% if current_user.role == 'client' %}
       <li>
-        <a href="#" class="nav-link" onclick="event.preventDefault(); toggleChatWidget();" id="sidebarChatLink">
+        <a href="{{ url_for('chat') }}" class="nav-link {% if request.endpoint == 'chat' %}active{% endif %}">
           <i class="bi bi-chat-dots"></i><span class="nav-label"> Chat</span>
           <span class="msg-unread-badge" id="chatWidgetBadgeSidebar" style="display:none;"></span>
         </a>
@@ -532,17 +532,14 @@ function toggleChatWidget() {
   widgetOpen = !widgetOpen;
   const panel = document.getElementById('chatWidgetPanel');
   const icon = document.getElementById('chatToggleIcon');
-  const sidebarLink = document.getElementById('sidebarChatLink');
   if (widgetOpen) {
     panel.classList.add('open');
     icon.className = 'bi bi-x-lg';
-    if (sidebarLink) sidebarLink.classList.add('active');
     if (activeChatRecipientId) loadWidgetMessages(activeChatRecipientId);
     startWidgetPoll();
   } else {
     panel.classList.remove('open');
     icon.className = 'bi bi-chat-dots-fill';
-    if (sidebarLink) sidebarLink.classList.remove('active');
     stopWidgetPoll();
   }
 }

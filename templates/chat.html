@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  /* Full-screen chat overrides */
+  .content-area {
+    padding: 0 !important;
+    max-width: none !important;
+    height: calc(100dvh - 49px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Chat container ── */
+  .chat-full {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  /* ── Tab bar ── */
+  .chat-full-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px 0;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-full-tab {
+    padding: 8px 20px;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-full-tab:hover { color: var(--text); background: var(--bg-hover); }
+  .chat-full-tab.active {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--accent);
+  }
+
+  /* ── Recipient header ── */
+  .chat-full-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-full-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1.5px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 16px;
+    flex-shrink: 0;
+  }
+  .chat-full-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .chat-full-role {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .chat-full-online {
+    margin-left: auto;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  /* ── Messages area ── */
+  .chat-full-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+  }
+  .chat-full-messages::-webkit-scrollbar { width: 4px; }
+  .chat-full-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-full-messages::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+  /* Date separator */
+  .chat-date-sep {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 8px 0;
+    position: relative;
+  }
+  .chat-date-sep::before, .chat-date-sep::after {
+    content: '';
+    position: absolute;
+    top: 50%; width: calc(50% - 50px);
+    height: 1px; background: var(--border);
+  }
+  .chat-date-sep::before { left: 0; }
+  .chat-date-sep::after { right: 0; }
+
+  /* Message rows */
+  .chat-row { display: flex; align-items: flex-end; gap: 8px; max-width: 70%; }
+  .chat-row.sent { align-self: flex-end; flex-direction: row-reverse; }
+  .chat-row.recv { align-self: flex-start; }
+
+  .chat-row-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text-soft);
+    flex-shrink: 0;
+  }
+  .chat-row.sent .chat-row-avatar { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  .chat-bubble-wrap { display: flex; flex-direction: column; }
+  .chat-row.sent .chat-bubble-wrap { align-items: flex-end; }
+
+  .chat-bubble-full {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 100%;
+    word-break: break-word;
+  }
+  .chat-row.sent .chat-bubble-full {
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-row.recv .chat-bubble-full {
+    background: var(--bg-elevated);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .chat-bubble-time {
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 3px;
+    padding: 0 2px;
+  }
+
+  /* Empty state */
+  .chat-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 8px;
+    padding: 40px;
+    text-align: center;
+  }
+  .chat-empty i { font-size: 36px; opacity: 0.4; }
+  .chat-empty p { font-size: 13px; margin: 0; }
+
+  /* ── Input area ── */
+  .chat-full-input {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-full-textarea {
+    flex: 1;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 10px 14px;
+    resize: none;
+    outline: none;
+    min-height: 42px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-family: var(--font-sans);
+    line-height: 1.4;
+    transition: border-color 0.15s;
+  }
+  .chat-full-textarea:focus { border-color: var(--border-focus); }
+  .chat-full-textarea::placeholder { color: var(--text-faint); }
+  .chat-full-send {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--accent);
+    border: none; color: #fff; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .chat-full-send:hover { background: #0a7abf; transform: scale(1.05); }
+  .chat-full-send:active { transform: scale(0.95); }
+</style>
+
+<div class="chat-full">
+
+  <!-- Tab bar -->
+  <div class="chat-full-tabs">
+    {% set my_trainer = current_user.assigned_trainer %}
+    {% if my_trainer %}
+    <button class="chat-full-tab active" id="ftabTrainer"
+            onclick="switchFullTab('trainer', {{ my_trainer.id }}, '{{ my_trainer.name }}', 'Your Trainer')">
+      <i class="bi bi-person-fill"></i> {{ my_trainer.name.split()[0] }}
+    </button>
+    {% endif %}
+    <button class="chat-full-tab {% if not current_user.assigned_trainer %}active{% endif %}" id="ftabDirector"
+            onclick="switchFullTab('director', {{ admin_id }}, 'Nick Wells', 'Director')">
+      <i class="bi bi-star-fill"></i> Director
+    </button>
+  </div>
+
+  <!-- Header -->
+  <div class="chat-full-header">
+    <div class="chat-full-avatar" id="fullHeaderAvatar">
+      <i class="bi bi-person-fill"></i>
+    </div>
+    <div>
+      <div class="chat-full-name" id="fullHeaderName">
+        {% if current_user.assigned_trainer %}{{ current_user.assigned_trainer.name }}{% else %}Nick Wells{% endif %}
+      </div>
+      <div class="chat-full-role" id="fullHeaderRole">
+        {% if current_user.assigned_trainer %}Your Trainer{% else %}Director{% endif %}
+      </div>
+    </div>
+    <div class="chat-full-online" title="Available"></div>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-full-messages" id="fullMessages">
+    <div class="chat-empty" id="fullEmpty">
+      <i class="bi bi-chat-dots"></i>
+      <p>No messages yet.<br>Say hello!</p>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-full-input">
+    <textarea class="chat-full-textarea" id="fullInput"
+              placeholder="Type a message…" rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();fullSendMessage();}"></textarea>
+    <button class="chat-full-send" onclick="fullSendMessage()" title="Send">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ── Full-screen chat ────────────────────────────────────────────────────────
+const FULL_CURRENT_USER_ID = {{ current_user.id }};
+let fullRecipientId = {% if current_user.assigned_trainer %}{{ current_user.assigned_trainer.id }}{% else %}{{ admin_id }}{% endif %};
+let fullPollInterval = null;
+let fullLastMsgCount = 0;
+
+function switchFullTab(tab, recipientId, name, role) {
+  fullRecipientId = recipientId;
+  document.querySelectorAll('.chat-full-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById(tab === 'trainer' ? 'ftabTrainer' : 'ftabDirector');
+  if (el) el.classList.add('active');
+  document.getElementById('fullHeaderName').textContent = name;
+  document.getElementById('fullHeaderRole').textContent = role;
+  fullLastMsgCount = 0;
+  loadFullMessages();
+}
+
+function loadFullMessages() {
+  if (!fullRecipientId) return;
+  fetch(`/api/messages/conversation/${fullRecipientId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.messages.length === fullLastMsgCount) return;
+      fullLastMsgCount = data.messages.length;
+      renderFullMessages(data.messages);
+    })
+    .catch(() => {});
+}
+
+function renderFullMessages(messages) {
+  const area = document.getElementById('fullMessages');
+  const empty = document.getElementById('fullEmpty');
+  if (!messages.length) {
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  let html = '';
+  let lastDate = null;
+
+  messages.forEach(m => {
+    const d = new Date(m.created_at + 'Z');
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (dateStr !== lastDate) {
+      html += `<div class="chat-date-sep">${dateStr}</div>`;
+      lastDate = dateStr;
+    }
+    const isSent = m.sender_id === FULL_CURRENT_USER_ID;
+    const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const initials = (m.sender_name || '?').charAt(0).toUpperCase();
+    html += `
+      <div class="chat-row ${isSent ? 'sent' : 'recv'}">
+        <div class="chat-row-avatar">${initials}</div>
+        <div class="chat-bubble-wrap">
+          <div class="chat-bubble-full">${escFull(m.body)}</div>
+          <div class="chat-bubble-time">${timeStr}</div>
+        </div>
+      </div>`;
+  });
+
+  area.innerHTML = empty.outerHTML + html;
+  area.scrollTop = area.scrollHeight;
+}
+
+function escFull(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function fullSendMessage() {
+  const input = document.getElementById('fullInput');
+  const body = input.value.trim();
+  if (!body || !fullRecipientId) return;
+  input.value = '';
+  input.style.height = '';
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  fetch('/api/messages/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ recipient_id: fullRecipientId, body })
+  })
+  .then(r => r.json())
+  .then(() => { fullLastMsgCount = 0; loadFullMessages(); })
+  .catch(() => {});
+}
+
+// Auto-expand textarea
+document.getElementById('fullInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Poll every 5 seconds
+loadFullMessages();
+fullPollInterval = setInterval(loadFullMessages, 5000);
+</script>
+{% endblock %}
