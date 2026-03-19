@@ -320,7 +320,7 @@
       <li>
         {% if current_user.role == 'client' %}
         <a href="{{ url_for('client_calendar') }}" class="nav-link {% if request.endpoint == 'client_calendar' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i><span class="nav-label"> My Schedule</span><span class="nav-notif-dot" aria-hidden="true"></span>
+          <i class="bi bi-calendar3"></i><span class="nav-label"> My Schedule</span>
         </a>
         {% else %}
         <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint == 'calendar_view' %}active{% endif %}">
