@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Messages — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <h1 class="page-title">Messages</h1>
+  <p class="page-subtitle">Your conversations</p>
+</div>
+
+{% if not conversations %}
+<div class="ffl-card text-center" style="padding:3rem 2rem; color:var(--text-muted);">
+  <i class="bi bi-chat-dots" style="font-size:2.5rem; opacity:0.3; display:block; margin-bottom:1rem;"></i>
+  <div style="font-size:15px; font-weight:600;">No messages yet</div>
+  <div style="font-size:13px; margin-top:4px;">Conversations with clients will appear here</div>
+</div>
+{% endif %}
+
+<div class="msg-layout">
+  <!-- Conversation list -->
+  <div class="conv-list" id="convList">
+    {% for conv in conversations %}
+    <div class="conv-row {% if conv.unread > 0 %}has-unread{% endif %}"
+         onclick="openConversation({{ conv.partner.id }}, '{{ conv.partner.name }}', '{{ conv.partner.role }}')"
+         data-partner-id="{{ conv.partner.id }}">
+      <div class="conv-avatar">{{ conv.partner.name[0] }}</div>
+      <div class="conv-info">
+        <div class="conv-name">{{ conv.partner.name }}
+          {% if conv.unread > 0 %}
+          <span class="conv-badge">{{ conv.unread }}</span>
+          {% endif %}
+        </div>
+        <div class="conv-preview">{{ conv.last_msg.body[:60] + '…' if conv.last_msg and conv.last_msg.body|length > 60 else (conv.last_msg.body if conv.last_msg else '') }}</div>
+      </div>
+      <div class="conv-time">{{ conv.last_msg.created_at.strftime('%b %d') if conv.last_msg else '' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Chat panel -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-panel-empty" id="chatEmpty">
+      <i class="bi bi-chat-dots" style="font-size:2rem; opacity:0.2; display:block; margin-bottom:0.75rem;"></i>
+      <span style="color:var(--text-muted); font-size:13px;">Select a conversation</span>
+    </div>
+    <div class="chat-panel-inner" id="chatInner" style="display:none; flex-direction:column; height:100%;">
+      <div class="chat-panel-header" id="chatHeader">
+        <div class="chat-partner-avatar" id="chatAvatar"></div>
+        <div>
+          <div class="chat-partner-name" id="chatPartnerName"></div>
+          <div class="chat-partner-role" id="chatPartnerRole"></div>
+        </div>
+      </div>
+      <div class="chat-messages-area" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <textarea id="chatInputStaff" class="chat-textarea" placeholder="Type a message…" rows="1"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffSendMessage();}"></textarea>
+        <button class="chat-send-btn" onclick="staffSendMessage()">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.msg-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.25rem;
+  min-height: 520px;
+}
+.conv-list {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-y: auto;
+}
+.conv-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.conv-row:hover, .conv-row.active { background: var(--bg-elevated); }
+.conv-row:last-child { border-bottom: none; }
+.conv-avatar {
+  width: 40px; height: 40px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0;
+}
+.conv-info { flex: 1; min-width: 0; }
+.conv-name {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.conv-badge {
+  background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 999px; flex-shrink: 0;
+}
+.conv-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.conv-time { font-size: 11px; color: var(--text-faint); flex-shrink: 0; }
+.has-unread .conv-name { color: var(--accent); }
+
+.chat-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.chat-panel-empty { text-align: center; }
+.chat-panel-inner { display: flex; flex-direction: column; height: 100%; width: 100%; }
+.chat-panel-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-partner-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0;
+}
+.chat-partner-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.chat-partner-role { font-size: 11px; color: var(--text-muted); text-transform: capitalize; }
+.chat-messages-area {
+  flex: 1; overflow-y: auto; padding: 1.25rem;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.chat-input-area {
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 0.875rem 1rem;
+  border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.chat-textarea {
+  flex: 1; background: var(--bg-elevated); border: 1px solid var(--border-mid);
+  border-radius: 8px; color: var(--text); font-family: inherit; font-size: 13px;
+  padding: 0.625rem 0.875rem; resize: none; outline: none; line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.chat-textarea:focus { border-color: rgba(30,157,241,0.5); }
+.chat-send-btn {
+  width: 38px; height: 38px; border-radius: 8px;
+  background: var(--accent); border: none; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px; flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+.chat-send-btn:hover { background: #0a7abf; transform: scale(1.05); }
+
+@media (max-width: 768px) {
+  .msg-layout { grid-template-columns: 1fr; }
+  .chat-panel { min-height: 400px; }
+}
+</style>
+
+<script>
+let activeChatPartnerId = null;
+let activePollInterval = null;
+
+function renderMessages(msgs) {
+  const area = document.getElementById('chatMessages');
+  area.innerHTML = msgs.map(m => `
+    <div class="chat-msg ${m.is_mine ? 'chat-msg-sent' : 'chat-msg-recv'}">
+      <div class="chat-bubble">${escapeHtml(m.body)}</div>
+      <div class="chat-time">${m.created_at}</div>
+    </div>
+  `).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function openConversation(partnerId, partnerName, partnerRole) {
+  activeChatPartnerId = partnerId;
+  // Update UI
+  document.querySelectorAll('.conv-row').forEach(r => r.classList.remove('active'));
+  document.querySelector(`[data-partner-id="${partnerId}"]`)?.classList.add('active');
+  document.getElementById('chatEmpty').style.display = 'none';
+  const inner = document.getElementById('chatInner');
+  inner.style.display = 'flex';
+  document.getElementById('chatAvatar').textContent = partnerName[0];
+  document.getElementById('chatPartnerName').textContent = partnerName;
+  document.getElementById('chatPartnerRole').textContent = partnerRole;
+  // Load messages
+  await loadConversation(partnerId);
+  // Poll every 5s
+  if (activePollInterval) clearInterval(activePollInterval);
+  activePollInterval = setInterval(() => loadConversation(partnerId), 5000);
+}
+
+async function loadConversation(partnerId) {
+  const res = await fetch(`/api/messages/conversation/${partnerId}`);
+  const msgs = await res.json();
+  renderMessages(msgs);
+  // Update unread badge
+  const row = document.querySelector(`[data-partner-id="${partnerId}"]`);
+  if (row) {
+    row.classList.remove('has-unread');
+    const badge = row.querySelector('.conv-badge');
+    if (badge) badge.remove();
+  }
+}
+
+async function staffSendMessage() {
+  const input = document.getElementById('chatInputStaff');
+  const body = input.value.trim();
+  if (!body || !activeChatPartnerId) return;
+  input.value = '';
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  await fetch('/api/messages/send', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': csrfToken},
+    body: JSON.stringify({recipient_id: activeChatPartnerId, body})
+  });
+  await loadConversation(activeChatPartnerId);
+}
+</script>
+{% endblock %}

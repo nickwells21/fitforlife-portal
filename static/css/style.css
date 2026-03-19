@@ -994,6 +994,38 @@ textarea.form-control {
   line-height: 1;
 }
 
+/* ── Chat message bubbles ─────────────────────────────────────────────────── */
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+.chat-msg-sent { align-self: flex-end; align-items: flex-end; }
+.chat-msg-recv { align-self: flex-start; align-items: flex-start; }
+.chat-bubble {
+  padding: 0.5rem 0.875rem;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.chat-msg-sent .chat-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg-recv .chat-bubble {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.chat-time {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }

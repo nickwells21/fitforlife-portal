@@ -144,6 +144,19 @@ class Notification(db.Model):
     user = db.relationship('User', foreign_keys=[user_id])
 
 
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_messages', lazy='dynamic'))
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref=db.backref('received_messages', lazy='dynamic'))
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -169,6 +182,15 @@ def staff_required(f):
             abort(403)
         return f(*args, **kwargs)
     return decorated
+
+
+# ─── Template Context Processors ─────────────────────────────────────────────
+
+@app.context_processor
+def inject_admin_id():
+    """Make admin_id available in all templates."""
+    admin = User.query.filter_by(role='admin', is_active=True).first()
+    return {'admin_id': admin.id if admin else 1}
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1036,6 +1058,95 @@ def delete_event(event_id):
     db.session.commit()
     flash('Event deleted.', 'success')
     return redirect(url_for('admin_events'))
+
+
+# ─── Messages ─────────────────────────────────────────────────────────────────
+
+@app.route('/api/messages/conversation/<int:user_id>')
+@login_required
+def api_get_conversation(user_id):
+    """Get messages between current_user and user_id, newest last."""
+    other = db.session.get(User, user_id)
+    if not other:
+        return jsonify({'error': 'User not found'}), 404
+    msgs = Message.query.filter(
+        db.or_(
+            db.and_(Message.sender_id == current_user.id, Message.recipient_id == user_id),
+            db.and_(Message.sender_id == user_id, Message.recipient_id == current_user.id)
+        )
+    ).order_by(Message.created_at.asc()).all()
+    # Mark incoming as read
+    for m in msgs:
+        if m.recipient_id == current_user.id and not m.is_read:
+            m.is_read = True
+    db.session.commit()
+    return jsonify([{
+        'id': m.id,
+        'body': m.body,
+        'sender_id': m.sender_id,
+        'sender_name': m.sender.name,
+        'created_at': m.created_at.strftime('%I:%M %p'),
+        'is_mine': m.sender_id == current_user.id,
+    } for m in msgs])
+
+
+@app.route('/api/messages/send', methods=['POST'])
+@login_required
+@csrf.exempt
+def api_send_message():
+    data = request.get_json()
+    recipient_id = data.get('recipient_id')
+    body = (data.get('body') or '').strip()
+    if not recipient_id or not body:
+        return jsonify({'error': 'Missing fields'}), 400
+    recipient = db.session.get(User, recipient_id)
+    if not recipient:
+        return jsonify({'error': 'Recipient not found'}), 404
+    msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({
+        'id': msg.id,
+        'body': msg.body,
+        'sender_id': msg.sender_id,
+        'sender_name': msg.sender.name,
+        'created_at': msg.created_at.strftime('%I:%M %p'),
+        'is_mine': True,
+    })
+
+
+@app.route('/api/messages/unread-count')
+@login_required
+def api_messages_unread_count():
+    count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+    return jsonify({'count': count})
+
+
+@app.route('/messages')
+@login_required
+def messages_inbox():
+    """Staff inbox: see all conversations. Clients redirect to dashboard."""
+    if current_user.role == 'client':
+        return redirect(url_for('dashboard'))
+    # Get unique conversation partners
+    sent_to = db.session.query(Message.recipient_id).filter_by(sender_id=current_user.id)
+    received_from = db.session.query(Message.sender_id).filter_by(recipient_id=current_user.id)
+    partner_ids = set([r[0] for r in sent_to] + [r[0] for r in received_from])
+    conversations = []
+    for pid in partner_ids:
+        partner = db.session.get(User, pid)
+        if not partner:
+            continue
+        last_msg = Message.query.filter(
+            db.or_(
+                db.and_(Message.sender_id == current_user.id, Message.recipient_id == pid),
+                db.and_(Message.sender_id == pid, Message.recipient_id == current_user.id)
+            )
+        ).order_by(Message.created_at.desc()).first()
+        unread = Message.query.filter_by(sender_id=pid, recipient_id=current_user.id, is_read=False).count()
+        conversations.append({'partner': partner, 'last_msg': last_msg, 'unread': unread})
+    conversations.sort(key=lambda x: x['last_msg'].created_at if x['last_msg'] else datetime.min, reverse=True)
+    return render_template('messages_inbox.html', conversations=conversations)
 
 
 # ─── Error Handlers ──────────────────────────────────────────────────────────
