@@ -57,7 +57,7 @@
   .login-logo-ring::before {
     content: '';
     position: absolute;
-    inset: -12px;
+    inset: -20px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(30,157,241,0.25) 0%, rgba(30,157,241,0.08) 55%, transparent 75%);
     animation: logo-pulse 3.2s ease-in-out infinite;
@@ -66,22 +66,16 @@
 
   @keyframes logo-pulse {
     0%, 100% { opacity: 0.6; transform: scale(1);    }
-    50%       { opacity: 1.0; transform: scale(1.12); }
+    50%       { opacity: 1.0; transform: scale(1.08); }
   }
 
-  .login-logo {
+  .login-logo-img {
     position: relative;
     z-index: 1;
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: -0.05em;
-    line-height: 1;
-    background: linear-gradient(135deg, #1e9df1 0%, #69c0f5 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    /* Subtle text-shadow via drop-filter for glow */
-    filter: drop-shadow(0 0 12px rgba(30,157,241,0.55));
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 16px rgba(30,157,241,0.45));
   }
 
   /* ── Headings ────────────────────────────────────────────────────── */
@@ -206,7 +200,7 @@
   @media (max-width: 768px) {
     .login-wrapper { padding: 1rem; align-items: flex-start; padding-top: 3rem; }
     .login-box { width: 100% !important; max-width: 100% !important; padding: 1.75rem 1.25rem !important; border-radius: 14px; }
-    .login-logo { font-size: 1.5rem !important; }
+    .login-logo-img { width: 90px !important; height: 90px !important; }
     .login-title { font-size: 1.5rem !important; }
   }
   @media (max-width: 480px) {
@@ -222,7 +216,9 @@
     <!-- Logo -->
     <div class="login-logo-wrap">
       <div class="login-logo-ring">
-        <div class="login-logo">FFL</div>
+        <img src="{{ url_for('static', filename='img/ffl-logo.png') }}"
+             alt="Fit For Life"
+             class="login-logo-img">
       </div>
     </div>
 
