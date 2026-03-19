@@ -78,9 +78,37 @@
 /* ── Stats Row ───────────────────────────────────────────────────────────────── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.75rem;
+}
+
+/* Monthly progress ring card */
+.month-ring-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+.month-ring-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.month-ring-pct {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.03em;
+}
+.month-ring-frac {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-weight: 600;
 }
 
 .stat-card {
@@ -666,7 +694,7 @@
   .nsc-time            { font-size: 2.5rem; }
   .client-hero         { padding: 1.5rem 0 0.25rem; }
   .next-session-card   { padding: 1.375rem 1.25rem 1.25rem; }
-  .stats-row           { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .stats-row           { grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
   .stat-value          { font-size: 1.5rem; }
   .stat-card           { padding: 1rem 0.5rem; }
 }
@@ -707,14 +735,10 @@
   .ur-trainer { display: none; }
 }
 
-/* ── Tablet (481px – 767px) — 2-column stats ─────────────────────────────── */
+/* ── Tablet (481px – 767px) — 2×2 stats grid ────────────────────────────── */
 @media (min-width: 481px) and (max-width: 767px) {
-  /* Stats: 2 columns with the ring card spanning full width */
   .stats-row {
     grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .stats-row .stat-card:first-child {
-    grid-column: 1 / -1;
   }
 }
 </style>
@@ -804,6 +828,41 @@
     {% else %}
     <div class="streak-sub">Absolutely elite! ⚡</div>
     {% endif %}
+  </div>
+
+  <!-- Monthly Progress Ring -->
+  <div class="stat-card">
+    {% if purchased > 0 %}
+      {% set mp_pct   = ((completed / purchased) * 100)|int %}
+      {% set mp_rad   = 32 %}
+      {% set mp_circ  = (2 * 3.14159 * mp_rad)|round|int %}
+      {% set mp_dash  = ((mp_pct / 100) * mp_circ)|int %}
+      {% set ring_color = '#22c55e' if mp_pct >= 100 else '#1e9df1' %}
+      <div class="month-ring-wrap">
+        <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true" style="max-width:100%;">
+          <circle cx="40" cy="40" r="{{ mp_rad }}" fill="none"
+            stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+          <circle cx="40" cy="40" r="{{ mp_rad }}" fill="none"
+            stroke="{{ ring_color }}"
+            stroke-width="8"
+            stroke-dasharray="0 {{ mp_circ }}"
+            stroke-dashoffset="{{ mp_circ // 4 }}"
+            stroke-linecap="round"
+            data-dash="{{ mp_dash }}"
+            data-circ="{{ mp_circ }}"
+            class="month-progress-arc"/>
+        </svg>
+        <div class="month-ring-label">
+          <span class="month-ring-pct" style="color:{{ ring_color }};">{{ mp_pct }}%</span>
+          <span class="month-ring-frac">{{ completed }}/{{ purchased }}</span>
+        </div>
+      </div>
+    {% else %}
+      <div style="width:80px;height:80px;border-radius:50%;border:8px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;margin-bottom:0.25rem;">
+        <span style="font-size:0.75rem;color:var(--text-faint);">—</span>
+      </div>
+    {% endif %}
+    <div class="stat-label">Month</div>
   </div>
 
   <!-- Total Sessions -->
@@ -1186,6 +1245,19 @@ document.addEventListener('DOMContentLoaded', function () {
       requestAnimationFrame(function () {
         statsRing.style.transition = 'stroke-dasharray 1.0s cubic-bezier(0.4,0,0.2,1) 0.15s';
         statsRing.style.strokeDasharray = sDash + ' ' + sCirc;
+      });
+    });
+  }
+
+  // Animate the monthly progress ring
+  var monthArc = document.querySelector('.month-progress-arc');
+  if (monthArc) {
+    var mDash = monthArc.getAttribute('data-dash');
+    var mCirc = monthArc.getAttribute('data-circ');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        monthArc.style.transition = 'stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1) 0.3s';
+        monthArc.style.strokeDasharray = mDash + ' ' + mCirc;
       });
     });
   }
