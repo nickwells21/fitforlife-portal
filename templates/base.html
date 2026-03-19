@@ -516,15 +516,8 @@
 <script>
 // ─── Chat Widget ─────────────────────────────────────────────────────────────
 let widgetOpen = false;
-let activeChatRecipientId = null;
+let activeChatRecipientId = {% if current_user.assigned_trainer %}{{ current_user.assigned_trainer.id }}{% else %}{{ admin_id }}{% endif %};
 let widgetPollInterval = null;
-
-// Set initial tab based on whether trainer exists
-{% if current_user.assigned_trainer %}
-switchChatTab('trainer', {{ current_user.assigned_trainer.id }}, '{{ current_user.assigned_trainer.name }}');
-{% else %}
-switchChatTab('director', {{ admin_id }}, 'Nick Wells');
-{% endif %}
 
 function toggleChatWidget() {
   widgetOpen = !widgetOpen;
