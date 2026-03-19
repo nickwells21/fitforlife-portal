@@ -70,7 +70,7 @@
       background-clip: text;
     }
 
-    /* ─── Nav section labels ─────────────────────────────────────── */
+    /* ─── Nav section labels (collapsed by default) ─────────────── */
     .sidebar-nav .nav-section {
       font-size: 0.65rem;
       font-variant: small-caps;
@@ -78,10 +78,22 @@
       font-weight: 600;
       color: var(--accent);
       text-transform: uppercase;
-      padding: 0.85rem 0.75rem 0.3rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      /* collapsed state */
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      padding: 0 0.75rem;
+      transition: max-height 0.2s ease, opacity 0.18s ease, padding 0.2s ease;
+    }
+
+    .sidebar.expanded .sidebar-nav .nav-section,
+    .sidebar.open .sidebar-nav .nav-section {
+      max-height: 40px;
+      opacity: 1;
+      padding: 0.85rem 0.75rem 0.3rem;
     }
 
     .sidebar-nav .nav-section::after {
@@ -191,7 +203,7 @@
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-logo">FFL</div>
-      <div>
+      <div class="brand-text">
         <div class="brand-name">Fit For Life</div>
         <div class="brand-role">{{ current_user.role }}</div>
       </div>
@@ -200,17 +212,17 @@
     <ul class="sidebar-nav">
       <li>
         <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-          <i class="bi bi-house"></i> Dashboard
+          <i class="bi bi-house"></i><span class="nav-label"> Dashboard</span>
         </a>
       </li>
       <li>
         {% if current_user.role == 'client' %}
         <a href="{{ url_for('client_calendar') }}" class="nav-link {% if request.endpoint == 'client_calendar' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i> My Schedule<span class="nav-notif-dot" aria-hidden="true"></span>
+          <i class="bi bi-calendar3"></i><span class="nav-label"> My Schedule</span><span class="nav-notif-dot" aria-hidden="true"></span>
         </a>
         {% else %}
         <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint == 'calendar_view' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i> Calendar<span class="nav-notif-dot" aria-hidden="true"></span>
+          <i class="bi bi-calendar3"></i><span class="nav-label"> Calendar</span><span class="nav-notif-dot" aria-hidden="true"></span>
         </a>
         {% endif %}
       </li>
@@ -218,36 +230,36 @@
       {% if current_user.role in ('admin', 'trainer') %}
       <li>
         <a href="{{ url_for('clients') }}" class="nav-link {% if request.endpoint in ('clients','client_detail') %}active{% endif %}">
-          <i class="bi bi-people"></i> Clients
+          <i class="bi bi-people"></i><span class="nav-label"> Clients</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('new_session') }}" class="nav-link {% if request.endpoint == 'new_session' %}active{% endif %}">
-          <i class="bi bi-plus-square"></i> Book Session
+          <i class="bi bi-plus-square"></i><span class="nav-label"> Book Session</span>
         </a>
       </li>
       {% endif %}
 
       {% if current_user.role == 'admin' %}
-      <li class="nav-section">Manage</li>
+      <li class="nav-section"><span class="nav-label">Manage</span></li>
       <li>
         <a href="{{ url_for('admin_packages') }}" class="nav-link {% if 'package' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-layers"></i> Packages
+          <i class="bi bi-layers"></i><span class="nav-label"> Packages</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin_users') }}" class="nav-link {% if 'user' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-person-gear"></i> Users
+          <i class="bi bi-person-gear"></i><span class="nav-label"> Users</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin_promos') }}" class="nav-link {% if 'promo' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-tag"></i> Promos
+          <i class="bi bi-tag"></i><span class="nav-label"> Promos</span>
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin_events') }}" class="nav-link {% if 'event' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-star"></i> Events
+          <i class="bi bi-star"></i><span class="nav-label"> Events</span>
         </a>
       </li>
       {% endif %}
@@ -256,13 +268,13 @@
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar">{{ current_user.name[0] }}</div>
-        <span>{{ current_user.name.split()[0] }}</span>
+        <span class="nav-label">{{ current_user.name.split()[0] }}</span>
       </div>
       <a href="{{ url_for('logout') }}" class="logout-btn" aria-label="Sign out">
         <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
         <span class="logout-label">Sign Out</span>
       </a>
-      <div class="sidebar-footer-build">FFL Portal v1.0</div>
+      <div class="sidebar-footer-build nav-label">FFL Portal v1.0</div>
     </div>
   </nav>
 
@@ -317,6 +329,8 @@
   const toggle = document.getElementById('sidebarToggle');
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('main-content');
+
+  // Mobile toggle
   function closeSidebar() {
     sidebar.classList.remove('open');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
@@ -327,6 +341,19 @@
   });
   if (mainContent) mainContent.addEventListener('click', () => {
     if (sidebar.classList.contains('open')) closeSidebar();
+  });
+
+  // Desktop hover-expand (only on ≥768px)
+  function isDesktop() { return window.innerWidth >= 768; }
+  sidebar.addEventListener('mouseenter', () => {
+    if (!isDesktop()) return;
+    sidebar.classList.add('expanded');
+    mainContent.classList.add('sidebar-expanded');
+  });
+  sidebar.addEventListener('mouseleave', () => {
+    if (!isDesktop()) return;
+    sidebar.classList.remove('expanded');
+    mainContent.classList.remove('sidebar-expanded');
   });
 </script>
 {% block scripts %}{% endblock %}
