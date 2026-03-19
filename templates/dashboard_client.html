@@ -753,7 +753,7 @@
       {% set circ_s = (2 * 3.14159 * rad_s)|int %}
       {% set dash_s = ((pct_s / 100) * circ_s)|int %}
       <div class="stat-ring-wrap">
-        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true" style="max-width:100%;">
           <circle cx="36" cy="36" r="{{ rad_s }}" fill="none"
             stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
           <circle id="stats-ring" cx="36" cy="36" r="{{ rad_s }}" fill="none"
@@ -1038,7 +1038,7 @@
 
         <div style="display:flex; flex-direction:column; align-items:center;">
           <div class="ring-container">
-            <svg width="130" height="130" viewBox="0 0 120 120">
+            <svg width="130" height="130" viewBox="0 0 120 120" style="max-width:100%;">
               <circle cx="60" cy="60" r="{{ radius }}" fill="none"
                 stroke="rgba(255,255,255,0.06)" stroke-width="11"/>
               <circle id="progress-ring" cx="60" cy="60" r="{{ radius }}" fill="none"

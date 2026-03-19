@@ -187,8 +187,8 @@
     /* ─── Floating chat widget ───────────────────────────────────── */
     .chat-widget {
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
+      bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+      right: max(1.5rem, env(safe-area-inset-right, 1.5rem));
       z-index: 9000;
       display: flex;
       flex-direction: column;
@@ -298,6 +298,9 @@
 {% if current_user.is_authenticated %}
 <a href="#main-content" class="visually-hidden-focusable skip-link">Skip to main content</a>
 <div class="app-wrapper">
+
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
@@ -500,19 +503,21 @@
   const toggle = document.getElementById('sidebarToggle');
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('main-content');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
 
   // Mobile toggle
   function closeSidebar() {
     sidebar.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
   }
-  if (toggle) toggle.addEventListener('click', () => {
+  if (toggle) toggle.addEventListener('click', (e) => {
+    e.stopPropagation(); // prevent click from bubbling to overlay/mainContent
     const isOpen = sidebar.classList.toggle('open');
+    if (sidebarOverlay) sidebarOverlay.classList.toggle('active', isOpen);
     toggle.setAttribute('aria-expanded', String(isOpen));
   });
-  if (mainContent) mainContent.addEventListener('click', () => {
-    if (sidebar.classList.contains('open')) closeSidebar();
-  });
+  if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
   // Desktop hover-expand (only on ≥768px)
   function isDesktop() { return window.innerWidth >= 768; }

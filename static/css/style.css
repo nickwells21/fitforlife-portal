@@ -96,6 +96,21 @@ a:hover { color: var(--text); }
   min-height: 100vh;
 }
 
+/* ── Mobile overlay behind sidebar ─────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
 .sidebar {
   width: var(--sidebar-collapsed);
   background: var(--bg-surface);
@@ -105,7 +120,7 @@ a:hover { color: var(--text); }
   position: fixed;
   top: 0; left: 0;
   height: 100vh;
-  z-index: 100;
+  z-index: 200;
   transition: width 0.3s ease, transform 0.2s ease;
   overflow-x: hidden;
   overflow-y: auto;
@@ -349,7 +364,7 @@ a:hover { color: var(--text); }
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 101;
 }
 .topbar-title {
   font-size: 13px;
