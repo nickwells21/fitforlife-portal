@@ -48,12 +48,19 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # admin, trainer, client
     trainerize_url = db.Column(db.String(300))
+    trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     sessions_as_trainer = db.relationship('Session', foreign_keys='Session.trainer_id', backref='trainer', lazy='dynamic')
     sessions_as_client = db.relationship('Session', foreign_keys='Session.client_id', backref='client', lazy='dynamic')
     packages = db.relationship('SessionPackage', backref='client_user', lazy='dynamic')
+
+    @property
+    def assigned_trainer(self):
+        if self.trainer_id:
+            return db.session.get(User, self.trainer_id)
+        return None
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
