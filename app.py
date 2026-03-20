@@ -1217,8 +1217,19 @@ def admin_new_user():
         password = request.form['password']
         trainerize_url = request.form.get('trainerize_url', '').strip() or None
 
-        if User.query.filter_by(email=email).first():
+        existing_email = User.query.filter_by(email=email).first()
+        existing_name = User.query.filter(
+            db.func.lower(User.name) == name.lower()
+        ).first()
+        if existing_email:
             flash('Email already in use.', 'danger')
+        elif existing_name:
+            flash(
+                f'A user named "{existing_name.name}" already exists '
+                f'({existing_name.role}, {existing_name.email}). '
+                f'This would create a duplicate. Edit the existing account instead.',
+                'danger'
+            )
         else:
             raw = request.form.get('trainer_id', '').strip()
             trainer_id = int(raw) if raw and role == 'client' else None
@@ -1558,32 +1569,9 @@ def init_db():
     elif admin.role != 'admin':
         admin.role = 'admin'
         db.session.commit()
-    clients_seed = [
-        ('Demo Client',          'client@fitforlife.com',        'Client123'),
-        ('Akennya Barnes',       'ABarnes251@fitforlife.com',    'Barnes2026'),
-        ('Alison Herlihy',       'AHerlihy251@fitforlife.com',   'Herlihy2026'),
-        ('Andrew Sprinkle',      'ASprinkle251@fitforlife.com',  'Sprinkle2026'),
-        ('Chad Hansen',          'CHansen251@fitforlife.com',    'Hansen2026'),
-        ('Charlene Shaw',        'CShaw251@fitforlife.com',      'Shaw2026'),
-        ('Clare McConnell',      'CMcConnell251@fitforlife.com', 'McConnell2026'),
-        ('Debbie McGowin',       'DMcGowin251@fitforlife.com',   'McGowin2026'),
-        ('Jennifer Morgan',      'JMorgan251@fitforlife.com',    'Morgan2026'),
-        ('Kari Bradham',         'KBradham251@fitforlife.com',   'Bradham2026'),
-        ('Mary Alice Mathison',  'MMathison251@fitforlife.com',  'Mathison2026'),
-        ('Noah Pittman',         'NPittman251@fitforlife.com',   'Pittman2026'),
-        ('Peyton Atkins',        'PAtkins251@fitforlife.com',    'Atkins2026'),
-        ('Rebekka Dyess',        'RDyess251@fitforlife.com',     'Dyess2026'),
-        ('Ruth Pappas',          'RPappas251@fitforlife.com',    'Pappas2026'),
-        ('Sarah Williams',       'SWilliams251@fitforlife.com',  'Williams2026'),
-        ('Shea Sadler',          'SSadler251@fitforlife.com',    'Sadler2026'),
-    ]
-    for name, email, password in clients_seed:
-        if not User.query.filter_by(email=email).first():
-            u = User(name=name, email=email, role='client')
-            u.set_password(password)
-            db.session.add(u)
-    db.session.commit()
-    print('Client accounts seeded.')
+    # Client accounts are managed exclusively through the admin UI (/admin/users/new).
+    # Seeding clients here caused duplicates on every deploy whenever a client was
+    # added via the UI with a different email than the seeded one.
 
     if not MembershipPlan.query.first():
         plans = [
