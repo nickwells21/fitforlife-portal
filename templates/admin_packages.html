@@ -458,7 +458,7 @@
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
               <span style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px;
                 background:rgba(30,157,241,0.13); color:#69c0f5; border:1px solid rgba(30,157,241,0.25);">
-                {{ {'1on1':'1-on-1','group-2':'Group 2','group-3':'Group 3','group-4':'Group 4'}[pkg.plan.plan_type] }}
+                {{ {'1on1':'1-on-1','group-2':'Group 2','group-3':'Group 3','group-4':'Group 4'}.get(pkg.plan.plan_type, pkg.plan.plan_type) }}
               </span>
               <span style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px;
                 background:rgba(255,255,255,0.05); color:var(--text-soft); border:1px solid var(--border);">

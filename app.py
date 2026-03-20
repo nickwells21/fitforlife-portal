@@ -356,8 +356,8 @@ def get_session_streak(client_id):
         count = Session.query.filter(
             Session.client_id == client_id,
             Session.status == 'completed',
-            Session.scheduled_at >= datetime(week_start.year, week_start.month, week_start.day, tzinfo=timezone.utc),
-            Session.scheduled_at < datetime(week_end.year, week_end.month, week_end.day, tzinfo=timezone.utc),
+            Session.scheduled_at >= datetime(week_start.year, week_start.month, week_start.day),
+            Session.scheduled_at < datetime(week_end.year, week_end.month, week_end.day),
         ).count()
         if count > 0:
             streak += 1
@@ -660,7 +660,7 @@ def api_sessions():
     seen_group_slots = {}  # (group_id, scheduled_at) -> index in events list
     for s in sessions:
         is_mine = current_user.role != 'client' or s.client_id == current_user.id
-        color = STATUS_COLORS.get(s.status) or s.location.color
+        color = STATUS_COLORS.get(s.status) or (s.location.color if s.location else '#2563eb')
 
         if s.group_id:
             key = (s.group_id, s.scheduled_at)
@@ -671,16 +671,17 @@ def api_sessions():
                 continue
             seen_group_slots[key] = len(events)
             group_name = s.training_group.name if s.training_group else 'Group'
+            trainer_name = s.trainer.name if s.trainer else 'Trainer'
             events.append({
                 'id': s.id,
-                'title': f'{s.trainer.name} + {group_name}',
+                'title': f'{trainer_name} + {group_name}',
                 'start': s.scheduled_at.isoformat(),
                 'end': s.end_time.isoformat(),
                 'color': color,
                 'extendedProps': {
-                    'location': s.location.name,
+                    'location': s.location.name if s.location else '',
                     'location_id': s.location_id,
-                    'trainer': s.trainer.name,
+                    'trainer': trainer_name,
                     'trainer_id': s.trainer_id,
                     'client': group_name,
                     'status': s.status,
@@ -692,18 +693,20 @@ def api_sessions():
                 }
             })
         else:
+            _trainer = s.trainer.name if s.trainer else 'Trainer'
+            _client = s.client.name if s.client else 'Client'
             events.append({
                 'id': s.id,
-                'title': f'{s.trainer.name} + {s.client.name}',
+                'title': f'{_trainer} + {_client}',
                 'start': s.scheduled_at.isoformat(),
                 'end': s.end_time.isoformat(),
                 'color': color,
                 'extendedProps': {
-                    'location': s.location.name,
+                    'location': s.location.name if s.location else '',
                     'location_id': s.location_id,
-                    'trainer': s.trainer.name,
+                    'trainer': _trainer,
                     'trainer_id': s.trainer_id,
-                    'client': s.client.name,
+                    'client': _client,
                     'status': s.status,
                     'notes': s.notes or '',
                     'session_id': s.id,
@@ -1167,6 +1170,10 @@ def admin_dedup_users():
                     db.session.delete(gm)
             for n in Notification.query.filter_by(user_id=d.id).all():
                 n.user_id = keep.id
+            for m in Message.query.filter_by(sender_id=d.id).all():
+                m.sender_id = keep.id
+            for m in Message.query.filter_by(recipient_id=d.id).all():
+                m.recipient_id = keep.id
             deleted.append(f'{d.name} (id={d.id}, {d.email}) → merged into id={keep.id}')
             db.session.delete(d)
     db.session.commit()
@@ -1526,8 +1533,8 @@ def init_db():
     # ── Column migrations (db.create_all won't add columns to existing tables) ─
     with db.engine.connect() as conn:
         for col, ddl in [
-            ('plan_id',  'ALTER TABLE session_packages ADD COLUMN IF NOT EXISTS plan_id INTEGER REFERENCES membership_plans(id)'),
-            ('is_crew',  'ALTER TABLE session_packages ADD COLUMN IF NOT EXISTS is_crew BOOLEAN NOT NULL DEFAULT FALSE'),
+            ('plan_id',  'ALTER TABLE session_packages ADD COLUMN plan_id INTEGER REFERENCES membership_plans(id)'),
+            ('is_crew',  'ALTER TABLE session_packages ADD COLUMN is_crew BOOLEAN NOT NULL DEFAULT FALSE'),
         ]:
             try:
                 conn.execute(db.text(ddl))
