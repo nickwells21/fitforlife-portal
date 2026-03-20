@@ -493,17 +493,43 @@ def dashboard():
         )
 
     elif current_user.role == 'trainer':
-        upcoming = Session.query.filter(
+        two_weeks_ahead = now + timedelta(weeks=2)
+        raw_upcoming = Session.query.filter(
             Session.trainer_id == current_user.id,
             Session.status == 'scheduled',
-            Session.scheduled_at >= now
-        ).order_by(Session.scheduled_at).limit(10).all()
+            Session.scheduled_at >= now,
+            Session.scheduled_at < two_weeks_ahead,
+        ).order_by(Session.scheduled_at).all()
 
-        today_sessions = Session.query.filter(
+        # Collapse group sessions: one slot per (time, group) instead of one per client
+        seen_slots = set()
+        upcoming = []
+        for s in raw_upcoming:
+            if s.group_id:
+                key = (s.scheduled_at, s.group_id)
+                if key in seen_slots:
+                    continue
+                seen_slots.add(key)
+            upcoming.append(s)
+            if len(upcoming) >= 6:
+                break
+
+        raw_today = Session.query.filter(
             Session.trainer_id == current_user.id,
             Session.status != 'cancelled',
             db.func.date(Session.scheduled_at) == today
         ).order_by(Session.scheduled_at).all()
+
+        # Same dedup for today's sessions
+        seen_today = set()
+        today_sessions = []
+        for s in raw_today:
+            if s.group_id:
+                key = (s.scheduled_at, s.group_id)
+                if key in seen_today:
+                    continue
+                seen_today.add(key)
+            today_sessions.append(s)
 
         # Only show clients assigned to this trainer
         all_clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()

@@ -544,7 +544,13 @@
     </div>
   </div>
   <div style="text-align:right; flex-shrink:0;">
-    <div style="font-size:1.1rem; font-weight:700; color:var(--text);">{{ nxt.client.name }}</div>
+    <div style="font-size:1.1rem; font-weight:700; color:var(--text);">
+      {% if nxt.group_id %}
+        <i class="bi bi-people-fill me-1" style="color:#f59e0b; font-size:0.9rem;"></i>{{ nxt.training_group.name }}
+      {% else %}
+        {{ nxt.client.name }}
+      {% endif %}
+    </div>
     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">{{ nxt.duration }} min session</div>
     <a href="{{ url_for('session_detail', session_id=nxt.id) }}"
        style="font-size:0.72rem; color:#69c0f5; text-decoration:none; font-weight:600; margin-top:0.5rem; display:inline-block;">
@@ -574,9 +580,13 @@
             <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
           </div>
           <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
-          <div class="avatar-sm">{{ sess.client.name[0] }}</div>
+          <div class="avatar-sm">
+            {% if sess.group_id %}<i class="bi bi-people-fill" style="font-size:0.75rem;"></i>{% else %}{{ sess.client.name[0] }}{% endif %}
+          </div>
           <div class="sess-info">
-            <div class="sess-client-name">{{ sess.client.name }}</div>
+            <div class="sess-client-name">
+              {% if sess.group_id %}{{ sess.training_group.name }}{% else %}{{ sess.client.name }}{% endif %}
+            </div>
             <div class="sess-meta">{{ sess.location.name }} &middot; {{ sess.duration }} min</div>
           </div>
           {% if sess.status == 'scheduled' %}
@@ -619,9 +629,13 @@
             <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%b %-d') }}</span>
           </div>
           <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
-          <div class="avatar-sm">{{ sess.client.name[0] }}</div>
+          <div class="avatar-sm">
+            {% if sess.group_id %}<i class="bi bi-people-fill" style="font-size:0.75rem;"></i>{% else %}{{ sess.client.name[0] }}{% endif %}
+          </div>
           <div class="sess-info">
-            <div class="sess-client-name">{{ sess.client.name }}</div>
+            <div class="sess-client-name">
+              {% if sess.group_id %}{{ sess.training_group.name }}{% else %}{{ sess.client.name }}{% endif %}
+            </div>
             <div class="sess-meta">{{ sess.location.name }}</div>
           </div>
           <a href="{{ url_for('session_detail', session_id=sess.id) }}" class="btn btn-outline-secondary btn-sm" style="font-size:0.68rem; padding:0.2rem 0.55rem; white-space:nowrap;">
