@@ -307,6 +307,18 @@ def check_conflict(trainer_id, location_id, start_dt, end_dt, exclude_session_id
     return conflicts
 
 
+def get_month_booked_count(client_id, month, year):
+    """Count all non-cancelled sessions for a client in a given month (including scheduled/pending)."""
+    month_start = datetime(year, month, 1)
+    month_end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
+    return Session.query.filter(
+        Session.client_id == client_id,
+        Session.status != 'cancelled',
+        Session.scheduled_at >= month_start,
+        Session.scheduled_at < month_end,
+    ).count()
+
+
 def get_month_balance(client_id, month, year):
     """Returns (purchased, completed, remaining) for a client in a given month."""
     package = SessionPackage.query.filter_by(
@@ -792,6 +804,42 @@ def new_session():
         else:
             session_times = [scheduled_at]
 
+        # ── Package balance check ──────────────────────────────────────
+        package_errors = []
+        for cid in client_ids:
+            client_user = db.session.get(User, cid)
+            # Group sessions by month so we know how many are being added per month
+            from collections import defaultdict
+            sessions_by_month = defaultdict(int)
+            for dt in session_times:
+                sessions_by_month[(dt.month, dt.year)] += 1
+            for (mo, yr), adding in sessions_by_month.items():
+                pkg = SessionPackage.query.filter_by(client_id=cid, month=mo, year=yr).first()
+                if not pkg:
+                    from calendar import month_name as _mn
+                    package_errors.append(
+                        f'{client_user.name} has no package for {_mn[mo]} {yr}. '
+                        f'Add one under Admin → Session Packages first.'
+                    )
+                else:
+                    already_booked = get_month_booked_count(cid, mo, yr)
+                    if already_booked + adding > pkg.sessions_purchased:
+                        from calendar import month_name as _mn
+                        package_errors.append(
+                            f'{client_user.name}: {_mn[mo]} {yr} package has '
+                            f'{pkg.sessions_purchased} sessions — '
+                            f'{already_booked} already booked, trying to add {adding} more.'
+                        )
+        if package_errors:
+            for err in package_errors:
+                flash(err, 'danger')
+            return render_template('session_form.html',
+                sess=None, trainers=trainers, clients=clients,
+                locations=locations, booking_groups=booking_groups,
+                prefill_date=request.form.get('scheduled_at', '')[:10],
+                prefill_trainer=request.form.get('trainer_id', '')
+            )
+
         # ── Create sessions ────────────────────────────────────────────
         if client_ids and session_times:
             created, skipped = 0, []
@@ -1229,7 +1277,8 @@ def admin_new_package():
     notes = request.form.get('notes', '').strip()
     raw_plan = request.form.get('plan_id', '').strip()
     plan_id = int(raw_plan) if raw_plan else None
-    is_crew = bool(plan_id and MembershipPlan.query.get(plan_id) and MembershipPlan.query.get(plan_id).is_crew)
+    plan_obj = db.session.get(MembershipPlan, plan_id) if plan_id else None
+    is_crew = bool(plan_obj and plan_obj.is_crew)
 
     existing = SessionPackage.query.filter_by(client_id=client_id, month=month, year=year).first()
     if existing:
@@ -1495,12 +1544,13 @@ def init_db():
     admin = User.query.filter_by(email='nick@fitforlife.com').first()
     if not admin:
         admin = User(name='Nick Wells', email='nick@fitforlife.com', role='admin')
+        admin.set_password('Wells2026')
         db.session.add(admin)
-    admin.name = 'Nick Wells'
-    admin.role = 'admin'
-    admin.set_password('Wells2026')
-    db.session.commit()
-    print('Admin ensured: nick@fitforlife.com / Wells2026')
+        db.session.commit()
+        print('Admin created: nick@fitforlife.com / Wells2026')
+    elif admin.role != 'admin':
+        admin.role = 'admin'
+        db.session.commit()
     clients_seed = [
         ('Demo Client',          'client@fitforlife.com',        'Client123'),
         ('Akennya Barnes',       'ABarnes251@fitforlife.com',    'Barnes2026'),
