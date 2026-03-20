@@ -701,7 +701,7 @@ def new_session():
         # ── Determine session times ────────────────────────────────────
         repeat_on = request.form.get('repeat') == '1'
         if repeat_on:
-            repeat_days = [int(d) for d in request.form.getlist('repeat_days')]
+            repeat_days = [int(d) for d in request.form.get('repeat_days', '').split(',') if d.strip()]
             repeat_frequency = int(request.form.get('repeat_frequency', 1))
             repeat_weeks = min(int(request.form.get('repeat_weeks', 4)), 52)
             if not repeat_days:
