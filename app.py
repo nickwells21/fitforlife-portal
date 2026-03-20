@@ -768,9 +768,9 @@ def api_check_conflict():
             reason.append('location')
         result.append({
             'id': c.id,
-            'trainer': c.trainer.name,
-            'client': c.client.name,
-            'location': c.location.name,
+            'trainer': c.trainer.name if c.trainer else '—',
+            'client': c.client.name if c.client else (c.training_group.name if c.training_group else '—'),
+            'location': c.location.name if c.location else '—',
             'start': c.scheduled_at.strftime('%I:%M %p'),
             'end': c.end_time.strftime('%I:%M %p'),
             'conflict_type': ' & '.join(reason),
