@@ -320,11 +320,19 @@ def get_month_booked_count(client_id, month, year):
 
 
 def get_month_balance(client_id, month, year):
-    """Returns (purchased, completed, remaining) for a client in a given month."""
+    """Returns (purchased, completed, remaining) for a client in a given month.
+    If no package exists for this exact month, falls back to the client's most
+    recent package as the recurring subscription rate."""
     package = SessionPackage.query.filter_by(
         client_id=client_id, month=month, year=year
     ).first()
-    purchased = package.sessions_purchased if package else 0
+    if package:
+        purchased = package.sessions_purchased
+    else:
+        latest = SessionPackage.query.filter_by(client_id=client_id).order_by(
+            SessionPackage.year.desc(), SessionPackage.month.desc()
+        ).first()
+        purchased = latest.sessions_purchased if latest else 0
 
     month_start = datetime(year, month, 1)
     if month == 12:
@@ -836,23 +844,26 @@ def new_session():
             sessions_by_month = defaultdict(int)
             for dt in session_times:
                 sessions_by_month[(dt.month, dt.year)] += 1
+            # Get the client's subscription rate (most recent package)
+            subscription = SessionPackage.query.filter_by(client_id=cid).order_by(
+                SessionPackage.year.desc(), SessionPackage.month.desc()
+            ).first()
+            if not subscription:
+                package_errors.append(
+                    f'{client_user.name} has no package on file. '
+                    f'Add one under Admin → Session Packages first.'
+                )
+                continue
+            monthly_rate = subscription.sessions_purchased
             for (mo, yr), adding in sessions_by_month.items():
-                pkg = SessionPackage.query.filter_by(client_id=cid, month=mo, year=yr).first()
-                if not pkg:
+                already_booked = get_month_booked_count(cid, mo, yr)
+                if already_booked + adding > monthly_rate:
                     from calendar import month_name as _mn
                     package_errors.append(
-                        f'{client_user.name} has no package for {_mn[mo]} {yr}. '
-                        f'Add one under Admin → Session Packages first.'
+                        f'{client_user.name}: subscription allows {monthly_rate} sessions/mo — '
+                        f'{_mn[mo]} {yr} already has {already_booked} booked, '
+                        f'trying to add {adding} more.'
                     )
-                else:
-                    already_booked = get_month_booked_count(cid, mo, yr)
-                    if already_booked + adding > pkg.sessions_purchased:
-                        from calendar import month_name as _mn
-                        package_errors.append(
-                            f'{client_user.name}: {_mn[mo]} {yr} package has '
-                            f'{pkg.sessions_purchased} sessions — '
-                            f'{already_booked} already booked, trying to add {adding} more.'
-                        )
         if package_errors:
             for err in package_errors:
                 flash(err, 'danger')
@@ -1637,6 +1648,650 @@ def messages_inbox():
         conversations.append({'partner': partner, 'last_msg': last_msg, 'unread': unread})
     conversations.sort(key=lambda x: x['last_msg'].created_at if x['last_msg'] else datetime.min, reverse=True)
     return render_template('messages_inbox.html', conversations=conversations)
+
+
+# ─── Training Modules: Models ────────────────────────────────────────────────
+
+import re as _re
+
+def extract_youtube_id(url):
+    """Extract YouTube video ID from watch or short URL."""
+    if not url:
+        return None
+    m = _re.search(r'(?:youtube\.com/watch\?v=|youtu\.be/)([A-Za-z0-9_-]{11})', url)
+    return m.group(1) if m else None
+
+
+class Exercise(db.Model):
+    __tablename__ = 'exercises'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    muscle_group = db.Column(db.String(80))
+    category = db.Column(db.String(40))
+    instructions = db.Column(db.Text)
+    youtube_url = db.Column(db.String(300))
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Workout(db.Model):
+    __tablename__ = 'workouts'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    exercises = db.relationship('WorkoutExercise', backref='workout', lazy='dynamic',
+                                order_by='WorkoutExercise.order', cascade='all, delete-orphan')
+
+
+class WorkoutExercise(db.Model):
+    __tablename__ = 'workout_exercises'
+    id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    order = db.Column(db.Integer, default=0)
+    sets = db.Column(db.Integer, default=3)
+    reps = db.Column(db.String(20), default='10')
+    rest_seconds = db.Column(db.Integer, default=60)
+    notes = db.Column(db.String(200))
+    exercise = db.relationship('Exercise')
+
+
+class Program(db.Model):
+    __tablename__ = 'programs'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text)
+    weeks = db.Column(db.Integer, default=4)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    days = db.relationship('ProgramDay', backref='program', lazy='dynamic',
+                           order_by='ProgramDay.week, ProgramDay.day',
+                           cascade='all, delete-orphan')
+    assignments = db.relationship('ProgramAssignment', backref='program', lazy='dynamic',
+                                  cascade='all, delete-orphan')
+
+
+class ProgramDay(db.Model):
+    __tablename__ = 'program_days'
+    id = db.Column(db.Integer, primary_key=True)
+    program_id = db.Column(db.Integer, db.ForeignKey('programs.id'), nullable=False)
+    week = db.Column(db.Integer, nullable=False)
+    day = db.Column(db.Integer, nullable=False)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=True)
+    label = db.Column(db.String(100))
+    workout = db.relationship('Workout')
+
+
+class ProgramAssignment(db.Model):
+    __tablename__ = 'program_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    program_id = db.Column(db.Integer, db.ForeignKey('programs.id'), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    client = db.relationship('User', foreign_keys='ProgramAssignment.client_id')
+    assigned_by = db.relationship('User', foreign_keys='ProgramAssignment.assigned_by_id')
+
+
+class ProgressEntry(db.Model):
+    __tablename__ = 'progress_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    log_date = db.Column(db.Date, nullable=False)
+    weight_lbs = db.Column(db.Float)
+    chest_in = db.Column(db.Float)
+    waist_in = db.Column(db.Float)
+    hips_in = db.Column(db.Float)
+    arms_in = db.Column(db.Float)
+    legs_in = db.Column(db.Float)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class ExerciseLog(db.Model):
+    __tablename__ = 'exercise_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    log_date = db.Column(db.Date, nullable=False)
+    sets_completed = db.Column(db.Integer)
+    reps_completed = db.Column(db.String(20))
+    weight_lbs = db.Column(db.Float)
+    notes = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    exercise = db.relationship('Exercise')
+
+
+class WorkoutCheckin(db.Model):
+    __tablename__ = 'workout_checkins'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('program_assignments.id'), nullable=False)
+    week = db.Column(db.Integer, nullable=False)
+    day = db.Column(db.Integer, nullable=False)
+    completed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (db.UniqueConstraint('client_id', 'assignment_id', 'week', 'day', name='uq_checkin'),)
+    assignment = db.relationship('ProgramAssignment')
+
+
+# ─── Training Modules: Routes ─────────────────────────────────────────────────
+
+# MODULE 1: Exercise Library
+
+@app.route('/exercises')
+@login_required
+def exercises_list():
+    exercises = Exercise.query.order_by(Exercise.name).all()
+    return render_template('exercises_list.html', exercises=exercises,
+                           extract_youtube_id=extract_youtube_id)
+
+
+@app.route('/exercises/new', methods=['GET', 'POST'])
+@staff_required
+def exercise_new():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Exercise name is required.', 'danger')
+            return redirect(url_for('exercise_new'))
+        ex = Exercise(
+            name=name,
+            muscle_group=request.form.get('muscle_group', '').strip() or None,
+            category=request.form.get('category', '').strip() or None,
+            instructions=request.form.get('instructions', '').strip() or None,
+            youtube_url=request.form.get('youtube_url', '').strip() or None,
+            created_by_id=current_user.id,
+        )
+        db.session.add(ex)
+        db.session.commit()
+        flash(f'Exercise "{ex.name}" created.', 'success')
+        return redirect(url_for('exercises_list'))
+    return render_template('exercise_form.html', ex=None)
+
+
+@app.route('/exercises/<int:ex_id>')
+@login_required
+def exercise_detail(ex_id):
+    ex = Exercise.query.get_or_404(ex_id)
+    return render_template('exercise_detail.html', ex=ex,
+                           youtube_id=extract_youtube_id(ex.youtube_url))
+
+
+@app.route('/exercises/<int:ex_id>/edit', methods=['GET', 'POST'])
+@staff_required
+def exercise_edit(ex_id):
+    ex = Exercise.query.get_or_404(ex_id)
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Exercise name is required.', 'danger')
+            return redirect(url_for('exercise_edit', ex_id=ex_id))
+        ex.name = name
+        ex.muscle_group = request.form.get('muscle_group', '').strip() or None
+        ex.category = request.form.get('category', '').strip() or None
+        ex.instructions = request.form.get('instructions', '').strip() or None
+        ex.youtube_url = request.form.get('youtube_url', '').strip() or None
+        db.session.commit()
+        flash(f'Exercise "{ex.name}" updated.', 'success')
+        return redirect(url_for('exercise_detail', ex_id=ex.id))
+    return render_template('exercise_form.html', ex=ex)
+
+
+@app.route('/exercises/<int:ex_id>/delete', methods=['POST'])
+@admin_required
+def exercise_delete(ex_id):
+    ex = Exercise.query.get_or_404(ex_id)
+    name = ex.name
+    db.session.delete(ex)
+    db.session.commit()
+    flash(f'Exercise "{name}" deleted.', 'success')
+    return redirect(url_for('exercises_list'))
+
+
+# MODULE 2: Workout Builder
+
+@app.route('/workouts')
+@staff_required
+def workouts_list():
+    if current_user.role == 'admin':
+        workouts = Workout.query.order_by(Workout.created_at.desc()).all()
+    else:
+        workouts = Workout.query.filter_by(trainer_id=current_user.id).order_by(Workout.created_at.desc()).all()
+    return render_template('workouts_list.html', workouts=workouts)
+
+
+@app.route('/workouts/new', methods=['GET', 'POST'])
+@staff_required
+def workout_new():
+    exercises = Exercise.query.order_by(Exercise.name).all()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Workout name is required.', 'danger')
+            return render_template('workout_form.html', workout=None, exercises=exercises)
+        workout = Workout(
+            name=name,
+            description=request.form.get('description', '').strip() or None,
+            trainer_id=current_user.id,
+        )
+        db.session.add(workout)
+        db.session.flush()
+        ex_ids = request.form.getlist('exercise_id[]')
+        sets_list = request.form.getlist('sets[]')
+        reps_list = request.form.getlist('reps[]')
+        rest_list = request.form.getlist('rest[]')
+        notes_list = request.form.getlist('notes_ex[]')
+        for i, eid in enumerate(ex_ids):
+            if not eid:
+                continue
+            we = WorkoutExercise(
+                workout_id=workout.id,
+                exercise_id=int(eid),
+                order=i,
+                sets=int(sets_list[i]) if i < len(sets_list) and sets_list[i] else 3,
+                reps=reps_list[i] if i < len(reps_list) and reps_list[i] else '10',
+                rest_seconds=int(rest_list[i]) if i < len(rest_list) and rest_list[i] else 60,
+                notes=notes_list[i] if i < len(notes_list) and notes_list[i] else None,
+            )
+            db.session.add(we)
+        db.session.commit()
+        flash(f'Workout "{workout.name}" created.', 'success')
+        return redirect(url_for('workout_detail', workout_id=workout.id))
+    return render_template('workout_form.html', workout=None, exercises=exercises)
+
+
+@app.route('/workouts/<int:workout_id>')
+@staff_required
+def workout_detail(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    return render_template('workout_detail.html', workout=workout)
+
+
+@app.route('/workouts/<int:workout_id>/edit', methods=['GET', 'POST'])
+@staff_required
+def workout_edit(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    if current_user.role != 'admin' and workout.trainer_id != current_user.id:
+        abort(403)
+    exercises = Exercise.query.order_by(Exercise.name).all()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Workout name is required.', 'danger')
+            return render_template('workout_form.html', workout=workout, exercises=exercises)
+        workout.name = name
+        workout.description = request.form.get('description', '').strip() or None
+        # Clear existing exercises
+        WorkoutExercise.query.filter_by(workout_id=workout.id).delete()
+        ex_ids = request.form.getlist('exercise_id[]')
+        sets_list = request.form.getlist('sets[]')
+        reps_list = request.form.getlist('reps[]')
+        rest_list = request.form.getlist('rest[]')
+        notes_list = request.form.getlist('notes_ex[]')
+        for i, eid in enumerate(ex_ids):
+            if not eid:
+                continue
+            we = WorkoutExercise(
+                workout_id=workout.id,
+                exercise_id=int(eid),
+                order=i,
+                sets=int(sets_list[i]) if i < len(sets_list) and sets_list[i] else 3,
+                reps=reps_list[i] if i < len(reps_list) and reps_list[i] else '10',
+                rest_seconds=int(rest_list[i]) if i < len(rest_list) and rest_list[i] else 60,
+                notes=notes_list[i] if i < len(notes_list) and notes_list[i] else None,
+            )
+            db.session.add(we)
+        db.session.commit()
+        flash(f'Workout "{workout.name}" updated.', 'success')
+        return redirect(url_for('workout_detail', workout_id=workout.id))
+    return render_template('workout_form.html', workout=workout, exercises=exercises)
+
+
+@app.route('/workouts/<int:workout_id>/delete', methods=['POST'])
+@staff_required
+def workout_delete(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    if current_user.role != 'admin' and workout.trainer_id != current_user.id:
+        abort(403)
+    name = workout.name
+    db.session.delete(workout)
+    db.session.commit()
+    flash(f'Workout "{name}" deleted.', 'success')
+    return redirect(url_for('workouts_list'))
+
+
+# MODULE 3: Program Templates
+
+@app.route('/programs')
+@staff_required
+def programs_list():
+    if current_user.role == 'admin':
+        progs = Program.query.order_by(Program.created_at.desc()).all()
+    else:
+        progs = Program.query.filter_by(trainer_id=current_user.id).order_by(Program.created_at.desc()).all()
+    return render_template('programs_list.html', programs=progs)
+
+
+@app.route('/programs/new', methods=['GET', 'POST'])
+@staff_required
+def program_new():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Program name is required.', 'danger')
+            return render_template('program_form.html')
+        weeks = int(request.form.get('weeks', 4))
+        prog = Program(
+            name=name,
+            description=request.form.get('description', '').strip() or None,
+            weeks=weeks,
+            trainer_id=current_user.id,
+        )
+        db.session.add(prog)
+        db.session.commit()
+        flash(f'Program "{prog.name}" created. Now build your week/day schedule.', 'success')
+        return redirect(url_for('program_builder', program_id=prog.id))
+    return render_template('program_form.html')
+
+
+@app.route('/programs/<int:program_id>')
+@staff_required
+def program_detail(program_id):
+    prog = Program.query.get_or_404(program_id)
+    clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    # Build day grid: dict[(week, day)] -> ProgramDay
+    day_map = {}
+    for pd in prog.days.all():
+        day_map[(pd.week, pd.day)] = pd
+    return render_template('program_detail.html', prog=prog, day_map=day_map, clients=clients)
+
+
+@app.route('/programs/<int:program_id>/builder')
+@staff_required
+def program_builder(program_id):
+    prog = Program.query.get_or_404(program_id)
+    workouts = Workout.query.order_by(Workout.name).all()
+    day_map = {}
+    for pd in prog.days.all():
+        day_map[(pd.week, pd.day)] = pd
+    return render_template('program_builder.html', prog=prog, workouts=workouts, day_map=day_map)
+
+
+@app.route('/programs/<int:program_id>/day', methods=['POST'])
+@staff_required
+@csrf.exempt
+def program_set_day(program_id):
+    prog = Program.query.get_or_404(program_id)
+    data = request.get_json()
+    week = int(data.get('week', 1))
+    day = int(data.get('day', 1))
+    workout_id = data.get('workout_id')
+    label = data.get('label', '').strip() or None
+    pd = ProgramDay.query.filter_by(program_id=prog.id, week=week, day=day).first()
+    if pd is None:
+        pd = ProgramDay(program_id=prog.id, week=week, day=day)
+        db.session.add(pd)
+    pd.workout_id = int(workout_id) if workout_id else None
+    pd.label = label
+    db.session.commit()
+    workout_name = None
+    if pd.workout_id:
+        w = db.session.get(Workout, pd.workout_id)
+        workout_name = w.name if w else None
+    return jsonify({'ok': True, 'workout_name': workout_name, 'label': pd.label})
+
+
+@app.route('/programs/<int:program_id>/assign', methods=['POST'])
+@staff_required
+def program_assign(program_id):
+    prog = Program.query.get_or_404(program_id)
+    from datetime import date as date_type
+    client_ids = request.form.getlist('client_ids')
+    start_raw = request.form.get('start_date', '').strip()
+    if not client_ids or not start_raw:
+        flash('Select at least one client and a start date.', 'danger')
+        return redirect(url_for('program_detail', program_id=program_id))
+    start_date = date_type.fromisoformat(start_raw)
+    for cid in client_ids:
+        pa = ProgramAssignment(
+            program_id=prog.id,
+            client_id=int(cid),
+            start_date=start_date,
+            assigned_by_id=current_user.id,
+        )
+        db.session.add(pa)
+    db.session.commit()
+    flash(f'Program assigned to {len(client_ids)} client(s).', 'success')
+    return redirect(url_for('program_detail', program_id=program_id))
+
+
+@app.route('/my-program')
+@login_required
+def my_program():
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    from datetime import date as date_type
+    today = date_type.today()
+    # Find the most recent assignment
+    assignment = ProgramAssignment.query.filter_by(
+        client_id=current_user.id
+    ).order_by(ProgramAssignment.start_date.desc()).first()
+
+    current_week = None
+    current_day = None
+    today_program_day = None
+    checkin_done = False
+
+    if assignment:
+        days_since_start = (today - assignment.start_date).days
+        current_week = min((days_since_start // 7) + 1, assignment.program.weeks)
+        current_day = (days_since_start % 7) + 1
+        today_program_day = ProgramDay.query.filter_by(
+            program_id=assignment.program_id,
+            week=current_week,
+            day=current_day
+        ).first()
+        if today_program_day:
+            checkin_done = WorkoutCheckin.query.filter_by(
+                client_id=current_user.id,
+                assignment_id=assignment.id,
+                week=current_week,
+                day=current_day
+            ).first() is not None
+
+    return render_template('my_program.html',
+        assignment=assignment,
+        current_week=current_week,
+        current_day=current_day,
+        today_program_day=today_program_day,
+        checkin_done=checkin_done,
+        today=today,
+    )
+
+
+# MODULE 4: Progress Tracking
+
+@app.route('/progress')
+@login_required
+def client_progress():
+    if current_user.role not in ('client',):
+        return redirect(url_for('dashboard'))
+    from datetime import date as date_type
+    entries = ProgressEntry.query.filter_by(client_id=current_user.id).order_by(ProgressEntry.log_date).all()
+    ex_logs = ExerciseLog.query.filter_by(client_id=current_user.id).order_by(ExerciseLog.log_date.desc()).all()
+    exercises = Exercise.query.order_by(Exercise.name).all()
+    return render_template('progress_client.html',
+        entries=entries, ex_logs=ex_logs, exercises=exercises,
+        client=current_user)
+
+
+@app.route('/progress/log', methods=['POST'])
+@login_required
+def progress_log():
+    if current_user.role != 'client':
+        abort(403)
+    from datetime import date as date_type
+    def _float(key):
+        val = request.form.get(key, '').strip()
+        try:
+            return float(val) if val else None
+        except ValueError:
+            return None
+    raw_date = request.form.get('log_date', '').strip()
+    log_date = date_type.fromisoformat(raw_date) if raw_date else date_type.today()
+    entry = ProgressEntry(
+        client_id=current_user.id,
+        log_date=log_date,
+        weight_lbs=_float('weight_lbs'),
+        chest_in=_float('chest_in'),
+        waist_in=_float('waist_in'),
+        hips_in=_float('hips_in'),
+        arms_in=_float('arms_in'),
+        legs_in=_float('legs_in'),
+        notes=request.form.get('notes', '').strip() or None,
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash('Progress logged!', 'success')
+    return redirect(url_for('client_progress'))
+
+
+@app.route('/progress/log-exercise', methods=['POST'])
+@login_required
+def progress_log_exercise():
+    if current_user.role != 'client':
+        abort(403)
+    from datetime import date as date_type
+    raw_date = request.form.get('log_date', '').strip()
+    log_date = date_type.fromisoformat(raw_date) if raw_date else date_type.today()
+    ex_id = request.form.get('exercise_id', '').strip()
+    if not ex_id:
+        flash('Select an exercise.', 'danger')
+        return redirect(url_for('client_progress'))
+    def _float(key):
+        val = request.form.get(key, '').strip()
+        try:
+            return float(val) if val else None
+        except ValueError:
+            return None
+    log = ExerciseLog(
+        client_id=current_user.id,
+        exercise_id=int(ex_id),
+        log_date=log_date,
+        sets_completed=int(request.form.get('sets_completed', 0) or 0) or None,
+        reps_completed=request.form.get('reps_completed', '').strip() or None,
+        weight_lbs=_float('weight_lbs'),
+        notes=request.form.get('notes', '').strip() or None,
+    )
+    db.session.add(log)
+    db.session.commit()
+    flash('Exercise logged!', 'success')
+    return redirect(url_for('client_progress'))
+
+
+@app.route('/progress/<int:client_id>')
+@staff_required
+def staff_progress(client_id):
+    client = User.query.get_or_404(client_id)
+    if client.role != 'client':
+        abort(404)
+    entries = ProgressEntry.query.filter_by(client_id=client_id).order_by(ProgressEntry.log_date).all()
+    ex_logs = ExerciseLog.query.filter_by(client_id=client_id).order_by(ExerciseLog.log_date.desc()).all()
+    return render_template('progress_staff.html', client=client, entries=entries, ex_logs=ex_logs)
+
+
+# MODULE 5: Check-ins & Compliance
+
+@app.route('/checkin', methods=['POST'])
+@login_required
+@csrf.exempt
+def workout_checkin():
+    if current_user.role != 'client':
+        return jsonify({'ok': False, 'error': 'Clients only'}), 403
+    data = request.get_json()
+    assignment_id = data.get('assignment_id')
+    week = data.get('week')
+    day = data.get('day')
+    if not all([assignment_id, week, day]):
+        return jsonify({'ok': False, 'error': 'Missing fields'}), 400
+    # Verify the assignment belongs to this client
+    assignment = ProgramAssignment.query.filter_by(
+        id=int(assignment_id), client_id=current_user.id
+    ).first()
+    if not assignment:
+        return jsonify({'ok': False, 'error': 'Assignment not found'}), 404
+    existing = WorkoutCheckin.query.filter_by(
+        client_id=current_user.id,
+        assignment_id=int(assignment_id),
+        week=int(week),
+        day=int(day)
+    ).first()
+    if existing:
+        return jsonify({'ok': True, 'already_done': True})
+    checkin = WorkoutCheckin(
+        client_id=current_user.id,
+        assignment_id=int(assignment_id),
+        week=int(week),
+        day=int(day),
+    )
+    db.session.add(checkin)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/compliance')
+@staff_required
+def compliance_dashboard():
+    from datetime import date as date_type
+    today = date_type.today()
+    # Get all active clients with an assignment
+    all_assignments = ProgramAssignment.query.all()
+    # One row per client (most recent assignment)
+    seen_clients = {}
+    for pa in sorted(all_assignments, key=lambda x: x.start_date, reverse=True):
+        if pa.client_id not in seen_clients:
+            seen_clients[pa.client_id] = pa
+
+    rows = []
+    for client_id, pa in seen_clients.items():
+        client = db.session.get(User, client_id)
+        if not client or not client.is_active:
+            continue
+        days_since_start = (today - pa.start_date).days
+        if days_since_start < 0:
+            continue
+        prog = pa.program
+        # Total assigned workout days so far (non-rest days up to today)
+        current_week = min((days_since_start // 7) + 1, prog.weeks)
+        current_day_num = (days_since_start % 7) + 1
+        all_days = prog.days.all()
+        assigned_so_far = [
+            pd for pd in all_days
+            if pd.workout_id is not None and (
+                pd.week < current_week or
+                (pd.week == current_week and pd.day <= current_day_num)
+            )
+        ]
+        total_assigned = len(assigned_so_far)
+        completed = WorkoutCheckin.query.filter_by(
+            client_id=client_id, assignment_id=pa.id
+        ).count()
+        if total_assigned > 0:
+            rate = int(completed / total_assigned * 100)
+        else:
+            rate = 0
+        rows.append({
+            'client': client,
+            'program': prog,
+            'total_assigned': total_assigned,
+            'completed': completed,
+            'rate': rate,
+        })
+    rows.sort(key=lambda x: x['rate'])
+    return render_template('compliance.html', rows=rows)
 
 
 # ─── Error Handlers ──────────────────────────────────────────────────────────
