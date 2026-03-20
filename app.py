@@ -600,14 +600,13 @@ def api_sessions():
     if end:
         query = query.filter(Session.scheduled_at <= end[:19])
 
-    if current_user.role == 'client':
-        query = query.filter(Session.client_id == current_user.id)
-    elif current_user.role == 'trainer':
+    if current_user.role == 'trainer':
         query = query.filter(Session.trainer_id == current_user.id)
 
     sessions = query.all()
     events = []
     for s in sessions:
+        is_mine = current_user.role != 'client' or s.client_id == current_user.id
         color = STATUS_COLORS.get(s.status) or s.location.color
         events.append({
             'id': s.id,
@@ -626,6 +625,7 @@ def api_sessions():
                 'session_id': s.id,
                 'group_id': s.group_id,
                 'group_name': s.training_group.name if s.group_id else None,
+                'is_mine': is_mine,
             }
         })
     return jsonify(events)

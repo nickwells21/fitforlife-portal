@@ -428,6 +428,22 @@
 }
 .mcal-chip.status-cancelled .mcal-chip-dot { background: #888; }
 
+/* ── Other clients' sessions (dimmed) ───────────────────────────────────── */
+.mcal-chip.other-session {
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.20);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.mcal-chip.other-session .mcal-chip-dot { background: rgba(255,255,255,0.15); }
+
+/* ── Other-sessions legend pill ─────────────────────────────────────────── */
+.loc-pill.other {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.30);
+}
+.loc-pill.other .loc-pill-dot { background: rgba(255,255,255,0.20); }
+
 /* "+N more" overflow link */
 .mcal-overflow {
   font-size: 10px;
@@ -753,7 +769,7 @@
 {% endif %}
 
 <!-- Section heading -->
-<div class="section-heading">My Upcoming Sessions</div>
+<div class="section-heading">Session Schedule</div>
 
 <!-- Location legend pills -->
 <div class="loc-legend-bar">
@@ -761,6 +777,7 @@
   <span class="loc-pill midtown"><span class="loc-pill-dot"></span>Midtown</span>
   <span class="loc-pill completed"><span class="loc-pill-dot"></span>Completed</span>
   <span class="loc-pill missed"><span class="loc-pill-dot"></span>Missed</span>
+  <span class="loc-pill other"><span class="loc-pill-dot"></span>Others</span>
 </div>
 
 <!-- Month calendar card -->
@@ -1023,8 +1040,12 @@
       numEl.textContent = cellDate.getDate();
       cell.appendChild(numEl);
 
-      // Sessions for this cell
-      const daySessions = sessionMap[key] || [];
+      // Sessions for this cell — own sessions first so they get the visible chip slots
+      const daySessions = (sessionMap[key] || []).slice().sort(function (a, b) {
+        const aMe = (a.extendedProps && a.extendedProps.is_mine !== false) ? 0 : 1;
+        const bMe = (b.extendedProps && b.extendedProps.is_mine !== false) ? 0 : 1;
+        return aMe - bMe;
+      });
 
       if (daySessions.length > 0) {
         const visible = daySessions.slice(0, CHIPS_MAX);
@@ -1062,26 +1083,34 @@
   /* ── Build a session chip element ──────────────────────────────────────── */
 
   function buildChip(s) {
-    const status = (s.extendedProps && s.extendedProps.status) || 'scheduled';
+    const p      = s.extendedProps || {};
+    const isMine = p.is_mine !== false;
+    const status = p.status || 'scheduled';
     const startDt = parseISO(s.start);
-    const trainerFirst = firstName((s.extendedProps && s.extendedProps.trainer) || s.title || '');
+    const trainerFirst = firstName(p.trainer || s.title || '');
     const timeStr = fmtTime(startDt);
-    const dot = STATUS_DOT[status] || STATUS_DOT.scheduled;
 
     const chip = document.createElement('div');
-    chip.className = `mcal-chip status-${status}`;
     chip.setAttribute('role', 'button');
     chip.setAttribute('tabindex', '0');
-    chip.setAttribute('aria-label', `${status} session at ${timeStr}`);
 
     const dotEl = document.createElement('span');
     dotEl.className = 'mcal-chip-dot';
-    dotEl.style.background = dot;
 
     const textEl = document.createElement('span');
     textEl.className = 'mcal-chip-text';
-    const groupLabel = (s.extendedProps && s.extendedProps.group_name) ? ' · Group' : '';
-    textEl.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}${groupLabel}` : timeStr;
+
+    if (isMine) {
+      chip.className = `mcal-chip status-${status}`;
+      chip.setAttribute('aria-label', `${status} session at ${timeStr}`);
+      dotEl.style.background = STATUS_DOT[status] || STATUS_DOT.scheduled;
+      const groupLabel = p.group_name ? ' · Group' : '';
+      textEl.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}${groupLabel}` : timeStr;
+    } else {
+      chip.className = 'mcal-chip other-session';
+      chip.setAttribute('aria-label', `occupied at ${timeStr}`);
+      textEl.textContent = timeStr;
+    }
 
     chip.appendChild(dotEl);
     chip.appendChild(textEl);
@@ -1104,6 +1133,7 @@
 
   function openModal(s) {
     const p       = s.extendedProps || {};
+    const isMine  = p.is_mine !== false;
     const startDt = parseISO(s.start);
     const endDt   = s.end ? parseISO(s.end) : null;
     const mins    = durationMin(startDt, endDt);
@@ -1113,12 +1143,13 @@
     document.getElementById('mDate').textContent = startDt.toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric'
     });
-    document.getElementById('mTrainer').textContent  = p.trainer   || '—';
-    document.getElementById('mLocation').textContent = p.location  || '—';
-    document.getElementById('mDuration').textContent = `${mins} min ${p.group_name ? 'group ' : ''}session`;
+    document.getElementById('mTrainer').textContent  = p.trainer  || '—';
+    document.getElementById('mLocation').textContent = p.location || '—';
+    document.getElementById('mDuration').textContent = `${mins} min session`;
+
     const mGroupRow = document.getElementById('mGroupRow');
     if (mGroupRow) {
-      if (p.group_name) {
+      if (isMine && p.group_name) {
         mGroupRow.style.display = 'flex';
         document.getElementById('mGroupName').textContent = p.group_name;
       } else {
@@ -1127,7 +1158,7 @@
     }
 
     const notesRow = document.getElementById('mNotes');
-    if (p.notes) {
+    if (isMine && p.notes) {
       document.getElementById('mNotesText').textContent = p.notes;
       notesRow.style.display = 'flex';
     } else {
@@ -1135,8 +1166,13 @@
     }
 
     const chip = document.getElementById('mStatus');
-    chip.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-    chip.className   = `modal-status-chip ${status}`;
+    if (isMine) {
+      chip.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      chip.className   = `modal-status-chip ${status}`;
+    } else {
+      chip.textContent = 'Occupied';
+      chip.className   = 'modal-status-chip cancelled';
+    }
 
     closePopover();
     modal.classList.add('active');
@@ -1154,9 +1190,10 @@
 
     sessions.forEach(function (s) {
       const p = s.extendedProps || {};
+      const isMine = p.is_mine !== false;
       const status = p.status || 'scheduled';
       const startDt = parseISO(s.start);
-      const dot = STATUS_DOT[status] || STATUS_DOT.scheduled;
+      const dot = isMine ? (STATUS_DOT[status] || STATUS_DOT.scheduled) : 'rgba(255,255,255,0.18)';
       const trainerFirst = firstName(p.trainer || '');
       const timeStr = fmtTime(startDt);
 
@@ -1168,7 +1205,9 @@
       dotEl.style.background = dot;
 
       const label = document.createElement('span');
-      label.textContent = trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr;
+      label.textContent = isMine
+        ? (trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr)
+        : `${timeStr} · Occupied`;
 
       item.appendChild(dotEl);
       item.appendChild(label);
