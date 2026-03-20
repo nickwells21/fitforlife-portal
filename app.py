@@ -1227,9 +1227,28 @@ def admin_dedup_users():
 @app.route('/admin/users')
 @admin_required
 def admin_users():
+    now = datetime.now(timezone.utc)
     users = User.query.order_by(User.role, User.name).all()
     trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
-    return render_template('admin_users.html', users=users, trainers=trainers)
+
+    # Build client-specific data (package rate, session balance, next session)
+    client_data = {}
+    for u in users:
+        if u.role == 'client':
+            p, comp, rem = get_month_balance(u.id, now.month, now.year)
+            next_sess = Session.query.filter(
+                Session.client_id == u.id,
+                Session.status == 'scheduled',
+                Session.scheduled_at >= now,
+            ).order_by(Session.scheduled_at).first()
+            pkg_count = SessionPackage.query.filter_by(client_id=u.id).count()
+            client_data[u.id] = {
+                'purchased': p, 'completed': comp, 'remaining': rem,
+                'next_session': next_sess, 'pkg_count': pkg_count,
+            }
+
+    return render_template('admin_users.html', users=users, trainers=trainers,
+                           client_data=client_data, month_name=month_name[now.month])
 
 
 @app.route('/admin/users/<int:user_id>/assign-trainer', methods=['POST'])
@@ -1740,6 +1759,45 @@ class ProgramAssignment(db.Model):
     assigned_by = db.relationship('User', foreign_keys='ProgramAssignment.assigned_by_id')
 
 
+class ProgramPhase(db.Model):
+    __tablename__ = 'program_phases'
+    id = db.Column(db.Integer, primary_key=True)
+    program_id = db.Column(db.Integer, db.ForeignKey('programs.id'), nullable=False)
+    phase_num = db.Column(db.Integer, nullable=False)   # 1, 2, 3, 4
+    weeks = db.Column(db.Integer, nullable=False)        # 2, 3, or 4
+    name = db.Column(db.String(100))                     # e.g. "Foundation", "Intensification"
+    program = db.relationship('Program', backref=db.backref('phases', lazy='dynamic',
+                              order_by='ProgramPhase.phase_num'))
+
+
+class PhaseDay(db.Model):
+    """One row per day slot in a phase. The same workout repeats every week of the phase."""
+    __tablename__ = 'phase_days'
+    id = db.Column(db.Integer, primary_key=True)
+    phase_id = db.Column(db.Integer, db.ForeignKey('program_phases.id'), nullable=False)
+    day_num = db.Column(db.Integer, nullable=False)      # 1=Mon, 2=Tue, ... 7=Sun
+    workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=True)
+    label = db.Column(db.String(100))
+    __table_args__ = (db.UniqueConstraint('phase_id', 'day_num', name='uq_phase_day'),)
+    phase = db.relationship('ProgramPhase', backref=db.backref('days', lazy='dynamic'))
+    workout = db.relationship('Workout')
+
+
+class ProgressionOverride(db.Model):
+    """Per-exercise, per-week set/rep/weight override within a phase."""
+    __tablename__ = 'progression_overrides'
+    id = db.Column(db.Integer, primary_key=True)
+    phase_id = db.Column(db.Integer, db.ForeignKey('program_phases.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    week_num = db.Column(db.Integer, nullable=False)    # 1-based within the phase
+    sets = db.Column(db.Integer)
+    reps = db.Column(db.String(20))                     # "10", "8-12", "AMRAP"
+    weight_note = db.Column(db.String(100))             # "65% 1RM", "RPE 8", "135 lbs"
+    __table_args__ = (db.UniqueConstraint('phase_id', 'exercise_id', 'week_num', name='uq_progression'),)
+    phase = db.relationship('ProgramPhase')
+    exercise = db.relationship('Exercise')
+
+
 class ProgressEntry(db.Model):
     __tablename__ = 'progress_entries'
     id = db.Column(db.Integer, primary_key=True)
@@ -1989,17 +2047,35 @@ def program_new():
         if not name:
             flash('Program name is required.', 'danger')
             return render_template('program_form.html')
-        weeks = int(request.form.get('weeks', 4))
+        num_phases = int(request.form.get('num_phases', 2))
+        num_phases = max(2, min(4, num_phases))
+        # Compute total weeks from phase lengths
+        total_weeks = 0
+        phase_data = []
+        for i in range(1, num_phases + 1):
+            ph_weeks = int(request.form.get(f'phase_{i}_weeks', 4))
+            ph_weeks = max(2, min(4, ph_weeks))
+            ph_name = request.form.get(f'phase_{i}_name', '').strip() or None
+            total_weeks += ph_weeks
+            phase_data.append({'phase_num': i, 'weeks': ph_weeks, 'name': ph_name})
         prog = Program(
             name=name,
             description=request.form.get('description', '').strip() or None,
-            weeks=weeks,
+            weeks=total_weeks,
             trainer_id=current_user.id,
         )
         db.session.add(prog)
+        db.session.flush()
+        for pd in phase_data:
+            db.session.add(ProgramPhase(
+                program_id=prog.id,
+                phase_num=pd['phase_num'],
+                weeks=pd['weeks'],
+                name=pd['name'],
+            ))
         db.session.commit()
-        flash(f'Program "{prog.name}" created. Now build your week/day schedule.', 'success')
-        return redirect(url_for('program_builder', program_id=prog.id))
+        flash(f'Program "{prog.name}" created. Now build your phase schedule.', 'success')
+        return redirect(url_for('program_phase_builder', program_id=prog.id))
     return render_template('program_form.html')
 
 
@@ -2025,17 +2101,28 @@ def program_detail(program_id):
 @app.route('/programs/<int:program_id>/builder')
 @staff_required
 def program_builder(program_id):
+    """Legacy builder — redirect to new phase-based builder."""
+    return redirect(url_for('program_phase_builder', program_id=program_id))
+
+
+@app.route('/programs/<int:program_id>/phase-builder')
+@staff_required
+def program_phase_builder(program_id):
     prog = Program.query.get_or_404(program_id)
     if current_user.role != 'admin' and prog.trainer_id != current_user.id:
         abort(403)
+    phases = prog.phases.all()
+    # If program has no phases yet (legacy program), show info
     if current_user.role == 'admin':
         workouts = Workout.query.order_by(Workout.name).all()
     else:
         workouts = Workout.query.filter_by(trainer_id=current_user.id).order_by(Workout.name).all()
-    day_map = {}
-    for pd in prog.days.all():
-        day_map[(pd.week, pd.day)] = pd
-    return render_template('program_builder.html', prog=prog, workouts=workouts, day_map=day_map)
+    # Build phase_day_map: {phase_id: {day_num: PhaseDay}}
+    phase_day_map = {}
+    for ph in phases:
+        phase_day_map[ph.id] = {pd.day_num: pd for pd in ph.days.all()}
+    return render_template('phase_builder.html', prog=prog, phases=phases,
+                           workouts=workouts, phase_day_map=phase_day_map)
 
 
 @app.route('/programs/<int:program_id>/day', methods=['POST'])
@@ -2062,6 +2149,116 @@ def program_set_day(program_id):
         w = db.session.get(Workout, pd.workout_id)
         workout_name = w.name if w else None
     return jsonify({'ok': True, 'workout_name': workout_name, 'label': pd.label})
+
+
+@app.route('/programs/<int:program_id>/phase/<int:phase_id>/day', methods=['POST'])
+@staff_required
+@csrf.exempt
+def phase_set_day(program_id, phase_id):
+    prog = Program.query.get_or_404(program_id)
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        return jsonify({'ok': False, 'error': 'Not authorized'}), 403
+    phase = ProgramPhase.query.get_or_404(phase_id)
+    if phase.program_id != prog.id:
+        return jsonify({'ok': False, 'error': 'Phase not in program'}), 400
+    data = request.get_json()
+    day_num = int(data.get('day_num', 1))
+    workout_id = data.get('workout_id')
+    label = data.get('label', '').strip() or None
+    phd = PhaseDay.query.filter_by(phase_id=phase.id, day_num=day_num).first()
+    if phd is None:
+        phd = PhaseDay(phase_id=phase.id, day_num=day_num)
+        db.session.add(phd)
+    phd.workout_id = int(workout_id) if workout_id else None
+    phd.label = label
+    db.session.commit()
+    workout_name = None
+    if phd.workout_id:
+        w = db.session.get(Workout, phd.workout_id)
+        workout_name = w.name if w else None
+    return jsonify({'ok': True, 'workout_name': workout_name, 'label': phd.label})
+
+
+@app.route('/programs/<int:program_id>/phase/<int:phase_id>/progression')
+@staff_required
+def phase_progression(program_id, phase_id):
+    prog = Program.query.get_or_404(program_id)
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        abort(403)
+    phase = ProgramPhase.query.get_or_404(phase_id)
+    if phase.program_id != prog.id:
+        abort(404)
+    # Collect all exercises from all workouts assigned to this phase's days
+    phase_days = phase.days.all()
+    workout_ids = list({pd.workout_id for pd in phase_days if pd.workout_id})
+    # Get unique exercises across all workouts in this phase, preserving order
+    seen_ex_ids = []
+    exercises = []
+    for wid in workout_ids:
+        w = db.session.get(Workout, wid)
+        if w:
+            for we in w.exercises.all():
+                if we.exercise_id not in seen_ex_ids:
+                    seen_ex_ids.append(we.exercise_id)
+                    exercises.append(we.exercise)
+    # Load existing overrides for this phase
+    overrides = ProgressionOverride.query.filter_by(phase_id=phase.id).all()
+    # Build override map: {(exercise_id, week_num): override}
+    override_map = {(o.exercise_id, o.week_num): o for o in overrides}
+    weeks = list(range(1, phase.weeks + 1))
+    return render_template('phase_progression.html', prog=prog, phase=phase,
+                           exercises=exercises, weeks=weeks, override_map=override_map)
+
+
+@app.route('/programs/<int:program_id>/phase/<int:phase_id>/progression', methods=['POST'])
+@staff_required
+def phase_progression_save(program_id, phase_id):
+    prog = Program.query.get_or_404(program_id)
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        abort(403)
+    phase = ProgramPhase.query.get_or_404(phase_id)
+    if phase.program_id != prog.id:
+        abort(404)
+    # Parse form: fields named ex_{ex_id}_w{week_num}_{field}
+    # Group keys by (ex_id, week_num) pair first to allow partial updates
+    combos = {}
+    for key, val in request.form.items():
+        if not key.startswith('ex_'):
+            continue
+        # key format: ex_{ex_id}_w{week_num}_{field}
+        try:
+            rest = key[3:]  # strip 'ex_'
+            second_underscore = rest.index('_')
+            ex_id = int(rest[:second_underscore])
+            rest2 = rest[second_underscore + 1:]  # 'w{week_num}_{field}'
+            third_underscore = rest2.index('_')
+            week_str = rest2[:third_underscore]
+            field = rest2[third_underscore + 1:]
+            if not week_str.startswith('w'):
+                continue
+            week_num = int(week_str[1:])
+        except (ValueError, IndexError):
+            continue
+        combos.setdefault((ex_id, week_num), {})[field] = val.strip()
+    for (ex_id, week_num), fields in combos.items():
+        override = ProgressionOverride.query.filter_by(
+            phase_id=phase.id, exercise_id=ex_id, week_num=week_num
+        ).first()
+        if override is None:
+            override = ProgressionOverride(phase_id=phase.id, exercise_id=ex_id, week_num=week_num)
+            db.session.add(override)
+        if 'sets' in fields:
+            try:
+                override.sets = int(fields['sets']) if fields['sets'] else None
+            except ValueError:
+                override.sets = None
+        if 'reps' in fields:
+            override.reps = fields['reps'] or None
+        if 'weight_note' in fields:
+            override.weight_note = fields['weight_note'] or None
+    db.session.commit()
+    flash('Progression chart saved.', 'success')
+    return redirect(url_for('phase_progression', program_id=program_id, phase_id=phase_id))
 
 
 @app.route('/programs/<int:program_id>/assign', methods=['POST'])
@@ -2126,35 +2323,86 @@ def my_program():
     current_day = None
     today_program_day = None
     checkin_done = False
-
     program_complete = False
-    week_days = {}  # {day_num: ProgramDay} for current week — avoids 7 template queries
+    week_days = {}  # {day_num: PhaseDay or ProgramDay} for current week
+
+    # Phase-based tracking variables
+    current_phase = None
+    week_in_phase = None
+    day_in_week = None
+    total_phases = 0
+    today_overrides = {}  # {exercise_id: ProgressionOverride}
 
     if assignment:
         days_since_start = (today - assignment.start_date).days
-        total_program_days = assignment.program.weeks * 7
-        if days_since_start >= total_program_days:
-            program_complete = True
-            current_week = assignment.program.weeks
-            current_day = 7
+        phases = assignment.program.phases.all()
+
+        if phases:
+            # Phase-based program
+            total_phases = len(phases)
+            running_days = 0
+            for ph in phases:
+                phase_days_total = ph.weeks * 7
+                if days_since_start < running_days + phase_days_total:
+                    days_in_phase = days_since_start - running_days
+                    week_in_phase = (days_in_phase // 7) + 1
+                    day_in_week = (days_in_phase % 7) + 1
+                    current_phase = ph
+                    break
+                running_days += phase_days_total
+            if current_phase is None:
+                # Past all phases
+                program_complete = True
+                current_phase = phases[-1]
+                week_in_phase = phases[-1].weeks
+                day_in_week = 7
+            # current_week = global week number for compatibility
+            current_week = week_in_phase
+            current_day = day_in_week
+            # Load phase days for the current phase (same every week)
+            phase_day_rows = current_phase.days.all()
+            week_days = {phd.day_num: phd for phd in phase_day_rows}
+            today_program_day = week_days.get(day_in_week)
+            if today_program_day and today_program_day.workout_id and not program_complete:
+                # Load progression overrides for today's exercises this week
+                exercise_ids = [we.exercise_id for we in today_program_day.workout.exercises.all()]
+                for eid in exercise_ids:
+                    ov = ProgressionOverride.query.filter_by(
+                        phase_id=current_phase.id,
+                        exercise_id=eid,
+                        week_num=week_in_phase,
+                    ).first()
+                    if ov:
+                        today_overrides[eid] = ov
+            if today_program_day:
+                checkin_done = WorkoutCheckin.query.filter_by(
+                    client_id=current_user.id,
+                    assignment_id=assignment.id,
+                    week=current_week,
+                    day=current_day,
+                ).first() is not None
         else:
-            current_week = (days_since_start // 7) + 1
-            current_day = (days_since_start % 7) + 1
-
-        # Fetch all days for current week in one query
-        week_day_rows = ProgramDay.query.filter_by(
-            program_id=assignment.program_id, week=current_week
-        ).all()
-        week_days = {pd.day: pd for pd in week_day_rows}
-
-        today_program_day = week_days.get(current_day)
-        if today_program_day:
-            checkin_done = WorkoutCheckin.query.filter_by(
-                client_id=current_user.id,
-                assignment_id=assignment.id,
-                week=current_week,
-                day=current_day
-            ).first() is not None
+            # Legacy flat-week program
+            total_program_days = assignment.program.weeks * 7
+            if days_since_start >= total_program_days:
+                program_complete = True
+                current_week = assignment.program.weeks
+                current_day = 7
+            else:
+                current_week = (days_since_start // 7) + 1
+                current_day = (days_since_start % 7) + 1
+            week_day_rows = ProgramDay.query.filter_by(
+                program_id=assignment.program_id, week=current_week
+            ).all()
+            week_days = {pd.day: pd for pd in week_day_rows}
+            today_program_day = week_days.get(current_day)
+            if today_program_day:
+                checkin_done = WorkoutCheckin.query.filter_by(
+                    client_id=current_user.id,
+                    assignment_id=assignment.id,
+                    week=current_week,
+                    day=current_day,
+                ).first() is not None
 
     return render_template('my_program.html',
         assignment=assignment,
@@ -2165,6 +2413,12 @@ def my_program():
         today=today,
         program_complete=program_complete,
         week_days=week_days,
+        # Phase-based extras
+        current_phase=current_phase,
+        week_in_phase=week_in_phase,
+        day_in_week=day_in_week,
+        total_phases=total_phases,
+        today_overrides=today_overrides,
     )
 
 

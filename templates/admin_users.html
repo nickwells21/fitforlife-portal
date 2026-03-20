@@ -3,7 +3,6 @@
 
 {% block head %}
 <style>
-  /* ── Design tokens ── */
   :root {
     --bg: #080808;
     --bg-surface: #0f0f0f;
@@ -24,9 +23,6 @@
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
-    --role-admin:   #1e9df1;
-    --role-trainer: #1e9df1;
-    --role-client:  #14b8a6;
   }
 
   /* ── Stats row ── */
@@ -50,55 +46,41 @@
   }
 
   .stat-icon-circle {
-    width: 38px;
-    height: 38px;
+    width: 38px; height: 38px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
   }
 
-  .stat-icon-circle.total   { background: var(--accent-dim);              color: var(--accent); }
-  .stat-icon-circle.admin   { background: rgba(30,157,241,0.15);           color: #1e9df1; }
-  .stat-icon-circle.trainer { background: rgba(30,157,241,0.15);           color: #1e9df1; }
-  .stat-icon-circle.client  { background: rgba(20,184,166,0.15);           color: #14b8a6; }
+  .stat-icon-circle.total   { background: var(--accent-dim);          color: var(--accent); }
+  .stat-icon-circle.admin   { background: rgba(30,157,241,0.15);       color: #1e9df1; }
+  .stat-icon-circle.trainer { background: rgba(30,157,241,0.15);       color: #1e9df1; }
+  .stat-icon-circle.client  { background: rgba(20,184,166,0.15);       color: #14b8a6; }
 
-  .stat-info-num {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1;
-    letter-spacing: -0.02em;
-  }
+  .stat-info-num   { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+  .stat-info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-top: 1px; }
 
-  .stat-info-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--text-muted);
-    margin-top: 1px;
-  }
-
-  /* ── Users table panel ── */
-  .users-panel {
+  /* ── Section panels ── */
+  .users-section {
     background: var(--bg-elevated);
     border: 1px solid var(--border-mid);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    margin-bottom: 1.25rem;
   }
 
-  .users-panel-header {
+  .users-section:last-child { margin-bottom: 0; }
+
+  .users-section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.125rem 1.5rem;
+    padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
+    gap: 0.75rem;
   }
 
-  .users-panel-title {
+  .users-section-title {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
@@ -109,237 +91,145 @@
     gap: 0.5rem;
   }
 
+  .section-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid rgba(30,157,241,0.25);
+    border-radius: 20px; font-size: 10px; font-weight: 700;
+    padding: 1px 8px; min-width: 22px;
+  }
+
   .btn-add-user {
     background: linear-gradient(135deg, #1e9df1 0%, #69c0f5 100%);
-    border: none;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    padding: 0.475rem 1rem;
-    letter-spacing: 0.03em;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
+    border: none; color: #fff; font-size: 12px; font-weight: 600;
+    border-radius: var(--radius-sm); padding: 0.475rem 1rem;
+    letter-spacing: 0.03em; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.375rem;
     transition: opacity 0.15s, transform 0.1s;
   }
+  .btn-add-user:hover { opacity: 0.9; transform: translateY(-1px); color: #fff; }
 
-  .btn-add-user:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    color: #fff;
-  }
-
-  /* ── Table ── */
-  .users-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .users-table thead tr {
-    border-bottom: 1px solid var(--border);
-  }
-
+  /* ── Shared table styles ── */
+  .users-table { width: 100%; border-collapse: collapse; }
+  .users-table thead tr { border-bottom: 1px solid var(--border); }
   .users-table th {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    padding: 0.625rem 1rem;
-    text-align: left;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-muted);
+    padding: 0.625rem 1rem; text-align: left;
   }
-
   .users-table th:last-child { text-align: right; }
-
-  .users-table tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background 0.12s;
-  }
-
-  .users-table tbody tr:last-child {
-    border-bottom: none;
-  }
-
-  .users-table tbody tr:hover {
-    background: rgba(255,255,255,0.025);
-  }
-
-  .users-table td {
-    padding: 0.75rem 1rem;
-    vertical-align: middle;
-  }
-
+  .users-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+  .users-table tbody tr:last-child { border-bottom: none; }
+  .users-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+  .users-table td { padding: 0.75rem 1rem; vertical-align: middle; }
   .users-table td:last-child { text-align: right; }
 
   /* ── Avatar ── */
   .user-avatar-circle {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 800;
-    color: #fff;
-    flex-shrink: 0;
-    text-transform: uppercase;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff;
+    flex-shrink: 0; text-transform: uppercase;
   }
-
   .user-avatar-circle.role-admin   { background: linear-gradient(135deg, #1e9df1, #69c0f5); }
   .user-avatar-circle.role-trainer { background: linear-gradient(135deg, #1e9df1, #69c0f5); }
   .user-avatar-circle.role-client  { background: linear-gradient(135deg, #14b8a6, #2dd4bf); }
 
-  .user-name-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .user-name-text {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-  }
+  .user-name-cell { display: flex; align-items: center; gap: 0.75rem; }
+  .user-name-text { font-size: 13px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .user-name-text:hover { color: var(--accent); }
+  .user-email { font-size: 12px; color: var(--text-muted); }
 
   /* ── Role badge ── */
   .role-badge {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-radius: 20px;
-    padding: 3px 9px;
-    display: inline-block;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; border-radius: 20px; padding: 3px 9px; display: inline-block;
   }
-
-  .role-badge.admin   { background: rgba(30,157,241,0.15);  color: #93d4f8; }
-  .role-badge.trainer { background: rgba(30,157,241,0.15);  color: #93d4f8; }
-  .role-badge.client  { background: rgba(20,184,166,0.15);  color: #5eead4; }
+  .role-badge.admin   { background: rgba(30,157,241,0.15); color: #93d4f8; }
+  .role-badge.trainer { background: rgba(30,157,241,0.15); color: #93d4f8; }
+  .role-badge.client  { background: rgba(20,184,166,0.15); color: #5eead4; }
 
   /* ── Status badge ── */
   .status-badge {
-    font-size: 10px;
-    font-weight: 700;
-    border-radius: 20px;
-    padding: 3px 9px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
+    font-size: 10px; font-weight: 700; border-radius: 20px; padding: 3px 9px;
+    display: inline-flex; align-items: center; gap: 0.3rem;
   }
-
-  .status-badge.active   { background: var(--green-dim);             color: var(--green); }
-  .status-badge.inactive { background: rgba(255,255,255,0.05);       color: var(--text-muted); }
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
+  .status-badge.active   { background: var(--green-dim);       color: var(--green); }
+  .status-badge.inactive { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .status-dot.active   { background: var(--green); }
   .status-dot.inactive { background: var(--text-muted); }
 
-  /* ── Email ── */
-  .user-email {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  /* ── Trainer assign cell ── */
+  /* ── Trainer assign ── */
   .trainer-assign-form { display: flex; align-items: center; gap: 0.4rem; }
   .trainer-assign-select {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-mid);
-    color: var(--text);
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    padding: 0.3rem 0.5rem;
-    max-width: 130px;
-    cursor: pointer;
-    transition: border-color 0.15s;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    color: var(--text); border-radius: var(--radius-sm);
+    font-size: 11px; padding: 0.3rem 0.5rem; max-width: 130px;
+    cursor: pointer; transition: border-color 0.15s;
   }
   .trainer-assign-select:focus { border-color: var(--accent); outline: none; }
   .btn-assign-save {
-    background: var(--accent-dim);
-    border: 1px solid rgba(30,157,241,0.25);
-    color: var(--accent);
-    font-size: 10px;
-    font-weight: 700;
-    border-radius: var(--radius-sm);
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
+    background: var(--accent-dim); border: 1px solid rgba(30,157,241,0.25);
+    color: var(--accent); font-size: 10px; font-weight: 700;
+    border-radius: var(--radius-sm); padding: 0.3rem 0.6rem;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
   }
   .btn-assign-save:hover { background: rgba(30,157,241,0.25); }
 
-  /* ── Trainerize link ── */
-  .trainerize-link {
-    font-size: 11px;
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-    transition: opacity 0.15s;
+  /* ── Package rate badge ── */
+  .pkg-rate {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid rgba(30,157,241,0.25); border-radius: 20px;
+    font-size: 10px; font-weight: 700; padding: 2px 8px; white-space: nowrap;
+  }
+  .pkg-rate.no-pkg {
+    background: rgba(255,255,255,0.04); color: var(--text-muted);
+    border-color: var(--border);
   }
 
-  .trainerize-link:hover {
-    opacity: 0.8;
-    color: var(--accent);
+  /* ── Sessions chip ── */
+  .sess-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    border-radius: 20px; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; white-space: nowrap;
   }
+  .sess-chip.ok   { background: rgba(34,197,94,0.12);  color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+  .sess-chip.warn { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+  .sess-chip.none { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
 
-  .trainerize-none {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  /* ── Edit button ── */
+  /* ── Action buttons ── */
   .btn-user-edit {
-    background: transparent;
-    border: 1px solid var(--border-mid);
-    color: var(--text-soft);
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    padding: 0.35rem 0.75rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
+    background: transparent; border: 1px solid var(--border-mid); color: var(--text-soft);
+    font-size: 11px; font-weight: 600; border-radius: var(--radius-sm);
+    padding: 0.3rem 0.65rem; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.3rem;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
+  .btn-user-edit:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 
-  .btn-user-edit:hover {
-    background: var(--accent-dim);
-    border-color: var(--accent);
-    color: var(--accent);
+  .btn-user-book {
+    background: var(--accent); border: none; color: #fff;
+    font-size: 11px; font-weight: 600; border-radius: var(--radius-sm);
+    padding: 0.3rem 0.65rem; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    transition: opacity 0.15s;
+  }
+  .btn-user-book:hover { opacity: 0.85; color: #fff; }
+
+  .next-sess-text {
+    font-size: 11px; color: var(--text-soft);
+    display: flex; align-items: center; gap: 4px;
   }
 
   @media (max-width: 768px) {
-    /* Stats row → 2 col grid */
     .users-stats-row { display: grid !important; grid-template-columns: 1fr 1fr !important; }
-
-    /* Table → horizontal scroll */
-    .users-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-    /* Hide email + trainer columns on small screens */
-    .users-table th:nth-child(3),
-    .users-table td:nth-child(3),
-    .users-table th:nth-child(4),
-    .users-table td:nth-child(4) { display: none; }
-
-    /* Avatar + name compress */
-    .user-name-cell { gap: 0.4rem !important; }
+    .users-section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* Hide less important cols on mobile */
+    .hide-mobile { display: none !important; }
   }
-
   @media (max-width: 480px) {
-    /* Stats row → 1 col */
     .users-stats-row { grid-template-columns: 1fr !important; }
   }
 </style>
@@ -348,7 +238,7 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <div class="page-subtitle" style="margin-bottom:2px;">Manage access</div>
+    <div class="page-subtitle" style="margin-bottom:2px;">All roles · Session balances for {{ month_name }}</div>
     <h1 class="page-title">Users</h1>
   </div>
 </div>
@@ -385,16 +275,20 @@
   </div>
 </div>
 
-<!-- Users table -->
-<div class="users-panel">
-  <div class="users-panel-header">
-    <div class="users-panel-title">
-      <i class="bi bi-person-lines-fill"></i> All Users
+<!-- ── Clients section ───────────────────────────────────────────── -->
+{% set clients = users | selectattr('role','eq','client') | list %}
+<div class="users-section">
+  <div class="users-section-header">
+    <div class="users-section-title">
+      <i class="bi bi-person-fill" style="color:#14b8a6;"></i> Clients
+      <span class="section-count">{{ clients | length }}</span>
     </div>
-    <div style="display:flex; gap:0.5rem; align-items:center;">
-      <form method="POST" action="{{ url_for('admin_dedup_users') }}" style="display:inline;" onsubmit="return confirm('Delete all duplicate accounts? This cannot be undone.')">
+    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+      <form method="POST" action="{{ url_for('admin_dedup_users') }}" style="display:inline;"
+            onsubmit="return confirm('Delete all duplicate accounts? This cannot be undone.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-add-user" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171;">
+        <button type="submit" class="btn-add-user"
+                style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171;">
           <i class="bi bi-trash3-fill"></i> Remove Dupes
         </button>
       </form>
@@ -407,53 +301,141 @@
     <thead>
       <tr>
         <th>Name</th>
-        <th>Role</th>
-        <th>Email</th>
-        <th>Trainer</th>
+        <th class="hide-mobile">Trainer</th>
+        <th>Package</th>
+        <th>Sessions ({{ month_name[:3] }})</th>
+        <th class="hide-mobile">Next Session</th>
         <th>Status</th>
-        <th>Edit</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for user in users %}
+      {% for user in clients %}
+      {% set cd = client_data.get(user.id, {}) %}
+      {% set purchased = cd.get('purchased', 0) %}
+      {% set completed = cd.get('completed', 0) %}
+      {% set remaining = cd.get('remaining', 0) %}
+      {% set next_s    = cd.get('next_session') %}
+      {% set pkg_count = cd.get('pkg_count', 0) %}
       <tr>
         <td>
           <div class="user-name-cell">
-            <div class="user-avatar-circle role-{{ user.role }}">{{ user.name[0] }}</div>
-            <span class="user-name-text">{{ user.name }}</span>
+            <div class="user-avatar-circle role-client">{{ (user.name[0] if user.name else '?') | upper }}</div>
+            <div>
+              <a href="{{ url_for('client_detail', client_id=user.id) }}" class="user-name-text">{{ user.name }}</a>
+              <div class="user-email">{{ user.email }}</div>
+            </div>
           </div>
         </td>
-        <td>
-          <span class="role-badge {{ user.role }}">{{ user.role }}</span>
-        </td>
-        <td>
-          <span class="user-email">{{ user.email }}</span>
-        </td>
-        <td>
-          {% if user.role == 'client' %}
+        <td class="hide-mobile">
           <form method="POST" action="{{ url_for('admin_assign_trainer', user_id=user.id) }}" class="trainer-assign-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="trainer_id" class="trainer-assign-select">
-              <option value="">— Unassigned —</option>
+              <option value="">— None —</option>
               {% for t in trainers %}
               <option value="{{ t.id }}" {% if user.trainer_id == t.id %}selected{% endif %}>{{ t.name.split()[0] }}</option>
               {% endfor %}
             </select>
             <button type="submit" class="btn-assign-save">Save</button>
           </form>
+        </td>
+        <td>
+          {% if purchased > 0 %}
+            <span class="pkg-rate"><i class="bi bi-layers-fill" style="font-size:9px;"></i> {{ purchased }}/mo</span>
+            {% if pkg_count > 0 %}
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">{{ pkg_count }} mo on file</div>
+            {% endif %}
           {% else %}
-          <span class="trainerize-none">—</span>
+            <span class="pkg-rate no-pkg"><i class="bi bi-dash-circle" style="font-size:9px;"></i> No pkg</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if purchased == 0 %}
+            <span class="sess-chip none">—</span>
+          {% elif remaining == 0 %}
+            <span class="sess-chip ok"><i class="bi bi-check-circle-fill"></i> Complete</span>
+          {% elif remaining == 1 %}
+            <span class="sess-chip warn"><i class="bi bi-exclamation-circle-fill"></i> 1 left</span>
+          {% else %}
+            <span class="sess-chip ok"><i class="bi bi-lightning-fill"></i> {{ remaining }} left</span>
+          {% endif %}
+          {% if purchased > 0 %}
+          <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">{{ completed }}/{{ purchased }} done</div>
+          {% endif %}
+        </td>
+        <td class="hide-mobile">
+          {% if next_s %}
+          <div class="next-sess-text">
+            <i class="bi bi-calendar-event" style="font-size:10px; color:var(--accent);"></i>
+            {{ next_s.scheduled_at.strftime('%b %-d') }} · {{ next_s.scheduled_at.strftime('%-I:%M %p') }}
+          </div>
+          {% else %}
+          <span style="font-size:11px; color:var(--text-muted);">None booked</span>
           {% endif %}
         </td>
         <td>
           {% if user.is_active %}
-          <span class="status-badge active">
-            <span class="status-dot active"></span>Active
-          </span>
+          <span class="status-badge active"><span class="status-dot active"></span>Active</span>
           {% else %}
-          <span class="status-badge inactive">
-            <span class="status-dot inactive"></span>Inactive
-          </span>
+          <span class="status-badge inactive"><span class="status-dot inactive"></span>Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.375rem; justify-content:flex-end;">
+            <a href="{{ url_for('client_detail', client_id=user.id) }}" class="btn-user-edit">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{{ url_for('new_session', client_id=user.id) }}" class="btn-user-book">
+              <i class="bi bi-plus-lg"></i> Book
+            </a>
+            <a href="{{ url_for('admin_edit_user', user_id=user.id) }}" class="btn-user-edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:13px;">No clients yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Trainers & Admins section ─────────────────────────────────── -->
+{% set staff = users | rejectattr('role','eq','client') | list %}
+<div class="users-section">
+  <div class="users-section-header">
+    <div class="users-section-title">
+      <i class="bi bi-person-badge-fill" style="color:#1e9df1;"></i> Trainers &amp; Admins
+      <span class="section-count">{{ staff | length }}</span>
+    </div>
+  </div>
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th class="hide-mobile">Email</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in staff %}
+      <tr>
+        <td>
+          <div class="user-name-cell">
+            <div class="user-avatar-circle role-{{ user.role }}">{{ (user.name[0] if user.name else '?') | upper }}</div>
+            <span class="user-name-text">{{ user.name }}</span>
+          </div>
+        </td>
+        <td><span class="role-badge {{ user.role }}">{{ user.role }}</span></td>
+        <td class="hide-mobile"><span class="user-email">{{ user.email }}</span></td>
+        <td>
+          {% if user.is_active %}
+          <span class="status-badge active"><span class="status-dot active"></span>Active</span>
+          {% else %}
+          <span class="status-badge inactive"><span class="status-dot inactive"></span>Inactive</span>
           {% endif %}
         </td>
         <td>
@@ -462,8 +444,11 @@
           </a>
         </td>
       </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:13px;">No staff yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 {% endblock %}

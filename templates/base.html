@@ -315,16 +315,6 @@
 
       {% if current_user.role in ('admin', 'trainer') %}
       <li>
-        <a href="{{ url_for('clients') }}" class="nav-link {% if request.endpoint in ('clients','client_detail') %}active{% endif %}">
-          <i class="bi bi-people"></i><span class="nav-label"> Clients</span>
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('new_session') }}" class="nav-link {% if request.endpoint == 'new_session' %}active{% endif %}">
-          <i class="bi bi-plus-square"></i><span class="nav-label"> Book Session</span>
-        </a>
-      </li>
-      <li>
         <a href="{{ url_for('exercises_list') }}" class="nav-link {% if request.endpoint and 'exercise' in request.endpoint %}active{% endif %}">
           <i class="bi bi-lightning-charge"></i><span class="nav-label"> Library</span>
         </a>
