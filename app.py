@@ -1569,6 +1569,20 @@ def init_db():
     elif admin.role != 'admin':
         admin.role = 'admin'
         db.session.commit()
+    for full_name, email, password in [
+        ('Carrie Cox',   'carrie@fitforlife.com', 'Cox2026'),
+        ('Marie Berry',  'marie@fitforlife.com',  'Berry2026'),
+    ]:
+        u = User.query.filter_by(email=email).first()
+        if not u:
+            u = User(name=full_name, email=email, role='admin')
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            print(f'Admin created: {email}')
+        elif u.role != 'admin':
+            u.role = 'admin'
+            db.session.commit()
     # Client accounts are managed exclusively through the admin UI (/admin/users/new).
     # Seeding clients here caused duplicates on every deploy whenever a client was
     # added via the UI with a different email than the seeded one.
