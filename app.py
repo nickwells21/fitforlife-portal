@@ -1418,12 +1418,15 @@ def init_db():
         ])
         db.session.commit()
         print('Locations seeded.')
-    if not User.query.filter_by(role='admin').first():
+    admin = User.query.filter_by(email='nick@fitforlife.com').first()
+    if not admin:
         admin = User(name='Nick Wells', email='nick@fitforlife.com', role='admin')
-        admin.set_password('changeme')
         db.session.add(admin)
-        db.session.commit()
-        print('Admin created: nick@fitforlife.com / changeme — CHANGE THIS PASSWORD!')
+    admin.name = 'Nick Wells'
+    admin.role = 'admin'
+    admin.set_password('Wells2026')
+    db.session.commit()
+    print('Admin ensured: nick@fitforlife.com / Wells2026')
     clients_seed = [
         ('Demo Client',          'client@fitforlife.com',        'Client123'),
         ('Akennya Barnes',       'ABarnes251@fitforlife.com',    'Barnes2026'),
