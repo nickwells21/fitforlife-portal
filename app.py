@@ -1127,7 +1127,11 @@ def clients():
             Session.status == 'scheduled',
             Session.scheduled_at >= now
         ).order_by(Session.scheduled_at).first()
-        client_data.append({'client': c, 'purchased': p, 'completed': comp, 'remaining': rem, 'next_session': next_sess})
+        pkg_count = SessionPackage.query.filter_by(client_id=c.id).count()
+        client_data.append({
+            'client': c, 'purchased': p, 'completed': comp, 'remaining': rem,
+            'next_session': next_sess, 'pkg_count': pkg_count,
+        })
 
     return render_template('clients.html', client_data=client_data, month_name=month_name[month])
 

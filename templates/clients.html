@@ -324,6 +324,31 @@
   border: 1px solid var(--border);
 }
 
+/* Package subscription row */
+.client-card__pkg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.pkg-rate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(30,157,241,0.3);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.pkg-count-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 /* Card action row */
 .client-card__actions {
   display: flex;
@@ -422,6 +447,23 @@
           <div class="client-card__name">{{ c.name }}</div>
           <div class="client-card__email">{{ c.email }}</div>
         </div>
+      </div>
+
+      <!-- Package subscription info -->
+      <div class="client-card__pkg-row">
+        {% if item.purchased > 0 %}
+          <span class="pkg-rate-badge">
+            <i class="bi bi-layers-fill" style="font-size:10px;"></i>
+            {{ item.purchased }}/mo
+          </span>
+          {% if item.pkg_count > 0 %}
+          <span class="pkg-count-label">{{ item.pkg_count }} month{% if item.pkg_count != 1 %}s{% endif %} on file</span>
+          {% endif %}
+        {% else %}
+          <span class="sessions-chip chip-none" style="font-size:10px; padding:2px 8px;">
+            <i class="bi bi-layers" style="font-size:10px;"></i> No package
+          </span>
+        {% endif %}
       </div>
 
       <!-- Progress bar (only if package exists) -->
