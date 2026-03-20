@@ -1312,7 +1312,11 @@ def admin_packages():
 @app.route('/admin/packages/new', methods=['POST'])
 @admin_required
 def admin_new_package():
-    client_id = int(request.form['client_id'])
+    client_ids = [int(x) for x in request.form.getlist('client_ids') if x]
+    if not client_ids:
+        flash('Select at least one client.', 'danger')
+        return redirect(url_for('admin_packages'))
+
     month = int(request.form['month'])
     year = int(request.form['year'])
     sessions_purchased = int(request.form['sessions_purchased'])
@@ -1322,23 +1326,29 @@ def admin_new_package():
     plan_obj = db.session.get(MembershipPlan, plan_id) if plan_id else None
     is_crew = bool(plan_obj and plan_obj.is_crew)
 
-    existing = SessionPackage.query.filter_by(client_id=client_id, month=month, year=year).first()
-    if existing:
-        existing.sessions_purchased = sessions_purchased
-        existing.plan_id = plan_id
-        existing.is_crew = is_crew
-        existing.notes = notes
-        db.session.commit()
-        flash('Package updated.', 'success')
-    else:
-        pkg = SessionPackage(
-            client_id=client_id, month=month, year=year,
-            sessions_purchased=sessions_purchased,
-            plan_id=plan_id, is_crew=is_crew, notes=notes
-        )
-        db.session.add(pkg)
-        db.session.commit()
-        flash('Package created.', 'success')
+    created, updated = 0, 0
+    for client_id in client_ids:
+        existing = SessionPackage.query.filter_by(client_id=client_id, month=month, year=year).first()
+        if existing:
+            existing.sessions_purchased = sessions_purchased
+            existing.plan_id = plan_id
+            existing.is_crew = is_crew
+            existing.notes = notes
+            updated += 1
+        else:
+            pkg = SessionPackage(
+                client_id=client_id, month=month, year=year,
+                sessions_purchased=sessions_purchased,
+                plan_id=plan_id, is_crew=is_crew, notes=notes
+            )
+            db.session.add(pkg)
+            created += 1
+
+    db.session.commit()
+    parts = []
+    if created: parts.append(f'{created} created')
+    if updated: parts.append(f'{updated} updated')
+    flash(f"Packages saved for {len(client_ids)} client(s) — {', '.join(parts)}.", 'success')
     return redirect(url_for('admin_packages'))
 
 

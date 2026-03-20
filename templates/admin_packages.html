@@ -100,6 +100,84 @@
     color: #fff;
   }
 
+  /* ── Multi-client checkbox grid ── */
+  .pkg-client-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.3rem;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+  }
+
+  .pkg-client-grid::-webkit-scrollbar { width: 4px; }
+  .pkg-client-grid::-webkit-scrollbar-track { background: transparent; }
+  .pkg-client-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .pkg-client-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-soft);
+    transition: border-color 0.12s, background 0.12s;
+    user-select: none;
+  }
+
+  .pkg-client-item:has(input:checked) {
+    border-color: rgba(30,157,241,0.45);
+    background: var(--accent-dim);
+    color: var(--text);
+  }
+
+  .pkg-client-item input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+
+  .pkg-sel-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+
+  .pkg-sel-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .pkg-sel-links {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .pkg-sel-link {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.12s;
+  }
+
+  .pkg-sel-link:hover { color: var(--accent); }
+
   /* ── Package cards grid ── */
   .pkg-cards-panel {
     background: var(--bg-elevated);
@@ -318,13 +396,24 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; flex-direction:column; gap:0.875rem;">
           <div>
-            <label class="form-label">Client</label>
-            <select name="client_id" class="form-select" required>
-              <option value="">Select client…</option>
+            <label class="form-label" style="display:block; margin-bottom:0.35rem;">
+              Clients
+            </label>
+            <div class="pkg-sel-bar">
+              <span class="pkg-sel-count" id="pkgSelCount">0 selected</span>
+              <div class="pkg-sel-links">
+                <button type="button" class="pkg-sel-link" onclick="pkgSelectAll()">All</button>
+                <button type="button" class="pkg-sel-link" onclick="pkgClearAll()">Clear</button>
+              </div>
+            </div>
+            <div class="pkg-client-grid">
               {% for c in clients %}
-              <option value="{{ c.id }}">{{ c.name }}</option>
+              <label class="pkg-client-item">
+                <input type="checkbox" name="client_ids" value="{{ c.id }}" class="pkg-client-cb">
+                {{ c.name }}
+              </label>
               {% endfor %}
-            </select>
+            </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
             <div>
@@ -502,6 +591,7 @@
 
 {% block scripts %}
 <script>
+  // ── Plan picker → auto-fill sessions ────────────────────────────────────────
   document.getElementById('planPicker').addEventListener('change', function() {
     var opt = this.options[this.selectedIndex];
     var sessions = opt.getAttribute('data-sessions');
@@ -509,5 +599,38 @@
       document.getElementById('sessionsPurchased').value = sessions;
     }
   });
+
+  // ── Multi-client checkbox counter ───────────────────────────────────────────
+  function updatePkgCount() {
+    var checked = document.querySelectorAll('.pkg-client-cb:checked').length;
+    var label = checked === 0 ? '0 selected'
+              : checked === 1 ? '1 client selected'
+              : checked + ' clients selected';
+    document.getElementById('pkgSelCount').textContent = label;
+  }
+
+  document.querySelectorAll('.pkg-client-cb').forEach(function(cb) {
+    cb.addEventListener('change', updatePkgCount);
+  });
+
+  function pkgSelectAll() {
+    document.querySelectorAll('.pkg-client-cb').forEach(function(cb) { cb.checked = true; });
+    updatePkgCount();
+  }
+
+  function pkgClearAll() {
+    document.querySelectorAll('.pkg-client-cb').forEach(function(cb) { cb.checked = false; });
+    updatePkgCount();
+  }
+
+  // ── Require at least one client on submit ───────────────────────────────────
+  document.querySelector('form[action*="admin_new_package"], form[action*="/packages/new"]')
+    ?.addEventListener('submit', function(e) {
+      var checked = document.querySelectorAll('.pkg-client-cb:checked').length;
+      if (checked === 0) {
+        e.preventDefault();
+        alert('Please select at least one client.');
+      }
+    });
 </script>
 {% endblock %}
