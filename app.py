@@ -1076,6 +1076,46 @@ def client_detail(client_id):
 
 # ─── Admin: Users ────────────────────────────────────────────────────────────
 
+@app.route('/admin/dedup-users', methods=['POST'])
+@admin_required
+def admin_dedup_users():
+    from collections import defaultdict
+    all_users = User.query.order_by(User.id).all()
+    by_name = defaultdict(list)
+    for u in all_users:
+        by_name[u.name.strip().lower()].append(u)
+
+    deleted = []
+    for name, users in by_name.items():
+        if len(users) < 2:
+            continue
+        keep = users[0]
+        for d in users[1:]:
+            for s in Session.query.filter_by(trainer_id=d.id).all():
+                s.trainer_id = keep.id
+            for s in Session.query.filter_by(client_id=d.id).all():
+                s.client_id = keep.id
+            for p in SessionPackage.query.filter_by(client_id=d.id).all():
+                p.client_id = keep.id
+            for gm in GroupMembership.query.filter_by(client_id=d.id).all():
+                exists = GroupMembership.query.filter_by(group_id=gm.group_id, client_id=keep.id).first()
+                if not exists:
+                    gm.client_id = keep.id
+                else:
+                    db.session.delete(gm)
+            for n in Notification.query.filter_by(user_id=d.id).all():
+                n.user_id = keep.id
+            deleted.append(f'{d.name} (id={d.id}, {d.email}) → merged into id={keep.id}')
+            db.session.delete(d)
+    db.session.commit()
+
+    if deleted:
+        flash(f'Deleted {len(deleted)} duplicate(s): ' + ' | '.join(deleted), 'success')
+    else:
+        flash('No duplicates found.', 'info')
+    return redirect(url_for('admin_users'))
+
+
 @app.route('/admin/users')
 @admin_required
 def admin_users():
