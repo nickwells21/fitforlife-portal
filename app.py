@@ -124,6 +124,17 @@ class Session(db.Model):
         return self.scheduled_at + timedelta(minutes=self.duration)
 
 
+class MembershipPlan(db.Model):
+    __tablename__ = 'membership_plans'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    plan_type = db.Column(db.String(20), nullable=False)   # '1on1','group-2','group-3','group-4'
+    sessions_per_month = db.Column(db.Integer, nullable=False)   # 4, 8, 12
+    commitment = db.Column(db.String(20), nullable=False)  # 'month-to-month','6-month'
+    is_crew = db.Column(db.Boolean, default=False)
+    price_cents = db.Column(db.Integer)                    # monthly price in cents
+
+
 class SessionPackage(db.Model):
     __tablename__ = 'session_packages'
     id = db.Column(db.Integer, primary_key=True)
@@ -131,8 +142,11 @@ class SessionPackage(db.Model):
     month = db.Column(db.Integer, nullable=False)
     year = db.Column(db.Integer, nullable=False)
     sessions_purchased = db.Column(db.Integer, nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey('membership_plans.id'), nullable=True)
+    is_crew = db.Column(db.Boolean, default=False)
     notes = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    plan = db.relationship('MembershipPlan', foreign_keys=[plan_id])
 
 
 class Promo(db.Model):
@@ -1195,8 +1209,11 @@ def admin_packages():
         SessionPackage.year.desc(), SessionPackage.month.desc()
     ).all()
     clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    plans = MembershipPlan.query.order_by(
+        MembershipPlan.plan_type, MembershipPlan.is_crew, MembershipPlan.commitment, MembershipPlan.sessions_per_month
+    ).all()
     return render_template('admin_packages.html',
-        packages=packages, clients=clients,
+        packages=packages, clients=clients, plans=plans,
         current_month=now.month, current_year=now.year,
         month_name=month_name
     )
@@ -1210,17 +1227,23 @@ def admin_new_package():
     year = int(request.form['year'])
     sessions_purchased = int(request.form['sessions_purchased'])
     notes = request.form.get('notes', '').strip()
+    raw_plan = request.form.get('plan_id', '').strip()
+    plan_id = int(raw_plan) if raw_plan else None
+    is_crew = bool(plan_id and MembershipPlan.query.get(plan_id) and MembershipPlan.query.get(plan_id).is_crew)
 
     existing = SessionPackage.query.filter_by(client_id=client_id, month=month, year=year).first()
     if existing:
         existing.sessions_purchased = sessions_purchased
+        existing.plan_id = plan_id
+        existing.is_crew = is_crew
         existing.notes = notes
         db.session.commit()
         flash('Package updated.', 'success')
     else:
         pkg = SessionPackage(
             client_id=client_id, month=month, year=year,
-            sessions_purchased=sessions_purchased, notes=notes
+            sessions_purchased=sessions_purchased,
+            plan_id=plan_id, is_crew=is_crew, notes=notes
         )
         db.session.add(pkg)
         db.session.commit()
@@ -1493,6 +1516,55 @@ def init_db():
             db.session.add(u)
     db.session.commit()
     print('Client accounts seeded.')
+
+    if not MembershipPlan.query.first():
+        plans = [
+            # ── 1-on-1 Standard (Non-Member) ──────────────────────────────
+            MembershipPlan(name='1-on-1 · 4x/mo · Month-to-Month',  plan_type='1on1', sessions_per_month=4,  commitment='month-to-month', is_crew=False, price_cents=30000),
+            MembershipPlan(name='1-on-1 · 8x/mo · Month-to-Month',  plan_type='1on1', sessions_per_month=8,  commitment='month-to-month', is_crew=False, price_cents=57500),
+            MembershipPlan(name='1-on-1 · 12x/mo · Month-to-Month', plan_type='1on1', sessions_per_month=12, commitment='month-to-month', is_crew=False, price_cents=82000),
+            MembershipPlan(name='1-on-1 · 4x/mo · 6-Month Commit',  plan_type='1on1', sessions_per_month=4,  commitment='6-month', is_crew=False, price_cents=23500),
+            MembershipPlan(name='1-on-1 · 8x/mo · 6-Month Commit',  plan_type='1on1', sessions_per_month=8,  commitment='6-month', is_crew=False, price_cents=43000),
+            MembershipPlan(name='1-on-1 · 12x/mo · 6-Month Commit', plan_type='1on1', sessions_per_month=12, commitment='6-month', is_crew=False, price_cents=61500),
+            # ── 1-on-1 Crew (Member Discount) ─────────────────────────────
+            MembershipPlan(name='1-on-1 · 4x/mo · Month-to-Month',  plan_type='1on1', sessions_per_month=4,  commitment='month-to-month', is_crew=True, price_cents=24000),
+            MembershipPlan(name='1-on-1 · 8x/mo · Month-to-Month',  plan_type='1on1', sessions_per_month=8,  commitment='month-to-month', is_crew=True, price_cents=43000),
+            MembershipPlan(name='1-on-1 · 12x/mo · Month-to-Month', plan_type='1on1', sessions_per_month=12, commitment='month-to-month', is_crew=True, price_cents=61500),
+            MembershipPlan(name='1-on-1 · 4x/mo · 6-Month Commit',  plan_type='1on1', sessions_per_month=4,  commitment='6-month', is_crew=True, price_cents=18000),
+            MembershipPlan(name='1-on-1 · 8x/mo · 6-Month Commit',  plan_type='1on1', sessions_per_month=8,  commitment='6-month', is_crew=True, price_cents=34500),
+            MembershipPlan(name='1-on-1 · 12x/mo · 6-Month Commit', plan_type='1on1', sessions_per_month=12, commitment='6-month', is_crew=True, price_cents=50000),
+            # ── Small Group 2-Person · Month-to-Month ─────────────────────
+            MembershipPlan(name='Group 2 · 4x/mo · Month-to-Month',  plan_type='group-2', sessions_per_month=4,  commitment='month-to-month', is_crew=False, price_cents=21500),
+            MembershipPlan(name='Group 2 · 8x/mo · Month-to-Month',  plan_type='group-2', sessions_per_month=8,  commitment='month-to-month', is_crew=False, price_cents=40000),
+            MembershipPlan(name='Group 2 · 12x/mo · Month-to-Month', plan_type='group-2', sessions_per_month=12, commitment='month-to-month', is_crew=False, price_cents=54000),
+            MembershipPlan(name='Group 2 · 4x/mo · Month-to-Month',  plan_type='group-2', sessions_per_month=4,  commitment='month-to-month', is_crew=True, price_cents=17000),
+            MembershipPlan(name='Group 2 · 8x/mo · Month-to-Month',  plan_type='group-2', sessions_per_month=8,  commitment='month-to-month', is_crew=True, price_cents=32000),
+            MembershipPlan(name='Group 2 · 12x/mo · Month-to-Month', plan_type='group-2', sessions_per_month=12, commitment='month-to-month', is_crew=True, price_cents=43000),
+            # ── Small Group 3-Person · 6-Month Contract ───────────────────
+            MembershipPlan(name='Group 3 · 4x/mo · 6-Month Commit',  plan_type='group-3', sessions_per_month=4,  commitment='6-month', is_crew=False, price_cents=14500),
+            MembershipPlan(name='Group 3 · 8x/mo · 6-Month Commit',  plan_type='group-3', sessions_per_month=8,  commitment='6-month', is_crew=False, price_cents=28000),
+            MembershipPlan(name='Group 3 · 12x/mo · 6-Month Commit', plan_type='group-3', sessions_per_month=12, commitment='6-month', is_crew=False, price_cents=36000),
+            MembershipPlan(name='Group 3 · 4x/mo · 6-Month Commit',  plan_type='group-3', sessions_per_month=4,  commitment='6-month', is_crew=True, price_cents=12500),
+            MembershipPlan(name='Group 3 · 8x/mo · 6-Month Commit',  plan_type='group-3', sessions_per_month=8,  commitment='6-month', is_crew=True, price_cents=22500),
+            MembershipPlan(name='Group 3 · 12x/mo · 6-Month Commit', plan_type='group-3', sessions_per_month=12, commitment='6-month', is_crew=True, price_cents=28500),
+            # ── Small Group 4-Person · Month-to-Month ─────────────────────
+            MembershipPlan(name='Group 4 · 4x/mo · Month-to-Month',  plan_type='group-4', sessions_per_month=4,  commitment='month-to-month', is_crew=False, price_cents=12500),
+            MembershipPlan(name='Group 4 · 8x/mo · Month-to-Month',  plan_type='group-4', sessions_per_month=8,  commitment='month-to-month', is_crew=False, price_cents=23000),
+            MembershipPlan(name='Group 4 · 12x/mo · Month-to-Month', plan_type='group-4', sessions_per_month=12, commitment='month-to-month', is_crew=False, price_cents=32000),
+            MembershipPlan(name='Group 4 · 4x/mo · Month-to-Month',  plan_type='group-4', sessions_per_month=4,  commitment='month-to-month', is_crew=True, price_cents=10500),
+            MembershipPlan(name='Group 4 · 8x/mo · Month-to-Month',  plan_type='group-4', sessions_per_month=8,  commitment='month-to-month', is_crew=True, price_cents=18500),
+            MembershipPlan(name='Group 4 · 12x/mo · Month-to-Month', plan_type='group-4', sessions_per_month=12, commitment='month-to-month', is_crew=True, price_cents=25500),
+            # ── Small Group 4-Person · 6-Month Contract ───────────────────
+            MembershipPlan(name='Group 4 · 4x/mo · 6-Month Commit',  plan_type='group-4', sessions_per_month=4,  commitment='6-month', is_crew=False, price_cents=11000),
+            MembershipPlan(name='Group 4 · 8x/mo · 6-Month Commit',  plan_type='group-4', sessions_per_month=8,  commitment='6-month', is_crew=False, price_cents=20000),
+            MembershipPlan(name='Group 4 · 12x/mo · 6-Month Commit', plan_type='group-4', sessions_per_month=12, commitment='6-month', is_crew=False, price_cents=28000),
+            MembershipPlan(name='Group 4 · 4x/mo · 6-Month Commit',  plan_type='group-4', sessions_per_month=4,  commitment='6-month', is_crew=True, price_cents=9500),
+            MembershipPlan(name='Group 4 · 8x/mo · 6-Month Commit',  plan_type='group-4', sessions_per_month=8,  commitment='6-month', is_crew=True, price_cents=16500),
+            MembershipPlan(name='Group 4 · 12x/mo · 6-Month Commit', plan_type='group-4', sessions_per_month=12, commitment='6-month', is_crew=True, price_cents=24500),
+        ]
+        db.session.add_all(plans)
+        db.session.commit()
+        print(f'Membership plans seeded ({len(plans)} plans).')
 
 
 with app.app_context():

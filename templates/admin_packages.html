@@ -342,8 +342,78 @@
             </div>
           </div>
           <div>
+            <label class="form-label">Plan <span style="color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:400;">(optional — auto-fills sessions)</span></label>
+            <select name="plan_id" id="planPicker" class="form-select">
+              <option value="">— pick a plan or enter manually —</option>
+              <optgroup label="1-on-1 · Standard">
+                {% for p in plans if p.plan_type == '1on1' and not p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="1-on-1 · Crew Member">
+                {% for p in plans if p.plan_type == '1on1' and p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 2 · Standard">
+                {% for p in plans if p.plan_type == 'group-2' and not p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 2 · Crew Member">
+                {% for p in plans if p.plan_type == 'group-2' and p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 3 · Standard (6-mo contract)">
+                {% for p in plans if p.plan_type == 'group-3' and not p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 3 · Crew Member (6-mo contract)">
+                {% for p in plans if p.plan_type == 'group-3' and p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 4 · Standard">
+                {% for p in plans if p.plan_type == 'group-4' and not p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="Group 4 · Crew Member">
+                {% for p in plans if p.plan_type == 'group-4' and p.is_crew %}
+                <option value="{{ p.id }}" data-sessions="{{ p.sessions_per_month }}"
+                  data-commitment="{{ p.commitment }}">
+                  {{ p.sessions_per_month }}x/mo · {{ p.commitment }} — ${{ (p.price_cents // 100) }}/mo
+                </option>
+                {% endfor %}
+              </optgroup>
+            </select>
+          </div>
+          <div>
             <label class="form-label">Sessions Purchased</label>
-            <input type="number" name="sessions_purchased" class="form-control" min="1" max="50" placeholder="4" required>
+            <input type="number" name="sessions_purchased" id="sessionsPurchased" class="form-control" min="1" max="50" placeholder="4" required>
           </div>
           <div>
             <label class="form-label">Notes <span style="color:var(--text-muted); text-transform:none; letter-spacing:0; font-weight:400;">(optional)</span></label>
@@ -384,6 +454,24 @@
               <i class="bi bi-calendar3" style="font-size:10px;"></i>
               {{ month_name[pkg.month] }} {{ pkg.year }}
             </div>
+            {% if pkg.plan %}
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
+              <span style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px;
+                background:rgba(30,157,241,0.13); color:#69c0f5; border:1px solid rgba(30,157,241,0.25);">
+                {{ {'1on1':'1-on-1','group-2':'Group 2','group-3':'Group 3','group-4':'Group 4'}[pkg.plan.plan_type] }}
+              </span>
+              <span style="font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px;
+                background:rgba(255,255,255,0.05); color:var(--text-soft); border:1px solid var(--border);">
+                {{ pkg.plan.commitment }}
+              </span>
+              {% if pkg.is_crew %}
+              <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px;
+                background:rgba(245,158,11,0.13); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);">
+                Crew
+              </span>
+              {% endif %}
+            </div>
+            {% endif %}
             {% if pkg.notes %}
             <div class="pkg-notes">{{ pkg.notes }}</div>
             {% endif %}
@@ -410,4 +498,16 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('planPicker').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var sessions = opt.getAttribute('data-sessions');
+    if (sessions) {
+      document.getElementById('sessionsPurchased').value = sessions;
+    }
+  });
+</script>
 {% endblock %}
