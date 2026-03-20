@@ -1,0 +1,525 @@
+{% extends 'base.html' %}
+{% block title %}Finances — Fit For Life{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+<style>
+/* ── Finances design tokens (scoped to page wrapper) ── */
+.fin-page {
+  --fin-red:        #ff6666;
+  --fin-red-dim:    rgba(255,102,102,0.12);
+  --fin-blue:       #3399ff;
+  --fin-blue-dim:   rgba(51,153,255,0.12);
+  --fin-yellow:     #ffff33;
+  --fin-yellow-dim: rgba(255,255,51,0.10);
+  --fin-green:      #33cc33;
+  --fin-green-dim:  rgba(51,204,51,0.12);
+  --fin-card:       #111111;
+  --fin-border:     rgba(255,255,255,0.75);
+  --fin-text:       #ffffff;
+  --fin-muted:      #cccccc;
+  --fin-faint:      #777777;
+  --fin-shadow:     4px 4px 0px rgba(0,0,0,1);
+  --fin-radius:     0px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Page header ── */
+.fin-page-title {
+  font-family: 'Space Mono', monospace !important;
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  color: var(--fin-red) !important;
+  letter-spacing: -0.02em !important;
+}
+
+.fin-page-sub {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fin-red);
+  margin-bottom: 4px;
+}
+
+/* ── Stat cards grid ── */
+.fin-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) { .fin-cards-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .fin-cards-grid { grid-template-columns: 1fr; } }
+
+.fin-stat-card {
+  background: var(--fin-card);
+  border: 1px solid var(--fin-border);
+  border-radius: var(--fin-radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--fin-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Red top bar on each card */
+.fin-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--fin-red);
+}
+
+.fin-stat-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fin-faint);
+}
+
+.fin-stat-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--fin-red);
+}
+
+.fin-stat-value.blue   { color: var(--fin-blue); }
+.fin-stat-value.yellow { color: var(--fin-yellow); }
+.fin-stat-value.green  { color: var(--fin-green); }
+
+.fin-stat-sub {
+  font-size: 11px;
+  color: var(--fin-faint);
+  margin-top: 4px;
+}
+
+/* ── Chart panels grid ── */
+.fin-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 700px) { .fin-charts-grid { grid-template-columns: 1fr; } }
+
+/* ── Generic panel ── */
+.fin-panel {
+  background: var(--fin-card);
+  border: 1px solid var(--fin-border);
+  border-radius: var(--fin-radius);
+  padding: 1.5rem;
+  box-shadow: var(--fin-shadow);
+  margin-bottom: 1.25rem;
+}
+
+.fin-panel:last-child { margin-bottom: 0; }
+
+.fin-panel-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fin-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ── Bar charts ── */
+.fin-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.625rem;
+  height: 120px;
+}
+
+.fin-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.fin-bar {
+  width: 100%;
+  min-height: 4px;
+  transition: opacity 0.15s;
+}
+
+.fin-bar:hover { opacity: 0.75; }
+
+.fin-bar.red  { background: var(--fin-red);  }
+.fin-bar.blue { background: var(--fin-blue); }
+
+/* White outline border on the current (latest) bar */
+.fin-bar.current {
+  outline: 2px solid rgba(255,255,255,0.8);
+  outline-offset: 1px;
+}
+
+.fin-bar-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--fin-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── Monthly table ── */
+.fin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fin-table thead th {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fin-faint);
+  padding: 0 0.75rem 0.875rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.fin-table thead th:not(:first-child) { text-align: right; }
+
+.fin-table tbody td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: var(--fin-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-table tbody td:not(:first-child) {
+  text-align: right;
+  color: var(--fin-muted);
+}
+
+.fin-table tbody tr:last-child td { border-bottom: none; }
+.fin-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
+
+.fin-table .t-month    { font-weight: 600; }
+.fin-table .t-revenue  { color: var(--fin-red)    !important; font-family: 'Space Mono', monospace; font-weight: 700; }
+.fin-table .t-sessions { color: var(--fin-blue)   !important; font-weight: 600; }
+.fin-table .t-avg      { color: var(--fin-yellow) !important; font-family: 'Space Mono', monospace; }
+
+.fin-table tr.t-current td { background: rgba(255,102,102,0.05); }
+.fin-table tr.t-current .t-month { color: var(--fin-red); }
+
+/* ── Session log ── */
+.log-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.log-filter-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: var(--fin-faint);
+  cursor: pointer;
+  transition: all 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-radius: 0;
+}
+
+.log-filter-btn.active {
+  background: var(--fin-red);
+  border-color: var(--fin-red);
+  color: #000;
+}
+
+.log-filter-btn:not(.active):hover {
+  border-color: rgba(255,255,255,0.5);
+  color: var(--fin-text);
+}
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.log-row:last-child { border-bottom: none; }
+
+.log-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.log-dot.completed { background: var(--fin-green); }
+.log-dot.missed    { background: var(--fin-red);   }
+
+.log-client {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fin-text);
+  min-width: 140px;
+}
+
+.log-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--fin-muted);
+  flex: 1;
+}
+
+.log-dur {
+  font-size: 11px;
+  color: var(--fin-faint);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+
+.log-badge.completed {
+  background: var(--fin-green-dim);
+  color: var(--fin-green);
+  border: 1px solid var(--fin-green);
+}
+
+.log-badge.missed {
+  background: var(--fin-red-dim);
+  color: var(--fin-red);
+  border: 1px solid var(--fin-red);
+}
+
+.log-empty {
+  text-align: center;
+  padding: 2.5rem;
+  color: var(--fin-faint);
+  font-size: 13px;
+  font-family: 'Space Mono', monospace;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fin-page">
+
+  <!-- Page header -->
+  <div class="page-header" style="margin-bottom:1.5rem;">
+    <div>
+      <div class="fin-page-sub">Revenue · Sessions · Client Tracking</div>
+      <h1 class="fin-page-title">Finances</h1>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="fin-cards-grid">
+    <div class="fin-stat-card">
+      <div class="fin-stat-label">This Month Revenue</div>
+      <div class="fin-stat-value">${{ "{:,.0f}".format(current_month.revenue_cents / 100) }}</div>
+      <div class="fin-stat-sub">{{ current_month.month_name }} {{ current_month.year }}</div>
+    </div>
+    <div class="fin-stat-card">
+      <div class="fin-stat-label">Sessions This Month</div>
+      <div class="fin-stat-value blue">{{ current_month.total_sessions }}</div>
+      <div class="fin-stat-sub">{{ current_month.completed }} done · {{ current_month.missed }} missed</div>
+    </div>
+    <div class="fin-stat-card">
+      <div class="fin-stat-label">Sessions This Week</div>
+      <div class="fin-stat-value blue">{{ week_sessions }}</div>
+      <div class="fin-stat-sub">Mon – Sun running total</div>
+    </div>
+    <div class="fin-stat-card">
+      <div class="fin-stat-label">Avg Cost / Session</div>
+      <div class="fin-stat-value yellow">
+        {% if current_month.avg_cost %}${{ "%.2f"|format(current_month.avg_cost) }}{% else %}—{% endif %}
+      </div>
+      <div class="fin-stat-sub">Based on this month's packages</div>
+    </div>
+  </div>
+
+  <!-- Bar charts: Revenue + Sessions side by side -->
+  {% set max_rev = namespace(v=1) %}
+  {% set max_ses = namespace(v=1) %}
+  {% for m in months_data %}
+    {% if m.revenue_cents > max_rev.v %}{% set max_rev.v = m.revenue_cents %}{% endif %}
+    {% if m.total_sessions > max_ses.v %}{% set max_ses.v = m.total_sessions %}{% endif %}
+  {% endfor %}
+
+  <div class="fin-charts-grid">
+
+    <!-- Revenue bar chart -->
+    <div class="fin-panel" style="margin-bottom:0;">
+      <div class="fin-panel-title">
+        <span style="color:var(--fin-red);">▮</span> Total Revenue
+      </div>
+      <div class="fin-bar-wrap">
+        {% for m in months_data %}
+        {% set pct = ((m.revenue_cents / max_rev.v) * 90)|int if max_rev.v > 0 else 4 %}
+        <div class="fin-bar-col">
+          <div class="fin-bar red {% if loop.last %}current{% endif %}"
+               style="height:{{ [pct, 4]|max }}%;"
+               title="{{ m.month_name }} {{ m.year }}: ${{ '{:,.0f}'.format(m.revenue_cents / 100) }}"></div>
+          <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Sessions bar chart -->
+    <div class="fin-panel" style="margin-bottom:0;">
+      <div class="fin-panel-title">
+        <span style="color:var(--fin-blue);">▮</span> Total Sessions
+      </div>
+      <div class="fin-bar-wrap">
+        {% for m in months_data %}
+        {% set pct = ((m.total_sessions / max_ses.v) * 90)|int if max_ses.v > 0 else 4 %}
+        <div class="fin-bar-col">
+          <div class="fin-bar blue {% if loop.last %}current{% endif %}"
+               style="height:{{ [pct, 4]|max }}%;"
+               title="{{ m.month_name }} {{ m.year }}: {{ m.total_sessions }} sessions"></div>
+          <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- /.fin-charts-grid -->
+
+  <!-- Monthly breakdown table -->
+  <div class="fin-panel">
+    <div class="fin-panel-title">
+      <span style="color:var(--fin-red);">▮</span> Monthly Breakdown
+    </div>
+    <table class="fin-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Revenue</th>
+          <th>Sessions</th>
+          <th>Completed</th>
+          <th>Missed</th>
+          <th>Avg / Session</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in months_data | reverse %}
+        <tr {% if loop.first %}class="t-current"{% endif %}>
+          <td class="t-month">
+            {{ m.month_name }} {{ m.year }}
+            {% if loop.first %}
+            <span style="font-family:'Space Mono',monospace; font-size:7px; font-weight:700;
+                         color:var(--fin-red); text-transform:uppercase; letter-spacing:0.1em; margin-left:8px;">
+              NOW
+            </span>
+            {% endif %}
+          </td>
+          <td class="t-revenue">${{ "{:,.0f}".format(m.revenue_cents / 100) }}</td>
+          <td class="t-sessions">{{ m.total_sessions }}</td>
+          <td><span style="color:var(--fin-green);">{{ m.completed }}</span></td>
+          <td>
+            <span style="color:{% if m.missed > 0 %}var(--fin-red){% else %}var(--fin-faint){% endif %};">
+              {{ m.missed }}
+            </span>
+          </td>
+          <td class="t-avg">
+            {% if m.avg_cost %}${{ "%.2f"|format(m.avg_cost) }}{% else %}<span style="color:var(--fin-faint);">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Session log -->
+  <div class="fin-panel">
+    <div class="fin-panel-title">
+      <span style="color:var(--fin-red);">▮</span> Session Log
+      <span style="font-size:9px; color:var(--fin-faint); font-weight:400;
+                   text-transform:none; letter-spacing:0; font-family:'DM Sans',sans-serif;">
+        — completed &amp; missed
+      </span>
+    </div>
+
+    <div class="log-filter-bar">
+      <button type="button" class="log-filter-btn active" onclick="filterLog('all', this)">All</button>
+      <button type="button" class="log-filter-btn" onclick="filterLog('completed', this)">Completed</button>
+      <button type="button" class="log-filter-btn" onclick="filterLog('missed', this)">Missed</button>
+    </div>
+
+    {% if session_log %}
+    <div id="sessionLogList">
+      {% for s in session_log %}
+      {% set display = s.client.name if s.client else (s.training_group.name if s.training_group else '—') %}
+      <div class="log-row" data-status="{{ s.status }}">
+        <div class="log-dot {{ s.status }}"></div>
+        <div class="log-client">
+          <a href="{{ url_for('client_detail', client_id=s.client_id) if s.client_id else '#' }}"
+             style="color:inherit; text-decoration:none;">{{ display }}</a>
+        </div>
+        <div class="log-date">
+          {{ s.scheduled_at.strftime('%b %-d, %Y') }}
+          <span style="color:var(--fin-faint); margin-left:6px;">{{ s.scheduled_at.strftime('%-I:%M %p') }}</span>
+        </div>
+        <div class="log-dur">{{ s.duration }} min</div>
+        <div class="log-badge {{ s.status }}">{{ s.status | capitalize }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="log-empty">// no sessions logged yet</div>
+    {% endif %}
+  </div>
+
+</div><!-- /.fin-page -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterLog(status, btn) {
+    document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.log-row').forEach(row => {
+      row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

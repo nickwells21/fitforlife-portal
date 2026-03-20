@@ -567,9 +567,9 @@
             {% endif %}
           </div>
           <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
-                onsubmit="return confirm('Delete this package?')">
+                class="pkg-delete-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn-pkg-delete">
+            <button type="button" class="btn-pkg-delete" onclick="confirmDeletePkg(this)">
               <i class="bi bi-trash3 me-1"></i>Delete
             </button>
           </form>
@@ -622,6 +622,12 @@
   function pkgClearAll() {
     document.querySelectorAll('.pkg-client-cb').forEach(function(cb) { cb.checked = false; });
     updatePkgCount();
+  }
+
+  // ── Delete package confirmation ─────────────────────────────────────────────
+  function confirmDeletePkg(btn) {
+    if (!window.confirm('Delete this package?')) return;
+    btn.closest('form').submit();
   }
 
   // ── Require at least one client on submit ───────────────────────────────────

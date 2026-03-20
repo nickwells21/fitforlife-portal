@@ -347,6 +347,157 @@
   #locationBadge { font-size: 11px; }
 }
 
+/* ── Custom date+time picker ─────────────────────────────────── */
+.dtp-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.875rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  width: 100%;
+  text-align: left;
+}
+.dtp-trigger-btn:hover,
+.dtp-trigger-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.dtp-trigger-btn i { font-size: 15px; color: var(--accent); flex-shrink: 0; }
+
+.dtp-card {
+  margin-top: 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  max-width: 280px;
+}
+
+/* Month nav */
+.dtp-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+}
+.dtp-month-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+.dtp-nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s;
+}
+.dtp-nav-btn:hover { color: var(--accent); }
+
+/* Weekday header */
+.dtp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.25rem;
+}
+.dtp-weekdays span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 4px;
+}
+
+/* Day grid */
+.dtp-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dtp-day {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s, color 0.12s;
+  margin: 0 auto;
+  border: none;
+  background: none;
+}
+.dtp-day:hover:not(.dtp-day-empty):not(.dtp-day-selected) {
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.dtp-day-empty { cursor: default; }
+.dtp-day-today::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.dtp-day-selected {
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.dtp-day-selected::after { display: none; }
+
+/* Time row */
+.dtp-time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.dtp-time-sel {
+  flex: 1;
+  padding: 0.3rem 0.4rem !important;
+  font-size: 12px !important;
+  min-width: 0;
+}
+.dtp-colon {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Preview line */
+.dtp-preview {
+  margin-top: 0.625rem;
+  font-size: 11px;
+  color: var(--text-muted);
+  min-height: 1.4em;
+}
+.dtp-preview strong { color: var(--text-soft); }
+
 /* ── Booking type toggle ─────────────────────────────────────── */
 .booking-type-btn {
   flex: 1;
@@ -480,10 +631,57 @@
           </div>
 
           <div style="grid-column: 1 / -1;">
-            <label class="form-label" for="scheduled_at">Date &amp; Time</label>
-            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" required
-              value="{{ sess.scheduled_at.strftime('%Y-%m-%dT%H:%M') if sess else prefill_date }}"
-              onchange="checkConflict()">
+            <label class="form-label">Date &amp; Time</label>
+            <!-- Hidden input holds final ISO value; id/name preserved for existing JS -->
+            <input type="hidden" name="scheduled_at" id="scheduled_at"
+              value="{{ sess.scheduled_at.strftime('%Y-%m-%dT%H:%M') if sess else prefill_date }}">
+
+            <!-- Custom date+time picker -->
+            <div id="dtpicker-root">
+              <!-- Trigger button -->
+              <button type="button" id="dtp-trigger" class="dtp-trigger-btn" aria-haspopup="true" aria-expanded="false">
+                <i class="bi bi-calendar3"></i>
+                <span id="dtp-trigger-text">Pick a date</span>
+              </button>
+
+              <!-- Inline calendar card -->
+              <div id="dtp-card" class="dtp-card" hidden>
+                <!-- Month/year nav -->
+                <div class="dtp-month-nav">
+                  <button type="button" id="dtp-prev" class="dtp-nav-btn" aria-label="Previous month">&#8249;</button>
+                  <span id="dtp-month-label" class="dtp-month-label"></span>
+                  <button type="button" id="dtp-next" class="dtp-nav-btn" aria-label="Next month">&#8250;</button>
+                </div>
+
+                <!-- Weekday header -->
+                <div class="dtp-weekdays">
+                  <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+
+                <!-- Day grid -->
+                <div id="dtp-days" class="dtp-days"></div>
+
+                <!-- Time row -->
+                <div class="dtp-time-row">
+                  <i class="bi bi-clock" style="color:var(--text-muted); flex-shrink:0;"></i>
+                  <select id="dtp-hour" class="form-select dtp-time-sel" aria-label="Hour"></select>
+                  <span class="dtp-colon">:</span>
+                  <select id="dtp-minute" class="form-select dtp-time-sel" aria-label="Minute">
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                  <select id="dtp-ampm" class="form-select dtp-time-sel" aria-label="AM/PM">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+
+                <!-- Preview line -->
+                <div id="dtp-preview" class="dtp-preview">No date &amp; time selected</div>
+              </div>
+            </div>
           </div>
 
           {% if not sess %}
@@ -745,6 +943,182 @@ function setBookingType(type) {
   }
   checkConflict();
 }
+
+/* ── Custom date+time picker ─────────────────────────────────── */
+(function () {
+  const PREFILL = "{{ sess.scheduled_at.strftime('%Y-%m-%dT%H:%M') if sess else prefill_date }}";
+
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+
+  let _year, _month;          // currently viewed month
+  let _selYear = null;        // user-selected date parts
+  let _selMonth = null;
+  let _selDay = null;
+
+  const hiddenInput  = document.getElementById('scheduled_at');
+  const trigger      = document.getElementById('dtp-trigger');
+  const triggerText  = document.getElementById('dtp-trigger-text');
+  const card         = document.getElementById('dtp-card');
+  const monthLabel   = document.getElementById('dtp-month-label');
+  const daysGrid     = document.getElementById('dtp-days');
+  const prevBtn      = document.getElementById('dtp-prev');
+  const nextBtn      = document.getElementById('dtp-next');
+  const hourSel      = document.getElementById('dtp-hour');
+  const minuteSel    = document.getElementById('dtp-minute');
+  const ampmSel      = document.getElementById('dtp-ampm');
+  const preview      = document.getElementById('dtp-preview');
+
+  // Build hour options 1–12
+  for (let h = 1; h <= 12; h++) {
+    const opt = document.createElement('option');
+    opt.value = String(h);
+    opt.textContent = String(h);
+    hourSel.appendChild(opt);
+  }
+
+  // Initialise viewed month to today (or prefill date)
+  function init() {
+    const now = new Date();
+    _year  = now.getFullYear();
+    _month = now.getMonth(); // 0-based
+
+    if (PREFILL) {
+      const m = PREFILL.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (m) {
+        _selYear  = parseInt(m[1]);
+        _selMonth = parseInt(m[2]) - 1; // 0-based
+        _selDay   = parseInt(m[3]);
+        _year     = _selYear;
+        _month    = _selMonth;
+
+        const h24 = parseInt(m[4]);
+        const mm  = m[5];
+        const ampm = h24 >= 12 ? 'PM' : 'AM';
+        let h12 = h24 % 12;
+        if (h12 === 0) h12 = 12;
+
+        hourSel.value   = String(h12);
+        minuteSel.value = mm;
+        ampmSel.value   = ampm;
+      }
+    }
+
+    renderCalendar();
+    updatePreviewAndHidden();
+  }
+
+  function renderCalendar() {
+    monthLabel.textContent = MONTHS[_month] + ' ' + _year;
+    daysGrid.innerHTML = '';
+
+    const today = new Date();
+    const firstDow = new Date(_year, _month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(_year, _month + 1, 0).getDate();
+
+    // Leading empty cells
+    for (let i = 0; i < firstDow; i++) {
+      const blank = document.createElement('span');
+      blank.className = 'dtp-day dtp-day-empty';
+      daysGrid.appendChild(blank);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dtp-day';
+      btn.textContent = d;
+      btn.dataset.day = d;
+
+      const isToday = (d === today.getDate() && _month === today.getMonth() && _year === today.getFullYear());
+      if (isToday) btn.classList.add('dtp-day-today');
+
+      if (_selDay === d && _selMonth === _month && _selYear === _year) {
+        btn.classList.add('dtp-day-selected');
+      }
+
+      btn.addEventListener('click', () => {
+        _selYear  = _year;
+        _selMonth = _month;
+        _selDay   = d;
+        renderCalendar();
+        updatePreviewAndHidden();
+      });
+
+      daysGrid.appendChild(btn);
+    }
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function buildISO() {
+    if (_selDay === null) return '';
+    let h24 = parseInt(hourSel.value);
+    if (ampmSel.value === 'PM' && h24 !== 12) h24 += 12;
+    if (ampmSel.value === 'AM' && h24 === 12) h24 = 0;
+    return `${_selYear}-${pad(_selMonth + 1)}-${pad(_selDay)}T${pad(h24)}:${minuteSel.value}`;
+  }
+
+  function buildDisplayDate() {
+    if (_selDay === null) return null;
+    return `${MONTHS[_selMonth]} ${_selDay}, ${_selYear}`;
+  }
+
+  function buildDisplayTime() {
+    return `${hourSel.value}:${minuteSel.value} ${ampmSel.value}`;
+  }
+
+  function updatePreviewAndHidden() {
+    const iso = buildISO();
+    hiddenInput.value = iso;
+    hiddenInput.dispatchEvent(new Event('change'));
+
+    if (_selDay !== null) {
+      const ds = buildDisplayDate();
+      const ts = buildDisplayTime();
+      triggerText.textContent = `${ds}  ${ts}`;
+      preview.innerHTML = `<strong>Selected:</strong> ${ds} ${ts}`;
+    } else {
+      triggerText.textContent = 'Pick a date';
+      preview.innerHTML = 'No date &amp; time selected';
+    }
+  }
+
+  // Toggle card
+  trigger.addEventListener('click', () => {
+    const open = !card.hidden;
+    card.hidden = open;
+    trigger.setAttribute('aria-expanded', String(!open));
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!card.hidden && !document.getElementById('dtpicker-root').contains(e.target)) {
+      card.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Month nav
+  prevBtn.addEventListener('click', () => {
+    _month--;
+    if (_month < 0) { _month = 11; _year--; }
+    renderCalendar();
+  });
+  nextBtn.addEventListener('click', () => {
+    _month++;
+    if (_month > 11) { _month = 0; _year++; }
+    renderCalendar();
+  });
+
+  // Time change
+  [hourSel, minuteSel, ampmSel].forEach(sel => {
+    sel.addEventListener('change', () => { updatePreviewAndHidden(); });
+  });
+
+  // Kick off
+  document.addEventListener('DOMContentLoaded', init);
+})();
 
 {% if not sess %}
 /* ── Repeat section ──────────────────────────────────────────── */

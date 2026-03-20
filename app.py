@@ -1356,10 +1356,95 @@ def admin_new_package():
 @admin_required
 def admin_delete_package(pkg_id):
     pkg = db.get_or_404(SessionPackage, pkg_id)
-    db.session.delete(pkg)
-    db.session.commit()
-    flash('Package deleted.', 'success')
+    try:
+        db.session.delete(pkg)
+        db.session.commit()
+        flash('Package deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Could not delete package: {e}', 'danger')
     return redirect(url_for('admin_packages'))
+
+
+# ─── Admin: Finances ──────────────────────────────────────────────────────────
+
+@app.route('/admin/finances')
+@admin_required
+def admin_finances():
+    now = datetime.now(timezone.utc)
+
+    # Build last 6 months of data
+    months_data = []
+    for i in range(5, -1, -1):
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+
+        pkgs = SessionPackage.query.filter_by(month=m, year=y).all()
+        revenue_cents = sum(
+            p.plan.price_cents for p in pkgs if p.plan and p.plan.price_cents
+        )
+
+        if m == 12:
+            month_start = datetime(y, m, 1, tzinfo=timezone.utc)
+            month_end   = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            month_start = datetime(y, m, 1, tzinfo=timezone.utc)
+            month_end   = datetime(y, m + 1, 1, tzinfo=timezone.utc)
+
+        total_sessions = Session.query.filter(
+            Session.scheduled_at >= month_start,
+            Session.scheduled_at < month_end,
+        ).count()
+        completed = Session.query.filter(
+            Session.scheduled_at >= month_start,
+            Session.scheduled_at < month_end,
+            Session.status == 'completed',
+        ).count()
+        missed = Session.query.filter(
+            Session.scheduled_at >= month_start,
+            Session.scheduled_at < month_end,
+            Session.status == 'missed',
+        ).count()
+
+        avg_cost = (revenue_cents / 100 / total_sessions) if total_sessions else 0
+
+        months_data.append({
+            'month': m,
+            'year': y,
+            'month_name': month_name[m],
+            'revenue_cents': revenue_cents,
+            'total_sessions': total_sessions,
+            'completed': completed,
+            'missed': missed,
+            'avg_cost': avg_cost,
+        })
+
+    # This week
+    week_start = (now - timedelta(days=now.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    week_sessions = Session.query.filter(
+        Session.scheduled_at >= week_start,
+        Session.scheduled_at < week_start + timedelta(days=7),
+    ).count()
+
+    # Session log: completed + missed (most recent 100)
+    session_log = Session.query.filter(
+        Session.status.in_(['completed', 'missed']),
+    ).order_by(Session.scheduled_at.desc()).limit(100).all()
+
+    current_month = months_data[-1]
+    return render_template(
+        'admin_finances.html',
+        months_data=months_data,
+        week_sessions=week_sessions,
+        session_log=session_log,
+        current_month=current_month,
+        month_name=month_name,
+    )
 
 
 # ─── Admin: Promos ────────────────────────────────────────────────────────────
