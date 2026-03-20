@@ -1704,6 +1704,7 @@ class Workout(db.Model):
     description = db.Column(db.Text)
     trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    trainer = db.relationship('User', foreign_keys='Workout.trainer_id')
     exercises = db.relationship('WorkoutExercise', backref='workout', lazy='dynamic',
                                 order_by='WorkoutExercise.order', cascade='all, delete-orphan')
 
@@ -1729,6 +1730,7 @@ class Program(db.Model):
     weeks = db.Column(db.Integer, default=4)
     trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    trainer = db.relationship('User', foreign_keys='Program.trainer_id')
     days = db.relationship('ProgramDay', backref='program', lazy='dynamic',
                            order_by='ProgramDay.week, ProgramDay.day',
                            cascade='all, delete-orphan')
@@ -1966,10 +1968,11 @@ def workout_new():
 
 
 @app.route('/workouts/<int:workout_id>')
-@staff_required
+@login_required
 def workout_detail(workout_id):
     workout = Workout.query.get_or_404(workout_id)
-    if current_user.role != 'admin' and workout.trainer_id != current_user.id:
+    # Clients can only view via /my-workout/<id>; staff can view any workout
+    if current_user.role == 'client':
         abort(403)
     return render_template('workout_detail.html', workout=workout)
 
