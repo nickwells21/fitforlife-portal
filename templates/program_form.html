@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}New Program — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Programs
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">New Program</div>
+  <div class="page-subtitle">Define the program structure, then build the week/day schedule.</div>
+</div>
+
+<div class="ffl-card" style="max-width:520px;">
+  <form method="POST" action="{{ url_for('program_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+      <label class="form-label" for="pName">Program Name <span style="color:#f87171;">*</span></label>
+      <input type="text" id="pName" name="name" class="form-control" required autofocus placeholder="e.g. 4-Week Fat Loss">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="pDesc">Description</label>
+      <textarea id="pDesc" name="description" class="form-control" rows="3" placeholder="Goals, target audience…"></textarea>
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="pWeeks">Number of Weeks</label>
+      <select id="pWeeks" name="weeks" class="form-select" style="max-width:160px;">
+        {% for w in [2,3,4,6,8,10,12] %}
+        <option value="{{ w }}" {{ 'selected' if w == 4 }}>{{ w }} weeks</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-right me-1"></i>Create &amp; Build Schedule
+    </button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if workout else 'New' }} Workout — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.exercise-row {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.exercise-row .ex-name-label {
+  font-weight: 600;
+  font-size: 0.87rem;
+  min-width: 150px;
+  flex: 1;
+  padding-top: 0.3rem;
+}
+.exercise-row input[type="number"],
+.exercise-row input[type="text"] {
+  width: 70px;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+}
+.exercise-row .notes-field {
+  width: 160px;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+}
+#ex-search-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.87rem;
+  outline: none;
+  width: 100%;
+  max-width: 340px;
+}
+#ex-search-input:focus { border-color: var(--accent); }
+#ex-dropdown {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  max-height: 220px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 100;
+  width: 340px;
+}
+.ex-option {
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.ex-option:hover { background: rgba(30,157,241,0.1); color: var(--accent); }
+.ex-option:last-child { border-bottom: none; }
+.field-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; text-align:center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('workouts_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ 'Edit' if workout else 'New' }} Workout</div>
+</div>
+
+<form method="POST" id="workoutForm" action="{{ url_for('workout_edit', workout_id=workout.id) if workout else url_for('workout_new') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="ffl-card mb-3">
+    <div class="mb-3">
+      <label class="form-label" for="wName">Workout Name <span style="color:#f87171;">*</span></label>
+      <input type="text" id="wName" name="name" class="form-control"
+             value="{{ workout.name if workout else '' }}" required placeholder="e.g. Upper Body Strength">
+    </div>
+    <div class="mb-0">
+      <label class="form-label" for="wDesc">Description</label>
+      <textarea id="wDesc" name="description" class="form-control" rows="2"
+                placeholder="Optional notes about this workout…">{{ workout.description if workout and workout.description else '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="ffl-card mb-3">
+    <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Exercises</div>
+    <div id="exerciseList">
+      <!-- Existing exercises on edit -->
+      {% if workout %}
+      {% for we in workout.exercises.all() %}
+      <div class="exercise-row" data-index="{{ loop.index0 }}">
+        <input type="hidden" name="exercise_id[]" value="{{ we.exercise.id }}">
+        <div class="ex-name-label">{{ we.exercise.name }}</div>
+        <div>
+          <div class="field-label">Sets</div>
+          <input type="number" name="sets[]" value="{{ we.sets }}" min="1" max="99" class="form-control form-control-sm">
+        </div>
+        <div>
+          <div class="field-label">Reps</div>
+          <input type="text" name="reps[]" value="{{ we.reps }}" class="form-control form-control-sm" placeholder="10">
+        </div>
+        <div>
+          <div class="field-label">Rest (s)</div>
+          <input type="number" name="rest[]" value="{{ we.rest_seconds }}" min="0" max="600" class="form-control form-control-sm">
+        </div>
+        <div class="flex-grow-1">
+          <div class="field-label">Notes</div>
+          <input type="text" name="notes_ex[]" value="{{ we.notes or '' }}" class="form-control form-control-sm notes-field" placeholder="optional">
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm" style="padding:0.25rem 0.5rem;" onclick="removeExercise(this)">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="mt-3" style="position:relative;">
+      <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);">Add Exercise</div>
+      <input type="text" id="ex-search-input" placeholder="Search exercises…" autocomplete="off">
+      <div id="ex-dropdown" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="bi bi-check-lg me-1"></i>{{ 'Save Changes' if workout else 'Create Workout' }}
+    </button>
+    <a href="{{ url_for('workouts_list') }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+<!-- Exercise data for JS -->
+<script>
+const ALL_EXERCISES = [
+  {% for ex in exercises %}
+  { id: {{ ex.id }}, name: {{ ex.name|tojson }}, muscle: {{ (ex.muscle_group or '')|tojson }}, category: {{ (ex.category or '')|tojson }} }{{ ',' if not loop.last }}
+  {% endfor %}
+];
+
+const searchInput = document.getElementById('ex-search-input');
+const dropdown = document.getElementById('ex-dropdown');
+const exerciseList = document.getElementById('exerciseList');
+
+function removeExercise(btn) {
+  btn.closest('.exercise-row').remove();
+}
+
+function addExercise(ex) {
+  const idx = exerciseList.children.length;
+  const row = document.createElement('div');
+  row.className = 'exercise-row';
+  row.dataset.index = idx;
+  row.innerHTML = `
+    <input type="hidden" name="exercise_id[]" value="${ex.id}">
+    <div class="ex-name-label">${ex.name}</div>
+    <div>
+      <div class="field-label">Sets</div>
+      <input type="number" name="sets[]" value="3" min="1" max="99" class="form-control form-control-sm">
+    </div>
+    <div>
+      <div class="field-label">Reps</div>
+      <input type="text" name="reps[]" value="10" class="form-control form-control-sm" placeholder="10">
+    </div>
+    <div>
+      <div class="field-label">Rest (s)</div>
+      <input type="number" name="rest[]" value="60" min="0" max="600" class="form-control form-control-sm">
+    </div>
+    <div class="flex-grow-1">
+      <div class="field-label">Notes</div>
+      <input type="text" name="notes_ex[]" value="" class="form-control form-control-sm notes-field" placeholder="optional">
+    </div>
+    <button type="button" class="btn btn-outline-danger btn-sm" style="padding:0.25rem 0.5rem;" onclick="removeExercise(this)">
+      <i class="bi bi-x"></i>
+    </button>
+  `;
+  exerciseList.appendChild(row);
+  searchInput.value = '';
+  dropdown.style.display = 'none';
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = ALL_EXERCISES.filter(ex =>
+    ex.name.toLowerCase().includes(q) ||
+    ex.muscle.toLowerCase().includes(q) ||
+    ex.category.toLowerCase().includes(q)
+  ).slice(0, 20);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matches.map(ex => `
+    <div class="ex-option" data-id="${ex.id}">${ex.name}${ex.muscle ? ' <span style="color:var(--text-muted);font-size:11px;">· ' + ex.muscle + '</span>' : ''}</div>
+  `).join('');
+  dropdown.style.display = 'block';
+  dropdown.querySelectorAll('.ex-option').forEach(el => {
+    el.addEventListener('click', () => {
+      const exId = parseInt(el.dataset.id);
+      const ex = ALL_EXERCISES.find(e => e.id === exId);
+      if (ex) addExercise(ex);
+    });
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+</script>
+{% endblock %}

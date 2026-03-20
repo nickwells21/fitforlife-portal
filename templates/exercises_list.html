@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}Exercise Library — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.exercise-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  height: 100%;
+}
+.exercise-card:hover {
+  border-color: rgba(30,157,241,0.4);
+  transform: translateY(-2px);
+  color: var(--text);
+  text-decoration: none;
+}
+.exercise-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  margin-bottom: 0.75rem;
+}
+.exercise-thumb-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+.badge-muscle { background: rgba(30,157,241,0.15); color: var(--accent); border: 1px solid rgba(30,157,241,0.3); }
+.badge-strength { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+.badge-cardio { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+.badge-mobility { background: rgba(22,163,74,0.15); color: #4ade80; border: 1px solid rgba(22,163,74,0.3); }
+.card-actions { display: flex; gap: 0.35rem; margin-top: 0.5rem; }
+.search-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  width: 100%;
+  max-width: 380px;
+  outline: none;
+}
+.search-box:focus { border-color: var(--accent); }
+.search-box::placeholder { color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <div class="page-title">Exercise Library</div>
+    <div class="page-subtitle">{{ exercises|length }} exercise{{ 's' if exercises|length != 1 else '' }}</div>
+  </div>
+  {% if current_user.role in ('admin', 'trainer') %}
+  <a href="{{ url_for('exercise_new') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Add Exercise
+  </a>
+  {% endif %}
+</div>
+
+<div class="mb-3">
+  <input type="text" id="exerciseSearch" class="search-box" placeholder="Search by name, muscle group, or category…" autocomplete="off">
+</div>
+
+{% if exercises %}
+<div class="row g-3" id="exerciseGrid">
+  {% for ex in exercises %}
+  <div class="col-12 col-sm-6 col-md-4 col-lg-3 exercise-grid-item"
+       data-name="{{ ex.name|lower }}"
+       data-muscle="{{ (ex.muscle_group or '')|lower }}"
+       data-category="{{ (ex.category or '')|lower }}">
+    <a href="{{ url_for('exercise_detail', ex_id=ex.id) }}" class="exercise-card">
+      {% set yt_id = extract_youtube_id(ex.youtube_url) %}
+      {% if yt_id %}
+      <img src="https://img.youtube.com/vi/{{ yt_id }}/mqdefault.jpg"
+           alt="{{ ex.name }}" class="exercise-thumb">
+      {% else %}
+      <div class="exercise-thumb-placeholder">
+        <i class="bi bi-lightning-charge"></i>
+      </div>
+      {% endif %}
+      <div class="fw-600 mb-1" style="font-size:0.9rem;">{{ ex.name }}</div>
+      <div class="d-flex flex-wrap gap-1 mb-1">
+        {% if ex.muscle_group %}
+        <span class="badge badge-muscle" style="font-size:10px;font-weight:600;">{{ ex.muscle_group }}</span>
+        {% endif %}
+        {% if ex.category %}
+        <span class="badge badge-{{ ex.category|lower }}" style="font-size:10px;font-weight:600;">{{ ex.category }}</span>
+        {% endif %}
+      </div>
+    </a>
+    {% if current_user.role in ('admin', 'trainer') %}
+    <div class="card-actions mt-1">
+      <a href="{{ url_for('exercise_edit', ex_id=ex.id) }}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;">
+        <i class="bi bi-pencil"></i>
+      </a>
+      {% if current_user.role == 'admin' %}
+      <form method="POST" action="{{ url_for('exercise_delete', ex_id=ex.id) }}" onsubmit="return confirm('Delete {{ ex.name }}?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;">
+          <i class="bi bi-trash"></i>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+<div id="noResults" class="text-center py-5" style="display:none; color:var(--text-muted);">
+  <i class="bi bi-search" style="font-size:2rem;"></i>
+  <div class="mt-2">No exercises match your search.</div>
+</div>
+{% else %}
+<div class="ffl-card text-center py-5" style="color:var(--text-muted);">
+  <i class="bi bi-lightning-charge" style="font-size:2.5rem;"></i>
+  <div class="mt-2">No exercises yet.
+    {% if current_user.role in ('admin','trainer') %}
+    <a href="{{ url_for('exercise_new') }}" class="ms-1" style="color:var(--accent);">Add the first one.</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const searchInput = document.getElementById('exerciseSearch');
+const items = document.querySelectorAll('.exercise-grid-item');
+const noResults = document.getElementById('noResults');
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    let visible = 0;
+    items.forEach(item => {
+      const match = !q ||
+        item.dataset.name.includes(q) ||
+        item.dataset.muscle.includes(q) ||
+        item.dataset.category.includes(q);
+      item.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    if (noResults) noResults.style.display = (visible === 0 && q) ? 'block' : 'none';
+  });
+}
+</script>
+{% endblock %}

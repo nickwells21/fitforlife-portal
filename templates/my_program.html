@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}My Program — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.day-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 0.4rem;
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+}
+.day-row.today-row {
+  border-color: rgba(30,157,241,0.5);
+  background: rgba(30,157,241,0.06);
+}
+.day-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.day-row.today-row .day-num {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-3">
+  <div class="page-title">My Program</div>
+</div>
+
+{% if not assignment %}
+<div class="ffl-card text-center py-5" style="color:var(--text-muted);">
+  <i class="bi bi-calendar2-week" style="font-size:2.5rem;"></i>
+  <div class="mt-2">You don't have a program assigned yet. Ask your trainer!</div>
+</div>
+{% else %}
+{% set prog = assignment.program %}
+
+<div class="ffl-card mb-3">
+  <div class="fw-600 mb-1" style="font-size:1rem;">{{ prog.name }}</div>
+  {% if prog.description %}
+  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">{{ prog.description }}</div>
+  {% endif %}
+  <div class="d-flex flex-wrap gap-3" style="font-size:0.82rem;color:var(--text-soft);">
+    <div><i class="bi bi-calendar me-1"></i>Started {{ assignment.start_date.strftime('%b %d, %Y') }}</div>
+    <div><i class="bi bi-layers me-1"></i>Week {{ current_week }} of {{ prog.weeks }}</div>
+    <div><i class="bi bi-person me-1"></i>{{ assignment.assigned_by.name if assignment.assigned_by else 'Your trainer' }}</div>
+  </div>
+</div>
+
+{% if today_program_day and today_program_day.workout_id %}
+<div class="ffl-card mb-3" style="border-color:rgba(30,157,241,0.4);background:rgba(30,157,241,0.05);">
+  <div class="fw-600 mb-1" style="color:var(--accent);">Today's Workout</div>
+  <div class="fw-600 mb-2" style="font-size:1rem;">
+    {{ today_program_day.workout.name if today_program_day.workout else 'Workout' }}
+  </div>
+  {% if today_program_day.workout %}
+  <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">
+    {{ today_program_day.workout.exercises.count() }} exercise{{ 's' if today_program_day.workout.exercises.count() != 1 else '' }}
+  </div>
+  <a href="{{ url_for('workout_detail', workout_id=today_program_day.workout_id) if current_user.role != 'client' else url_for('exercises_list') }}" class="btn btn-outline-secondary btn-sm me-2">
+    <i class="bi bi-eye me-1"></i>View Workout
+  </a>
+  {% endif %}
+  {% if checkin_done %}
+  <span class="btn btn-sm" style="background:rgba(22,163,74,0.15);color:#4ade80;border:1px solid rgba(22,163,74,0.3);cursor:default;">
+    <i class="bi bi-check-circle-fill me-1"></i>Completed
+  </span>
+  {% else %}
+  <button type="button" class="btn btn-outline-secondary btn-sm" id="checkinBtn"
+          onclick="doCheckin({{ assignment.id }}, {{ current_week }}, {{ current_day }})">
+    <i class="bi bi-check-circle me-1"></i>Mark Complete
+  </button>
+  {% endif %}
+</div>
+{% elif today_program_day %}
+<div class="ffl-card mb-3" style="color:var(--text-muted);">
+  <i class="bi bi-moon me-2"></i>Today is a rest day.
+  {% if today_program_day.label %}&nbsp;{{ today_program_day.label }}{% endif %}
+</div>
+{% else %}
+<div class="ffl-card mb-3" style="color:var(--text-muted);">
+  <i class="bi bi-question-circle me-2"></i>No workout scheduled for today.
+</div>
+{% endif %}
+
+<!-- Weekly view for current week -->
+<div class="ffl-card">
+  <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Week {{ current_week }} Schedule</div>
+  {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+  {% for d in range(1, 8) %}
+  {% set pd = assignment.program.days.filter_by(week=current_week, day=d).first() %}
+  <div class="day-row {{ 'today-row' if d == current_day else '' }}">
+    <div class="day-num">{{ d }}</div>
+    <div style="min-width:36px;color:var(--text-muted);">{{ day_names[d-1] }}</div>
+    <div style="flex:1;">
+      {% if pd and pd.workout_id and pd.workout %}
+      <span class="fw-600">{{ pd.workout.name }}</span>
+      {% elif pd and pd.label %}
+      <span style="color:var(--text-muted);">{{ pd.label }}</span>
+      {% else %}
+      <span style="color:var(--text-faint);">Rest</span>
+      {% endif %}
+    </div>
+    {% if pd and pd.workout_id %}
+    <i class="bi bi-lightning-charge-fill" style="color:var(--accent);font-size:12px;"></i>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function doCheckin(assignmentId, week, day) {
+  const btn = document.getElementById('checkinBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving…';
+  try {
+    const res = await fetch('/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignment_id: assignmentId, week: week, day: day })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.outerHTML = `<span class="btn btn-sm" style="background:rgba(22,163,74,0.15);color:#4ade80;border:1px solid rgba(22,163,74,0.3);cursor:default;"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>`;
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Mark Complete';
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Mark Complete';
+  }
+}
+</script>
+{% endblock %}

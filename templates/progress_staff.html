@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }} — Progress — Fit For Life{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+.tab-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: rgba(30,157,241,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+.chart-container { position: relative; height: 240px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('client_detail', client_id=client.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>{{ client.name }}
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ client.name }}'s Progress</div>
+  <div class="page-subtitle">Read-only coach view</div>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+  <button class="tab-btn active" onclick="showTab('bodyStats', this)">Body Stats</button>
+  <button class="tab-btn" onclick="showTab('exerciseLogs', this)">Exercise Logs</button>
+</div>
+
+<!-- BODY STATS TAB -->
+<div class="tab-pane active" id="bodyStats">
+  <div class="ffl-card mb-3">
+    <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Weight Over Time</div>
+    {% if entries %}
+    <div class="chart-container">
+      <canvas id="weightChart"></canvas>
+    </div>
+    {% else %}
+    <div class="text-center py-4" style="color:var(--text-muted);">No body stat entries yet.</div>
+    {% endif %}
+  </div>
+
+  {% if entries %}
+  <div class="ffl-card">
+    <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Measurement History</div>
+    <div class="table-responsive">
+      <table class="table table-dark table-sm mb-0" style="font-size:0.82rem;">
+        <thead>
+          <tr style="color:var(--text-muted);">
+            <th>Date</th><th>Weight</th><th>Chest</th><th>Waist</th><th>Hips</th><th>Arms</th><th>Legs</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries|reverse %}
+          <tr>
+            <td>{{ e.log_date.strftime('%b %d, %Y') }}</td>
+            <td>{{ '%.1f'|format(e.weight_lbs) if e.weight_lbs else '—' }}</td>
+            <td>{{ '%.1f'|format(e.chest_in) if e.chest_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.waist_in) if e.waist_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.hips_in) if e.hips_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.arms_in) if e.arms_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.legs_in) if e.legs_in else '—' }}</td>
+            <td style="color:var(--text-muted);">{{ e.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- EXERCISE LOGS TAB -->
+<div class="tab-pane" id="exerciseLogs">
+  {% if ex_logs %}
+  <div class="ffl-card">
+    <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Exercise Log History</div>
+    <div class="table-responsive">
+      <table class="table table-dark table-sm mb-0" style="font-size:0.82rem;">
+        <thead>
+          <tr style="color:var(--text-muted);">
+            <th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in ex_logs %}
+          <tr>
+            <td>{{ log.log_date.strftime('%b %d') }}</td>
+            <td style="font-weight:600;">{{ log.exercise.name if log.exercise else '—' }}</td>
+            <td>{{ log.sets_completed or '—' }}</td>
+            <td>{{ log.reps_completed or '—' }}</td>
+            <td>{{ ('%.1f'|format(log.weight_lbs) + ' lbs') if log.weight_lbs else '—' }}</td>
+            <td style="color:var(--text-muted);">{{ log.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+    <i class="bi bi-activity" style="font-size:2rem;"></i>
+    <div class="mt-2">No exercise logs yet for this client.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(tabId, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+{% if entries %}
+const weightLabels = [{% for e in entries %}'{{ e.log_date.strftime('%b %d') }}'{{ ',' if not loop.last }}{% endfor %}];
+const weightData = [{% for e in entries %}{{ e.weight_lbs or 'null' }}{{ ',' if not loop.last }}{% endfor %}];
+const ctx = document.getElementById('weightChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: weightLabels,
+      datasets: [{
+        label: 'Weight (lbs)',
+        data: weightData,
+        borderColor: '#1e9df1',
+        backgroundColor: 'rgba(30,157,241,0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#1e9df1',
+        pointRadius: 4,
+        tension: 0.35,
+        fill: true,
+        spanGaps: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+{% endif %}
+</script>
+{% endblock %}

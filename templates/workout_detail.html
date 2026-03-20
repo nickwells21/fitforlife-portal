@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}{{ workout.name }} — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('workouts_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Workouts
+  </a>
+  <a href="{{ url_for('workout_edit', workout_id=workout.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-pencil me-1"></i>Edit
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ workout.name }}</div>
+  {% if workout.description %}
+  <div class="page-subtitle">{{ workout.description }}</div>
+  {% endif %}
+</div>
+
+{% set ex_list = workout.exercises.all() %}
+{% if ex_list %}
+{% set total_rest = ex_list | sum(attribute='rest_seconds') %}
+{% set estimated_min = ((ex_list|length * 3 * 40) + total_rest) // 60 %}
+<div class="ffl-card mb-3">
+  <div class="d-flex flex-wrap gap-4">
+    <div class="text-center">
+      <div style="font-size:1.6rem;font-weight:700;color:var(--accent);">{{ ex_list|length }}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);">Exercises</div>
+    </div>
+    <div class="text-center">
+      <div style="font-size:1.6rem;font-weight:700;color:var(--accent);">~{{ estimated_min }}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);">Est. Minutes</div>
+    </div>
+    <div class="text-center">
+      <div style="font-size:1.6rem;font-weight:700;color:var(--accent);">{{ ex_list | sum(attribute='sets') }}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);">Total Sets</div>
+    </div>
+    <div>
+      <div style="font-size:0.75rem;color:var(--text-muted);">Created by</div>
+      <div style="font-size:0.9rem;font-weight:600;">{{ workout.trainer.name if workout.trainer else '—' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="ffl-card">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0" style="font-size:0.87rem;">
+      <thead>
+        <tr style="color:var(--text-muted);border-bottom:1px solid var(--border-mid);">
+          <th style="width:32px;">#</th>
+          <th>Exercise</th>
+          <th style="width:60px;">Sets</th>
+          <th style="width:80px;">Reps</th>
+          <th style="width:80px;">Rest</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for we in ex_list %}
+        <tr>
+          <td style="color:var(--text-muted);">{{ loop.index }}</td>
+          <td>
+            <a href="{{ url_for('exercise_detail', ex_id=we.exercise.id) }}" style="color:var(--accent);text-decoration:none;font-weight:600;">
+              {{ we.exercise.name }}
+            </a>
+            {% if we.exercise.muscle_group %}
+            <span class="ms-1" style="font-size:10px;color:var(--text-muted);">{{ we.exercise.muscle_group }}</span>
+            {% endif %}
+          </td>
+          <td>{{ we.sets }}</td>
+          <td>{{ we.reps }}</td>
+          <td>{{ we.rest_seconds }}s</td>
+          <td style="color:var(--text-muted);">{{ we.notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+  <i class="bi bi-lightning-charge" style="font-size:2rem;"></i>
+  <div class="mt-2">No exercises in this workout. <a href="{{ url_for('workout_edit', workout_id=workout.id) }}" style="color:var(--accent);">Add some.</a></div>
+</div>
+{% endif %}
+{% endblock %}

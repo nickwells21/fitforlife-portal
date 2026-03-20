@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}{{ prog.name }} — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.day-grid { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 4px; }
+.day-cell-view {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 60px;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.77rem;
+}
+.day-cell-view.has-workout { border-color: rgba(30,157,241,0.35); }
+.day-names-grid { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.day-names-grid > div { font-size: 10px; color: var(--text-muted); font-weight: 600; text-align: center; text-transform: uppercase; }
+.week-row-view { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.week-label-v { font-size:0.8rem; color:var(--text-muted); font-weight:600; display:flex; align-items:center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Programs
+  </a>
+  <a href="{{ url_for('program_builder', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-grid-3x3 me-1"></i>Edit Builder
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ prog.name }}</div>
+  <div class="page-subtitle">{{ prog.weeks }}-week program · {{ prog.trainer.name if prog.trainer else '' }}</div>
+</div>
+
+{% if prog.description %}
+<div class="ffl-card mb-3" style="color:var(--text-soft);">{{ prog.description }}</div>
+{% endif %}
+
+<div class="ffl-card mb-4" style="overflow-x:auto;">
+  <div class="day-names-grid">
+    <div></div>
+    {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    <div>{{ d }}</div>
+    {% endfor %}
+  </div>
+  {% for w in range(1, prog.weeks + 1) %}
+  <div class="week-row-view">
+    <div class="week-label-v">Wk {{ w }}</div>
+    {% for d in range(1, 8) %}
+    {% set pd = day_map.get((w, d)) %}
+    <div class="day-cell-view {{ 'has-workout' if pd and pd.workout_id else '' }}">
+      {% if pd and pd.workout_id and pd.workout %}
+      <div style="color:var(--accent);font-weight:600;">{{ pd.workout.name|truncate(26, true, '…') }}</div>
+      {% elif pd and pd.label %}
+      <div style="color:var(--text-muted);">{{ pd.label }}</div>
+      {% else %}
+      <div style="color:var(--text-faint);">Rest</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Assign to clients -->
+<div class="ffl-card">
+  <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Assign to Clients</div>
+  <form method="POST" action="{{ url_for('program_assign', program_id=prog.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label class="form-label">Start Date <span style="color:#f87171;">*</span></label>
+      <input type="date" name="start_date" class="form-control" style="max-width:200px;" required
+             value="{{ now_date if now_date else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Clients <span style="color:#f87171;">*</span></label>
+      <div style="max-height:200px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.5rem;">
+        {% for c in clients %}
+        <div class="form-check" style="margin-bottom:0.25rem;">
+          <input class="form-check-input" type="checkbox" name="client_ids" value="{{ c.id }}" id="client{{ c.id }}">
+          <label class="form-check-label" for="client{{ c.id }}" style="font-size:0.87rem;">{{ c.name }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-person-plus me-1"></i>Assign Program
+    </button>
+  </form>
+</div>
+
+{% if prog.assignments.count() > 0 %}
+<div class="ffl-card mt-3">
+  <div class="fw-600 mb-2" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Active Assignments</div>
+  <div class="table-responsive">
+    <table class="table table-dark table-sm mb-0" style="font-size:0.85rem;">
+      <thead>
+        <tr style="color:var(--text-muted);">
+          <th>Client</th>
+          <th>Start Date</th>
+          <th>Assigned By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pa in prog.assignments.order_by('start_date desc').all() %}
+        <tr>
+          <td>{{ pa.client.name if pa.client else '—' }}</td>
+          <td>{{ pa.start_date.strftime('%b %d, %Y') }}</td>
+          <td>{{ pa.assigned_by.name if pa.assigned_by else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}{{ prog.name }} — Builder — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.day-cell {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 72px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  font-size: 0.78rem;
+  position: relative;
+}
+.day-cell:hover { border-color: rgba(30,157,241,0.5); background: rgba(30,157,241,0.04); }
+.day-cell.has-workout { border-color: rgba(30,157,241,0.4); }
+.day-cell.rest-day { opacity: 0.5; }
+.day-header { font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
+.day-workout-name { color: var(--accent); font-weight: 600; font-size:0.79rem; }
+.day-label { color: var(--text-muted); font-size: 0.75rem; }
+.week-label { font-size:0.8rem; color:var(--text-muted); font-weight:600; padding-top:0.5rem; }
+.builder-modal-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.builder-modal-bg.open { display: flex; }
+.builder-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.day-names { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.day-names > div { font-size: 10px; color: var(--text-muted); font-weight: 600; text-align: center; text-transform: uppercase; }
+.week-row { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Programs
+  </a>
+  <a href="{{ url_for('program_detail', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-eye me-1"></i>View &amp; Assign
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ prog.name }}</div>
+  <div class="page-subtitle">{{ prog.weeks }}-week builder — click any day cell to set a workout</div>
+</div>
+
+<div class="ffl-card" style="overflow-x:auto;">
+  <div class="day-names">
+    <div></div>
+    {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    <div>{{ d }}</div>
+    {% endfor %}
+  </div>
+  {% for w in range(1, prog.weeks + 1) %}
+  <div class="week-row">
+    <div class="week-label" style="display:flex;align-items:center;">Wk {{ w }}</div>
+    {% for d in range(1, 8) %}
+    {% set pd = day_map.get((w, d)) %}
+    <div class="day-cell {{ 'has-workout' if pd and pd.workout_id else '' }}"
+         data-week="{{ w }}" data-day="{{ d }}"
+         onclick="openModal({{ w }}, {{ d }}, '{{ pd.workout_id if pd and pd.workout_id else '' }}', '{{ pd.label|replace("'","") if pd and pd.label else '' }}')"
+         id="cell-{{ w }}-{{ d }}">
+      {% if pd and pd.workout_id and pd.workout %}
+      <div class="day-workout-name">{{ pd.workout.name|truncate(28, true, '…') }}</div>
+      {% elif pd and pd.label %}
+      <div class="day-label">{{ pd.label }}</div>
+      {% else %}
+      <div style="color:var(--text-faint);font-size:10px;">+ set</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal -->
+<div class="builder-modal-bg" id="builderModal" onclick="closeModalOnBg(event)">
+  <div class="builder-modal">
+    <div class="fw-600 mb-3" id="modalTitle" style="font-size:0.95rem;">Set Workout</div>
+    <div class="mb-3">
+      <label class="form-label" for="modalWorkout">Workout</label>
+      <select id="modalWorkout" class="form-select">
+        <option value="">— Rest Day —</option>
+        {% for w in workouts %}
+        <option value="{{ w.id }}">{{ w.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="modalLabel">Label (optional)</label>
+      <input type="text" id="modalLabel" class="form-control" placeholder="e.g. Upper Body, Rest">
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="saveCell()">
+        <i class="bi bi-check-lg me-1"></i>Save
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeWeek = null;
+let activeDay = null;
+
+function openModal(week, day, workoutId, label) {
+  activeWeek = week;
+  activeDay = day;
+  document.getElementById('modalTitle').textContent = `Week ${week}, Day ${day}`;
+  document.getElementById('modalWorkout').value = workoutId || '';
+  document.getElementById('modalLabel').value = label || '';
+  document.getElementById('builderModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('builderModal').classList.remove('open');
+  activeWeek = null;
+  activeDay = null;
+}
+
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById('builderModal')) closeModal();
+}
+
+async function saveCell() {
+  if (!activeWeek || !activeDay) return;
+  const workoutId = document.getElementById('modalWorkout').value || null;
+  const label = document.getElementById('modalLabel').value.trim() || null;
+
+  try {
+    const res = await fetch('{{ url_for("program_set_day", program_id=prog.id) }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week: activeWeek, day: activeDay, workout_id: workoutId, label: label })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const cell = document.getElementById(`cell-${activeWeek}-${activeDay}`);
+      if (data.workout_name) {
+        cell.innerHTML = `<div class="day-workout-name">${data.workout_name.substring(0,28)}</div>`;
+        cell.classList.add('has-workout');
+      } else if (data.label) {
+        cell.innerHTML = `<div class="day-label">${data.label}</div>`;
+        cell.classList.remove('has-workout');
+      } else {
+        cell.innerHTML = `<div style="color:var(--text-faint);font-size:10px;">+ set</div>`;
+        cell.classList.remove('has-workout');
+      }
+    }
+  } catch(e) {
+    console.error('Save failed', e);
+  }
+  closeModal();
+}
+</script>
+{% endblock %}

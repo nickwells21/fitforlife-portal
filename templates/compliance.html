@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Compliance — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.compliance-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.badge-green { background: rgba(22,163,74,0.15); color: #4ade80; border: 1px solid rgba(22,163,74,0.3); }
+.badge-yellow { background: rgba(234,179,8,0.15); color: #facc15; border: 1px solid rgba(234,179,8,0.3); }
+.badge-red { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+.compliance-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.compliance-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-3">
+  <div class="page-title">Compliance Dashboard</div>
+  <div class="page-subtitle">Workout completion rates for all assigned programs</div>
+</div>
+
+{% if rows %}
+<div class="ffl-card">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover mb-0" style="font-size:0.87rem;">
+      <thead>
+        <tr style="color:var(--text-muted);border-bottom:1px solid var(--border-mid);">
+          <th>Client</th>
+          <th>Program</th>
+          <th style="width:80px;">Assigned</th>
+          <th style="width:80px;">Done</th>
+          <th style="width:120px;">Compliance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>
+            <a href="{{ url_for('client_detail', client_id=row.client.id) }}" style="color:var(--text);text-decoration:none;font-weight:600;">
+              {{ row.client.name }}
+            </a>
+          </td>
+          <td style="color:var(--text-soft);">{{ row.program.name }}</td>
+          <td style="color:var(--text-muted);">{{ row.total_assigned }}</td>
+          <td style="color:var(--text-soft);">{{ row.completed }}</td>
+          <td>
+            {% if row.rate >= 80 %}
+            <span class="compliance-badge badge-green">{{ row.rate }}%</span>
+            {% elif row.rate >= 60 %}
+            <span class="compliance-badge badge-yellow">{{ row.rate }}%</span>
+            {% else %}
+            <span class="compliance-badge badge-red">{{ row.rate }}%</span>
+            {% endif %}
+            <div class="compliance-bar">
+              <div class="compliance-bar-fill"
+                   style="width:{{ row.rate }}%;background:{{ '#4ade80' if row.rate >= 80 else ('#facc15' if row.rate >= 60 else '#f87171') }};">
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="ffl-card text-center py-5" style="color:var(--text-muted);">
+  <i class="bi bi-bar-chart-steps" style="font-size:2.5rem;"></i>
+  <div class="mt-2">No program assignments yet. Assign programs to clients first.</div>
+</div>
+{% endif %}
+{% endblock %}

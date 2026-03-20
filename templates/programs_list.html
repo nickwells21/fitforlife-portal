@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Programs — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <div class="page-title">Programs</div>
+    <div class="page-subtitle">{{ programs|length }} program{{ 's' if programs|length != 1 else '' }}</div>
+  </div>
+  <a href="{{ url_for('program_new') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New Program
+  </a>
+</div>
+
+{% if programs %}
+<div class="row g-3">
+  {% for prog in programs %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="ffl-card h-100" style="display:flex;flex-direction:column;">
+      <div class="fw-600 mb-1" style="font-size:0.95rem;">{{ prog.name }}</div>
+      {% if prog.description %}
+      <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">{{ prog.description[:100] }}{% if prog.description|length > 100 %}…{% endif %}</div>
+      {% endif %}
+      <div style="font-size:0.8rem;color:var(--text-soft);margin-bottom:0.75rem;">
+        <i class="bi bi-calendar me-1"></i>{{ prog.weeks }} week{{ 's' if prog.weeks != 1 else '' }}
+        &nbsp;·&nbsp;
+        <i class="bi bi-person me-1"></i>{{ prog.trainer.name if prog.trainer else 'Unknown' }}
+        &nbsp;·&nbsp;
+        <i class="bi bi-people me-1"></i>{{ prog.assignments.count() }} assigned
+      </div>
+      <div class="d-flex gap-2 mt-auto flex-wrap">
+        <a href="{{ url_for('program_detail', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-eye me-1"></i>View
+        </a>
+        <a href="{{ url_for('program_builder', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-grid-3x3 me-1"></i>Builder
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="ffl-card text-center py-5" style="color:var(--text-muted);">
+  <i class="bi bi-calendar2-week" style="font-size:2.5rem;"></i>
+  <div class="mt-2">No programs yet. <a href="{{ url_for('program_new') }}" style="color:var(--accent);">Create your first program.</a></div>
+</div>
+{% endif %}
+{% endblock %}

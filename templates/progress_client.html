@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block title %}My Progress — Fit For Life{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+.tab-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: rgba(30,157,241,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+.chart-container { position: relative; height: 240px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-3">
+  <div class="page-title">My Progress</div>
+</div>
+
+<!-- Tab controls -->
+<div class="d-flex gap-2 mb-3">
+  <button class="tab-btn active" onclick="showTab('bodyStats', this)">Body Stats</button>
+  <button class="tab-btn" onclick="showTab('exerciseLogs', this)">Exercise Logs</button>
+</div>
+
+<!-- BODY STATS TAB -->
+<div class="tab-pane active" id="bodyStats">
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-8">
+      <div class="ffl-card h-100">
+        <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Weight Over Time</div>
+        {% if entries %}
+        <div class="chart-container">
+          <canvas id="weightChart"></canvas>
+        </div>
+        {% else %}
+        <div class="text-center py-4" style="color:var(--text-muted);">No data yet. Log your first entry below.</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="ffl-card h-100">
+        <div class="fw-600 mb-3" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Log Measurements</div>
+        <form method="POST" action="{{ url_for('progress_log') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.8rem;">Date</label>
+            <input type="date" name="log_date" class="form-control form-control-sm" value="{{ today_date }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.8rem;">Weight (lbs)</label>
+            <input type="number" step="0.1" name="weight_lbs" class="form-control form-control-sm" placeholder="0.0">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label" style="font-size:0.75rem;">Chest (in)</label>
+              <input type="number" step="0.1" name="chest_in" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:0.75rem;">Waist (in)</label>
+              <input type="number" step="0.1" name="waist_in" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:0.75rem;">Hips (in)</label>
+              <input type="number" step="0.1" name="hips_in" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:0.75rem;">Arms (in)</label>
+              <input type="number" step="0.1" name="arms_in" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:0.75rem;">Legs (in)</label>
+              <input type="number" step="0.1" name="legs_in" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.8rem;">Notes</label>
+            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="How are you feeling?"></textarea>
+          </div>
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-plus-circle me-1"></i>Save Entry
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if entries %}
+  <div class="ffl-card">
+    <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Measurement History</div>
+    <div class="table-responsive">
+      <table class="table table-dark table-sm mb-0" style="font-size:0.82rem;">
+        <thead>
+          <tr style="color:var(--text-muted);">
+            <th>Date</th><th>Weight</th><th>Chest</th><th>Waist</th><th>Hips</th><th>Arms</th><th>Legs</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries|reverse %}
+          <tr>
+            <td>{{ e.log_date.strftime('%b %d') }}</td>
+            <td>{{ '%.1f'|format(e.weight_lbs) if e.weight_lbs else '—' }}</td>
+            <td>{{ '%.1f'|format(e.chest_in) if e.chest_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.waist_in) if e.waist_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.hips_in) if e.hips_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.arms_in) if e.arms_in else '—' }}</td>
+            <td>{{ '%.1f'|format(e.legs_in) if e.legs_in else '—' }}</td>
+            <td style="color:var(--text-muted);">{{ e.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- EXERCISE LOGS TAB -->
+<div class="tab-pane" id="exerciseLogs">
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-5">
+      <div class="ffl-card">
+        <div class="fw-600 mb-3" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Log Exercise Performance</div>
+        <form method="POST" action="{{ url_for('progress_log_exercise') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.8rem;">Date</label>
+            <input type="date" name="log_date" class="form-control form-control-sm" value="{{ today_date }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.8rem;">Exercise</label>
+            <select name="exercise_id" class="form-select form-select-sm">
+              <option value="">— Select —</option>
+              {% for ex in exercises %}
+              <option value="{{ ex.id }}">{{ ex.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label" style="font-size:0.75rem;">Sets</label>
+              <input type="number" name="sets_completed" class="form-control form-control-sm" min="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label" style="font-size:0.75rem;">Reps</label>
+              <input type="text" name="reps_completed" class="form-control form-control-sm" placeholder="10">
+            </div>
+            <div class="col-4">
+              <label class="form-label" style="font-size:0.75rem;">Weight (lbs)</label>
+              <input type="number" step="0.5" name="weight_lbs" class="form-control form-control-sm">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.8rem;">Notes</label>
+            <input type="text" name="notes" class="form-control form-control-sm" placeholder="How did it feel?">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-plus-circle me-1"></i>Log Exercise
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="col-12 col-md-7">
+      {% if ex_logs %}
+      <div class="ffl-card">
+        <div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Exercise History</div>
+        <div class="table-responsive">
+          <table class="table table-dark table-sm mb-0" style="font-size:0.82rem;">
+            <thead>
+              <tr style="color:var(--text-muted);">
+                <th>Date</th><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in ex_logs %}
+              <tr>
+                <td>{{ log.log_date.strftime('%b %d') }}</td>
+                <td style="font-weight:600;">{{ log.exercise.name if log.exercise else '—' }}</td>
+                <td>{{ log.sets_completed or '—' }}</td>
+                <td>{{ log.reps_completed or '—' }}</td>
+                <td>{{ ('%.1f'|format(log.weight_lbs) + ' lbs') if log.weight_lbs else '—' }}</td>
+                <td style="color:var(--text-muted);">{{ log.notes or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+        <i class="bi bi-activity" style="font-size:2rem;"></i>
+        <div class="mt-2">No exercise logs yet.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(tabId, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Chart.js weight chart
+{% if entries %}
+const weightLabels = [{% for e in entries %}'{{ e.log_date.strftime('%b %d') }}'{{ ',' if not loop.last }}{% endfor %}];
+const weightData = [{% for e in entries %}{{ e.weight_lbs or 'null' }}{{ ',' if not loop.last }}{% endfor %}];
+const ctx = document.getElementById('weightChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: weightLabels,
+      datasets: [{
+        label: 'Weight (lbs)',
+        data: weightData,
+        borderColor: '#1e9df1',
+        backgroundColor: 'rgba(30,157,241,0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#1e9df1',
+        pointRadius: 4,
+        tension: 0.35,
+        fill: true,
+        spanGaps: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+{% endif %}
+
+// Set today's date as default
+document.querySelectorAll('input[type="date"]').forEach(el => {
+  if (!el.value) el.value = new Date().toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

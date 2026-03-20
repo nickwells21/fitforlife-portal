@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if ex else 'New' }} Exercise — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('exercises_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Library
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ 'Edit' if ex else 'New' }} Exercise</div>
+  {% if ex %}
+  <div class="page-subtitle">{{ ex.name }}</div>
+  {% endif %}
+</div>
+
+<div class="ffl-card" style="max-width:640px;">
+  <form method="POST" action="{{ url_for('exercise_edit', ex_id=ex.id) if ex else url_for('exercise_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+      <label class="form-label" for="exName">Exercise Name <span style="color:#f87171;">*</span></label>
+      <input type="text" id="exName" name="name" class="form-control"
+             value="{{ ex.name if ex else '' }}" required autofocus placeholder="e.g. Barbell Bench Press">
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-6">
+        <label class="form-label" for="muscleGroup">Muscle Group</label>
+        <select id="muscleGroup" name="muscle_group" class="form-select">
+          <option value="">— Select —</option>
+          {% for mg in ['Chest','Back','Legs','Shoulders','Arms','Core','Full Body'] %}
+          <option value="{{ mg }}" {{ 'selected' if ex and ex.muscle_group == mg else '' }}>{{ mg }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="category">Category</label>
+        <select id="category" name="category" class="form-select">
+          <option value="">— Select —</option>
+          {% for cat in ['Strength','Cardio','Mobility'] %}
+          <option value="{{ cat }}" {{ 'selected' if ex and ex.category == cat else '' }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="instructions">Instructions</label>
+      <textarea id="instructions" name="instructions" class="form-control" rows="5"
+                placeholder="Step-by-step coaching cues…">{{ ex.instructions if ex and ex.instructions else '' }}</textarea>
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label" for="youtubeUrl">YouTube URL (optional)</label>
+      <input type="url" id="youtubeUrl" name="youtube_url" class="form-control"
+             value="{{ ex.youtube_url if ex and ex.youtube_url else '' }}"
+             placeholder="https://www.youtube.com/watch?v=...">
+      <div class="form-text" style="color:var(--text-muted);">Paste a YouTube watch or short link (youtu.be).</div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-outline-secondary">
+        <i class="bi bi-check-lg me-1"></i>{{ 'Save Changes' if ex else 'Create Exercise' }}
+      </button>
+      <a href="{{ url_for('exercises_list') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

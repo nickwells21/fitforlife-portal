@@ -296,6 +296,21 @@
           <span class="msg-unread-badge" id="chatWidgetBadgeSidebar" style="display:none;"></span>
         </a>
       </li>
+      <li>
+        <a href="{{ url_for('my_program') }}" class="nav-link {% if request.endpoint == 'my_program' %}active{% endif %}">
+          <i class="bi bi-calendar2-week"></i><span class="nav-label"> My Program</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('exercises_list') }}" class="nav-link {% if request.endpoint and 'exercise' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-lightning-charge"></i><span class="nav-label"> Library</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('client_progress') }}" class="nav-link {% if request.endpoint and 'progress' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-graph-up-arrow"></i><span class="nav-label"> Progress</span>
+        </a>
+      </li>
       {% endif %}
 
       {% if current_user.role in ('admin', 'trainer') %}
@@ -307,6 +322,26 @@
       <li>
         <a href="{{ url_for('new_session') }}" class="nav-link {% if request.endpoint == 'new_session' %}active{% endif %}">
           <i class="bi bi-plus-square"></i><span class="nav-label"> Book Session</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('exercises_list') }}" class="nav-link {% if request.endpoint and 'exercise' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-lightning-charge"></i><span class="nav-label"> Library</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('workouts_list') }}" class="nav-link {% if request.endpoint and 'workout' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-journal-richtext"></i><span class="nav-label"> Workouts</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('programs_list') }}" class="nav-link {% if request.endpoint and 'program' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-calendar2-week"></i><span class="nav-label"> Programs</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('compliance_dashboard') }}" class="nav-link {% if request.endpoint and 'compliance' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-bar-chart-steps"></i><span class="nav-label"> Compliance</span>
         </a>
       </li>
       {% endif %}

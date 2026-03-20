@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{{ ex.name }} — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.embed-responsive-item {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+.badge-muscle { background: rgba(30,157,241,0.15); color: var(--accent); border: 1px solid rgba(30,157,241,0.3); }
+.badge-strength { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+.badge-cardio { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+.badge-mobility { background: rgba(22,163,74,0.15); color: #4ade80; border: 1px solid rgba(22,163,74,0.3); }
+.instructions-body {
+  white-space: pre-line;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('exercises_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Library
+  </a>
+  {% if current_user.role in ('admin', 'trainer') %}
+  <a href="{{ url_for('exercise_edit', ex_id=ex.id) }}" class="btn btn-outline-secondary btn-sm ms-2">
+    <i class="bi bi-pencil me-1"></i>Edit
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="ffl-card h-100">
+      <div class="page-title mb-1">{{ ex.name }}</div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% if ex.muscle_group %}
+        <span class="badge badge-muscle">{{ ex.muscle_group }}</span>
+        {% endif %}
+        {% if ex.category %}
+        <span class="badge badge-{{ ex.category|lower }}">{{ ex.category }}</span>
+        {% endif %}
+      </div>
+      {% if ex.instructions %}
+      <div class="mb-3">
+        <div class="fw-600 mb-1" style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Instructions</div>
+        <div class="instructions-body">{{ ex.instructions }}</div>
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);">No instructions provided.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    {% if youtube_id %}
+    <div class="ffl-card">
+      <div class="fw-600 mb-2" style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Video Demo</div>
+      <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:var(--radius-sm);">
+        <iframe
+          src="https://www.youtube.com/embed/{{ youtube_id }}"
+          title="{{ ex.name }} demo"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:var(--radius-sm);">
+        </iframe>
+      </div>
+    </div>
+    {% else %}
+    <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+      <i class="bi bi-play-circle" style="font-size:2.5rem;"></i>
+      <div class="mt-2" style="font-size:0.85rem;">No video demo available.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
