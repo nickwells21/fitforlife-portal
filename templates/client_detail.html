@@ -318,6 +318,7 @@
 .status-badge.scheduled  { background: rgba(30,157,241,0.14); color: #69c0f5;      border: 1px solid rgba(30,157,241,0.25); }
 .status-badge.cancelled  { background: rgba(239,68,68,0.12);  color: var(--red);   border: 1px solid rgba(239,68,68,0.22); }
 .status-badge.no-show    { background: rgba(245,158,11,0.14); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+.status-badge.missed     { background: rgba(245,158,11,0.14); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
 
 /* Location badge */
 .loc-badge {
@@ -575,7 +576,7 @@
             <span class="status-badge {{ sess.status | replace(' ', '-') | lower }}">
               {% if sess.status == 'completed' %}<i class="bi bi-check-lg"></i>
               {% elif sess.status == 'cancelled' %}<i class="bi bi-x-lg"></i>
-              {% elif sess.status == 'no-show' or sess.status == 'no_show' %}<i class="bi bi-slash-circle"></i>
+              {% elif sess.status == 'missed' or sess.status == 'no-show' or sess.status == 'no_show' %}<i class="bi bi-slash-circle"></i>
               {% else %}<i class="bi bi-circle"></i>{% endif %}
               {{ sess.status | replace('_', ' ') | replace('-', ' ') }}
             </span>

@@ -787,11 +787,11 @@
   <div class="mcal-toolbar">
     <!-- Left: prev / label / next -->
     <div class="mcal-nav-group">
-      <button class="mcal-nav-btn" id="calPrev" aria-label="Previous month">
+      <button type="button" class="mcal-nav-btn" id="calPrev" aria-label="Previous month">
         <i class="bi bi-chevron-left"></i>
       </button>
       <span class="mcal-month-label" id="calMonthLabel">Loading…</span>
-      <button class="mcal-nav-btn" id="calNext" aria-label="Next month">
+      <button type="button" class="mcal-nav-btn" id="calNext" aria-label="Next month">
         <i class="bi bi-chevron-right"></i>
       </button>
     </div>
@@ -849,7 +849,7 @@
 <!-- Session detail modal -->
 <div class="sess-modal-overlay" id="sessModal" role="dialog" aria-modal="true" aria-labelledby="mTime">
   <div class="sess-modal">
-    <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+    <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
     <div class="modal-time" id="mTime"></div>
     <div class="modal-date" id="mDate"></div>
     <div class="modal-detail-row">
@@ -1158,11 +1158,14 @@
     }
 
     const notesRow = document.getElementById('mNotes');
-    if (isMine && p.notes) {
-      document.getElementById('mNotesText').textContent = p.notes;
-      notesRow.style.display = 'flex';
-    } else {
-      notesRow.style.display = 'none';
+    if (notesRow) {
+      if (isMine && p.notes) {
+        const mNotesText = document.getElementById('mNotesText');
+        if (mNotesText) mNotesText.textContent = p.notes;
+        notesRow.style.display = 'flex';
+      } else {
+        notesRow.style.display = 'none';
+      }
     }
 
     const chip = document.getElementById('mStatus');
@@ -1260,7 +1263,9 @@
   /* ── Fetch sessions from API ────────────────────────────────────────────── */
 
   function fetchSessions() {
-    fetch('/api/sessions', {
+    const startStr = '{{ year - 1 }}-01-01T00:00:00';
+    const endStr   = '{{ year + 1 }}-12-31T23:59:59';
+    fetch(`/api/sessions?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`, {
       credentials: 'same-origin',
       headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })

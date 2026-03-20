@@ -412,12 +412,12 @@
   {% set pct = ((item.completed / item.purchased) * 100)|int if item.purchased > 0 else 0 %}
   {% set av_idx = loop.index0 % 8 %}
 
-  <div class="client-card-wrap" data-name="{{ c.name | lower }}" data-email="{{ c.email | lower }}">
+  <div class="client-card-wrap" data-name="{{ c.name | lower | e }}" data-email="{{ c.email | lower | e }}">
     <a href="{{ url_for('client_detail', client_id=c.id) }}" class="client-card">
 
       <!-- Top: avatar + name/email -->
       <div class="client-card__top">
-        <div class="client-card__avatar av-{{ av_idx }}">{{ c.name[0] | upper }}</div>
+        <div class="client-card__avatar av-{{ av_idx }}">{{ (c.name[0] if c.name else '?') | upper }}</div>
         <div class="client-card__info">
           <div class="client-card__name">{{ c.name }}</div>
           <div class="client-card__email">{{ c.email }}</div>
@@ -463,18 +463,17 @@
         {% endif %}
       </div>
 
-      <!-- Actions -->
-      <div class="client-card__actions">
-        <span class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-eye me-1"></i> View
-        </span>
-        <a href="{{ url_for('new_session') }}" class="btn btn-ffl btn-sm"
-           onclick="event.stopPropagation();">
-          <i class="bi bi-plus-lg me-1"></i> Book
-        </a>
-      </div>
-
     </a>
+
+    <!-- Actions are outside the card link to prevent nested <a> -->
+    <div class="client-card__actions">
+      <a href="{{ url_for('client_detail', client_id=c.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-eye me-1"></i> View
+      </a>
+      <a href="{{ url_for('new_session', client_id=c.id) }}" class="btn btn-ffl btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Book
+      </a>
+    </div>
   </div>
 
   {% else %}
