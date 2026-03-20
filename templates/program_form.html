@@ -1,6 +1,46 @@
 {% extends 'base.html' %}
 {% block title %}New Program — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+.pill-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.pill-btn {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pill-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pill-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.phase-row {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.phase-row .phase-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 70px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="mb-3">
   <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
@@ -10,32 +50,92 @@
 
 <div class="page-header mb-3">
   <div class="page-title">New Program</div>
-  <div class="page-subtitle">Define the program structure, then build the week/day schedule.</div>
+  <div class="page-subtitle">Define phases, then build each phase's workout schedule.</div>
 </div>
 
-<div class="ffl-card" style="max-width:520px;">
-  <form method="POST" action="{{ url_for('program_new') }}">
+<div class="ffl-card" style="max-width:580px;">
+  <form method="POST" action="{{ url_for('program_new') }}" id="programForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="mb-3">
       <label class="form-label" for="pName">Program Name <span style="color:#f87171;">*</span></label>
-      <input type="text" id="pName" name="name" class="form-control" required autofocus placeholder="e.g. 4-Week Fat Loss">
+      <input type="text" id="pName" name="name" class="form-control" required autofocus placeholder="e.g. 12-Week Strength Builder">
     </div>
-    <div class="mb-3">
-      <label class="form-label" for="pDesc">Description</label>
-      <textarea id="pDesc" name="description" class="form-control" rows="3" placeholder="Goals, target audience…"></textarea>
-    </div>
+
     <div class="mb-4">
-      <label class="form-label" for="pWeeks">Number of Weeks</label>
-      <select id="pWeeks" name="weeks" class="form-select" style="max-width:160px;">
-        {% for w in [2,3,4,6,8,10,12] %}
-        <option value="{{ w }}" {{ 'selected' if w == 4 }}>{{ w }} weeks</option>
-        {% endfor %}
-      </select>
+      <label class="form-label" for="pDesc">Description</label>
+      <textarea id="pDesc" name="description" class="form-control" rows="2" placeholder="Goals, target audience…"></textarea>
     </div>
+
+    <div class="mb-4">
+      <label class="form-label">Number of Phases</label>
+      <input type="hidden" name="num_phases" id="numPhasesInput" value="2">
+      <div class="pill-group" id="phasePills">
+        <button type="button" class="pill-btn active" data-val="2" onclick="selectPhases(this)">2 Phases</button>
+        <button type="button" class="pill-btn" data-val="3" onclick="selectPhases(this)">3 Phases</button>
+        <button type="button" class="pill-btn" data-val="4" onclick="selectPhases(this)">4 Phases</button>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label">Phase Details</label>
+      <div id="phaseRows"></div>
+    </div>
+
+    <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;" id="totalWeeksDisplay"></div>
+
     <button type="submit" class="btn btn-outline-secondary">
       <i class="bi bi-arrow-right me-1"></i>Create &amp; Build Schedule
     </button>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const phaseNames = ['Foundation', 'Intensification', 'Peak', 'Deload'];
+
+function selectPhases(btn) {
+  document.querySelectorAll('#phasePills .pill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('numPhasesInput').value = btn.dataset.val;
+  renderPhaseRows(parseInt(btn.dataset.val));
+}
+
+function renderPhaseRows(count) {
+  const container = document.getElementById('phaseRows');
+  container.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const row = document.createElement('div');
+    row.className = 'phase-row';
+    row.innerHTML = `
+      <div class="phase-label">Phase ${i}</div>
+      <div style="flex:1;min-width:160px;">
+        <input type="text" name="phase_${i}_name" class="form-control form-control-sm"
+               placeholder="Name (e.g. ${phaseNames[i-1]})" style="font-size:0.83rem;">
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;">
+        <span style="font-size:0.8rem;color:var(--text-muted);">Length:</span>
+        <select name="phase_${i}_weeks" class="form-select form-select-sm week-sel"
+                style="width:90px;font-size:0.83rem;" onchange="updateTotal()">
+          <option value="2">2 wks</option>
+          <option value="3">3 wks</option>
+          <option value="4" selected>4 wks</option>
+        </select>
+      </div>`;
+    container.appendChild(row);
+  }
+  updateTotal();
+}
+
+function updateTotal() {
+  const sels = document.querySelectorAll('.week-sel');
+  let total = 0;
+  sels.forEach(s => total += parseInt(s.value));
+  document.getElementById('totalWeeksDisplay').textContent = `Total program length: ${total} weeks`;
+}
+
+// Initialize with 2 phases
+renderPhaseRows(2);
+</script>
 {% endblock %}

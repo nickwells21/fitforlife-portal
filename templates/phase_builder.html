@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% block title %}{{ prog.name }} — Phase Builder — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+/* ─── Tab strip ──────────────────────────────────────────────── */
+.phase-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0; }
+.phase-tab-btn {
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border: 1px solid var(--border-mid);
+  border-bottom: none;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.phase-tab-btn:hover { color: var(--accent); border-color: rgba(30,157,241,0.35); }
+.phase-tab-btn.active {
+  background: var(--bg-surface);
+  color: var(--accent);
+  border-color: rgba(30,157,241,0.5);
+}
+.phase-panel { display: none; }
+.phase-panel.active { display: block; }
+
+/* ─── Day grid ───────────────────────────────────────────────── */
+.day-names-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.day-names-row > div {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.phase-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.day-cell {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 80px;
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  font-size: 0.77rem;
+  position: relative;
+}
+.day-cell:hover { border-color: rgba(30,157,241,0.5); background: rgba(30,157,241,0.04); }
+.day-cell.has-workout { border-color: rgba(30,157,241,0.45); }
+.day-workout-name { color: var(--accent); font-weight: 600; font-size: 0.79rem; line-height: 1.3; }
+.day-label-text { color: var(--text-muted); font-size: 0.75rem; }
+.day-add-hint { color: var(--text-faint); font-size: 10px; }
+.repeats-badge {
+  position: absolute;
+  bottom: 5px;
+  right: 6px;
+  font-size: 9px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ─── Modal ──────────────────────────────────────────────────── */
+.builder-modal-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.builder-modal-bg.open { display: flex; }
+.builder-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ─── Phase meta info ────────────────────────────────────────── */
+.phase-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.phase-meta-chip {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
+.no-phases-notice {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Programs
+  </a>
+  <a href="{{ url_for('program_detail', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-eye me-1"></i>View &amp; Assign
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">{{ prog.name }}</div>
+  <div class="page-subtitle">Phase Builder — click any day to assign a workout that repeats every week of the phase</div>
+</div>
+
+{% if not phases %}
+<div class="ffl-card">
+  <div class="no-phases-notice">
+    <i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:0.75rem;"></i>
+    This program has no phases configured. This may be a legacy program created before phase support was added.
+    <br><br>
+    <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">Back to Programs</a>
+  </div>
+</div>
+{% else %}
+
+<!-- Tab strip -->
+<div class="phase-tabs" id="phaseTabs">
+  {% for phase in phases %}
+  <button type="button" class="phase-tab-btn {% if loop.first %}active{% endif %}"
+          data-phase="{{ phase.id }}"
+          onclick="switchTab({{ phase.id }})">
+    Phase {{ phase.phase_num }}{% if phase.name %}: {{ phase.name }}{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+<!-- Phase panels -->
+{% for phase in phases %}
+<div class="ffl-card phase-panel {% if loop.first %}active{% endif %}"
+     id="panel-{{ phase.id }}"
+     style="border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);">
+
+  <div class="phase-meta">
+    <span class="phase-meta-chip">
+      <i class="bi bi-calendar3 me-1"></i>{{ phase.weeks }} week{{ 's' if phase.weeks != 1 }}
+    </span>
+    <span class="phase-meta-chip" style="color:var(--text-soft);">
+      <i class="bi bi-arrow-repeat me-1"></i>Same schedule repeats every week
+    </span>
+    <a href="{{ url_for('phase_progression', program_id=prog.id, phase_id=phase.id) }}"
+       class="btn btn-outline-secondary btn-sm ms-auto">
+      <i class="bi bi-table me-1"></i>Progression Chart
+    </a>
+  </div>
+
+  <div class="day-names-row">
+    {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    <div>{{ d }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="phase-grid">
+    {% set day_map = phase_day_map.get(phase.id, {}) %}
+    {% for d in range(1, 8) %}
+    {% set phd = day_map.get(d) %}
+    <div class="day-cell {{ 'has-workout' if phd and phd.workout_id else '' }}"
+         id="pcell-{{ phase.id }}-{{ d }}"
+         onclick="openModal({{ phase.id }}, {{ d }}, '{{ phd.workout_id if phd and phd.workout_id else '' }}', '{{ (phd.label or '')|replace("'","\\'")|replace('"','&quot;') if phd else '' }}')">
+      {% if phd and phd.workout_id and phd.workout %}
+      <div class="day-workout-name">{{ phd.workout.name|truncate(30, true, '…') }}</div>
+      {% elif phd and phd.label %}
+      <div class="day-label-text">{{ phd.label }}</div>
+      {% else %}
+      <div class="day-add-hint">+ assign</div>
+      {% endif %}
+      {% if phase.weeks > 1 and phd and phd.workout_id %}
+      <span class="repeats-badge">×{{ phase.weeks }} wks</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Day-assignment modal -->
+<div class="builder-modal-bg" id="builderModal" onclick="closeModalOnBg(event)">
+  <div class="builder-modal">
+    <div class="fw-600 mb-3" id="modalTitle" style="font-size:0.95rem;">Assign Workout</div>
+    <div class="mb-3">
+      <label class="form-label" for="modalWorkout">Workout</label>
+      <select id="modalWorkout" class="form-select">
+        <option value="">— Rest Day —</option>
+        {% for w in workouts %}
+        <option value="{{ w.id }}">{{ w.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="modalLabel">Label (optional)</label>
+      <input type="text" id="modalLabel" class="form-control" placeholder="e.g. Upper Body, Rest, Active Recovery">
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="saveCell()">
+        <i class="bi bi-check-lg me-1"></i>Save
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let activePhase = null;
+let activeDay = null;
+
+function switchTab(phaseId) {
+  document.querySelectorAll('.phase-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.phase == phaseId));
+  document.querySelectorAll('.phase-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + phaseId));
+}
+
+function openModal(phaseId, dayNum, workoutId, label) {
+  activePhase = phaseId;
+  activeDay = dayNum;
+  document.getElementById('modalTitle').textContent = DAY_NAMES[dayNum - 1];
+  document.getElementById('modalWorkout').value = workoutId || '';
+  document.getElementById('modalLabel').value = label || '';
+  document.getElementById('builderModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('builderModal').classList.remove('open');
+  activePhase = null;
+  activeDay = null;
+}
+
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById('builderModal')) closeModal();
+}
+
+async function saveCell() {
+  if (!activePhase || !activeDay) return;
+  const workoutId = document.getElementById('modalWorkout').value || null;
+  const label = document.getElementById('modalLabel').value.trim() || null;
+  const url = `/programs/{{ prog.id }}/phase/${activePhase}/day`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day_num: activeDay, workout_id: workoutId, label: label })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const cell = document.getElementById(`pcell-${activePhase}-${activeDay}`);
+      if (data.workout_name) {
+        cell.innerHTML = `<div class="day-workout-name">${data.workout_name.substring(0, 30)}</div>`;
+        cell.classList.add('has-workout');
+      } else if (data.label) {
+        cell.innerHTML = `<div class="day-label-text">${data.label}</div>`;
+        cell.classList.remove('has-workout');
+      } else {
+        cell.innerHTML = `<div class="day-add-hint">+ assign</div>`;
+        cell.classList.remove('has-workout');
+      }
+    }
+  } catch(err) {
+    console.error('Save failed', err);
+  }
+  closeModal();
+}
+</script>
+{% endblock %}

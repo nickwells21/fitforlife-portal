@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}Progression — {{ prog.name }} Phase {{ phase.phase_num }} — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+/* ─── Progression table ─────────────────────────────────────── */
+.prog-table-wrap { overflow-x: auto; }
+.prog-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+.prog-table th {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-mid);
+  white-space: nowrap;
+}
+.prog-table th.week-th {
+  color: var(--accent);
+  text-align: center;
+  min-width: 160px;
+}
+.prog-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.prog-table tr:last-child td { border-bottom: none; }
+.prog-table tr:hover td { background: rgba(255,255,255,0.02); }
+.exercise-name-cell {
+  font-weight: 600;
+  color: var(--text-soft);
+  min-width: 160px;
+  white-space: nowrap;
+}
+
+/* ─── Cell inputs ────────────────────────────────────────────── */
+.cell-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cell-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cell-row label {
+  font-size: 9px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 26px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.cell-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.78rem;
+  padding: 0.2rem 0.4rem;
+  width: 100%;
+  transition: border-color 0.15s ease;
+  font-family: inherit;
+}
+.cell-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(30,157,241,0.05);
+}
+.cell-input::placeholder { color: var(--text-faint); font-size: 0.72rem; }
+
+/* ─── No exercises state ─────────────────────────────────────── */
+.empty-notice {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.87rem;
+}
+.empty-notice i { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
+/* ─── Quick-fill toolbar ─────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+}
+.toolbar-label { color: var(--text-muted); font-size: 0.78rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('program_phase_builder', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Phase Builder
+  </a>
+  <a href="{{ url_for('program_detail', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-eye me-1"></i>View &amp; Assign
+  </a>
+</div>
+
+<div class="page-header mb-1">
+  <div class="page-title">Progression Chart</div>
+  <div class="page-subtitle">
+    {{ prog.name }} &mdash;
+    Phase {{ phase.phase_num }}{% if phase.name %}: {{ phase.name }}{% endif %}
+    &mdash; {{ phase.weeks }} week{{ 's' if phase.weeks != 1 }}
+  </div>
+</div>
+
+<p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1.25rem;">
+  Set per-exercise prescription for each week of this phase. Leave cells blank to inherit the workout defaults.
+</p>
+
+{% if not exercises %}
+<div class="ffl-card">
+  <div class="empty-notice">
+    <i class="bi bi-calendar2-x"></i>
+    No workouts assigned to this phase yet.<br>
+    <a href="{{ url_for('program_phase_builder', program_id=prog.id) }}" style="color:var(--accent);">
+      Go to Phase Builder
+    </a> and assign workouts to days first.
+  </div>
+</div>
+{% else %}
+
+<form method="POST" action="{{ url_for('phase_progression_save', program_id=prog.id, phase_id=phase.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="ffl-card">
+    <div class="prog-table-wrap">
+      <table class="prog-table">
+        <thead>
+          <tr>
+            <th>Exercise</th>
+            {% for w in weeks %}
+            <th class="week-th">Week {{ w }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for ex in exercises %}
+          <tr>
+            <td class="exercise-name-cell">{{ ex.name }}</td>
+            {% for w in weeks %}
+            {% set ov = override_map.get((ex.id, w)) %}
+            <td>
+              <div class="cell-inputs">
+                <div class="cell-row">
+                  <label>Sets</label>
+                  <input type="number" min="1" max="20"
+                         name="ex_{{ ex.id }}_w{{ w }}_sets"
+                         class="cell-input"
+                         value="{{ ov.sets if ov and ov.sets is not none else '' }}"
+                         placeholder="—">
+                </div>
+                <div class="cell-row">
+                  <label>Reps</label>
+                  <input type="text"
+                         name="ex_{{ ex.id }}_w{{ w }}_reps"
+                         class="cell-input"
+                         value="{{ ov.reps if ov and ov.reps else '' }}"
+                         placeholder="e.g. 8-12">
+                </div>
+                <div class="cell-row">
+                  <label>Wt</label>
+                  <input type="text"
+                         name="ex_{{ ex.id }}_w{{ w }}_weight_note"
+                         class="cell-input"
+                         value="{{ ov.weight_note if ov and ov.weight_note else '' }}"
+                         placeholder="RPE / %1RM / lbs">
+                </div>
+              </div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="bi bi-floppy me-1"></i>Save Progression
+    </button>
+    <a href="{{ url_for('program_phase_builder', program_id=prog.id) }}" class="btn btn-outline-secondary">
+      Cancel
+    </a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

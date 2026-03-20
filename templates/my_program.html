@@ -36,6 +36,28 @@
   color: #fff;
   border-color: var(--accent);
 }
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--accent-dim);
+  border: 1px solid rgba(30,157,241,0.25);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.override-pill {
+  display: inline-block;
+  background: rgba(30,157,241,0.1);
+  border: 1px solid rgba(30,157,241,0.2);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-top: 0.35rem;
+}
 </style>
 {% endblock %}
 
@@ -49,6 +71,7 @@
   <i class="bi bi-calendar2-week" style="font-size:2.5rem;"></i>
   <div class="mt-2">You don't have a program assigned yet. Ask your trainer!</div>
 </div>
+
 {% elif program_complete %}
 <div class="ffl-card mb-3" style="border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.06);text-align:center;padding:2rem;">
   <i class="bi bi-trophy-fill" style="font-size:2.5rem;color:#4ade80;"></i>
@@ -57,35 +80,72 @@
     You finished <strong style="color:var(--text-soft);">{{ assignment.program.name }}</strong>. Great work — ask your trainer about your next program.
   </div>
 </div>
+
 {% else %}
 {% set prog = assignment.program %}
 
+<!-- Program info card -->
 <div class="ffl-card mb-3">
   <div class="fw-600 mb-1" style="font-size:1rem;">{{ prog.name }}</div>
   {% if prog.description %}
   <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">{{ prog.description }}</div>
   {% endif %}
-  <div class="d-flex flex-wrap gap-3" style="font-size:0.82rem;color:var(--text-soft);">
+
+  <div class="d-flex flex-wrap gap-3" style="font-size:0.82rem;color:var(--text-soft);margin-bottom:0.5rem;">
     <div><i class="bi bi-calendar me-1"></i>Started {{ assignment.start_date.strftime('%b %d, %Y') }}</div>
+    {% if current_phase %}
+    <div><i class="bi bi-layers me-1"></i>Phase {{ current_phase.phase_num }} of {{ total_phases }}{% if current_phase.name %}: {{ current_phase.name }}{% endif %}</div>
+    <div><i class="bi bi-calendar3 me-1"></i>Week {{ week_in_phase }} of {{ current_phase.weeks }}</div>
+    {% else %}
     <div><i class="bi bi-layers me-1"></i>Week {{ current_week }} of {{ prog.weeks }}</div>
+    {% endif %}
     <div><i class="bi bi-person me-1"></i>{{ assignment.assigned_by.name if assignment.assigned_by else 'Your trainer' }}</div>
   </div>
+
+  {% if current_phase %}
+  <span class="phase-badge">
+    <i class="bi bi-layers-fill"></i>
+    Phase {{ current_phase.phase_num }}{% if current_phase.name %}: {{ current_phase.name }}{% endif %}
+    &nbsp;&middot;&nbsp; Week {{ week_in_phase }}/{{ current_phase.weeks }}
+  </span>
+  {% endif %}
 </div>
 
+<!-- Today's workout card -->
 {% if today_program_day and today_program_day.workout_id %}
 <div class="ffl-card mb-3" style="border-color:rgba(30,157,241,0.4);background:rgba(30,157,241,0.05);">
   <div class="fw-600 mb-1" style="color:var(--accent);">Today's Workout</div>
-  <div class="fw-600 mb-2" style="font-size:1rem;">
+  <div class="fw-600 mb-1" style="font-size:1rem;">
     {{ today_program_day.workout.name if today_program_day.workout else 'Workout' }}
   </div>
   {% if today_program_day.workout %}
-  <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">
+  <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">
     {{ today_program_day.workout.exercises.count() }} exercise{{ 's' if today_program_day.workout.exercises.count() != 1 else '' }}
   </div>
+
+  <!-- Progression overrides for today -->
+  {% if today_overrides %}
+  <div style="margin-bottom:0.75rem;">
+    <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.35rem;">
+      Today's Prescription (Week {{ week_in_phase }})
+    </div>
+    {% for we in today_program_day.workout.exercises.all() %}
+    {% set ov = today_overrides.get(we.exercise_id) %}
+    {% if ov %}
+    <div class="override-pill">
+      <strong>{{ we.exercise.name }}</strong>
+      {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <a href="{{ url_for('client_workout_view', workout_id=today_program_day.workout_id) }}" class="btn btn-outline-secondary btn-sm me-2">
     <i class="bi bi-eye me-1"></i>View Workout
   </a>
   {% endif %}
+
   {% if checkin_done %}
   <span class="btn btn-sm" style="background:rgba(22,163,74,0.15);color:#4ade80;border:1px solid rgba(22,163,74,0.3);cursor:default;">
     <i class="bi bi-check-circle-fill me-1"></i>Completed
@@ -97,6 +157,7 @@
   </button>
   {% endif %}
 </div>
+
 {% elif today_program_day %}
 <div class="ffl-card mb-3" style="color:var(--text-muted);">
   <i class="bi bi-moon me-2"></i>Today is a rest day.
@@ -108,9 +169,21 @@
 </div>
 {% endif %}
 
-<!-- Weekly view for current week — uses pre-loaded week_days dict (no per-day queries) -->
+<!-- Weekly schedule (phase repeating schedule or legacy) -->
 <div class="ffl-card">
-  <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Week {{ current_week }} Schedule</div>
+  {% if current_phase %}
+  <div class="fw-600 mb-1" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+    Phase {{ current_phase.phase_num }} Schedule
+  </div>
+  <div style="font-size:0.75rem;color:var(--text-faint);margin-bottom:0.75rem;">
+    Same schedule every week of this phase
+  </div>
+  {% else %}
+  <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+    Week {{ current_week }} Schedule
+  </div>
+  {% endif %}
+
   {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
   {% for d in range(1, 8) %}
   {% set pd = week_days.get(d) %}
@@ -118,10 +191,15 @@
     <div class="day-num">{{ d }}</div>
     <div style="min-width:36px;color:var(--text-muted);">{{ day_names[d-1] }}</div>
     <div style="flex:1;">
-      {% if pd and pd.workout_id and pd.workout %}
-      <span class="fw-600">{{ pd.workout.name }}</span>
-      {% elif pd and pd.label %}
-      <span style="color:var(--text-muted);">{{ pd.label }}</span>
+      {% if pd %}
+        {% set workout = pd.workout if pd.workout_id else none %}
+        {% if workout %}
+        <span class="fw-600">{{ workout.name }}</span>
+        {% elif pd.label %}
+        <span style="color:var(--text-muted);">{{ pd.label }}</span>
+        {% else %}
+        <span style="color:var(--text-faint);">Rest</span>
+        {% endif %}
       {% else %}
       <span style="color:var(--text-faint);">Rest</span>
       {% endif %}
@@ -132,7 +210,6 @@
   </div>
   {% endfor %}
 </div>
-{% endif %}
 {% endif %}
 {% endblock %}
 
