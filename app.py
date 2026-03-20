@@ -620,7 +620,7 @@ def dashboard():
 def calendar_view():
     if current_user.role == 'client':
         return redirect(url_for('client_calendar'))
-    trainers = User.query.filter_by(role='trainer', is_active=True).all()
+    trainers = User.query.filter(User.role.in_(['admin', 'trainer']), User.is_active == True).order_by(User.name).all()
     locations = Location.query.all()
     return render_template('calendar.html', trainers=trainers, locations=locations)
 
@@ -755,7 +755,7 @@ def api_check_conflict():
 @app.route('/sessions/new', methods=['GET', 'POST'])
 @staff_required
 def new_session():
-    trainers = User.query.filter_by(role='trainer', is_active=True).all()
+    trainers = User.query.filter(User.role.in_(['admin', 'trainer']), User.is_active == True).order_by(User.name).all()
     if current_user.role == 'trainer':
         clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
         booking_groups = TrainingGroup.query.filter_by(trainer_id=current_user.id).order_by(TrainingGroup.name).all()
@@ -904,7 +904,7 @@ def session_detail(session_id):
 @staff_required
 def edit_session(session_id):
     sess = Session.query.get_or_404(session_id)
-    trainers = User.query.filter_by(role='trainer', is_active=True).all()
+    trainers = User.query.filter(User.role.in_(['admin', 'trainer']), User.is_active == True).order_by(User.name).all()
     clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
     locations = Location.query.all()
 
@@ -1022,7 +1022,7 @@ def api_notifications_unread_count():
 @admin_required
 def admin_groups():
     groups = TrainingGroup.query.order_by(TrainingGroup.name).all()
-    trainers = User.query.filter_by(role='trainer', is_active=True).order_by(User.name).all()
+    trainers = User.query.filter(User.role.in_(['admin', 'trainer']), User.is_active == True).order_by(User.name).all()
     clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
     return render_template('admin_groups.html', groups=groups, trainers=trainers, clients=clients)
 
