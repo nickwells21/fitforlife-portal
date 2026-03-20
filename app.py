@@ -2112,17 +2112,51 @@ def program_phase_builder(program_id):
     if current_user.role != 'admin' and prog.trainer_id != current_user.id:
         abort(403)
     phases = prog.phases.all()
-    # If program has no phases yet (legacy program), show info
     if current_user.role == 'admin':
         workouts = Workout.query.order_by(Workout.name).all()
     else:
         workouts = Workout.query.filter_by(trainer_id=current_user.id).order_by(Workout.name).all()
+    exercises = Exercise.query.order_by(Exercise.muscle_group, Exercise.name).all()
     # Build phase_day_map: {phase_id: {day_num: PhaseDay}}
     phase_day_map = {}
     for ph in phases:
         phase_day_map[ph.id] = {pd.day_num: pd for pd in ph.days.all()}
     return render_template('phase_builder.html', prog=prog, phases=phases,
-                           workouts=workouts, phase_day_map=phase_day_map)
+                           workouts=workouts, exercises=exercises,
+                           phase_day_map=phase_day_map)
+
+
+@app.route('/api/workouts/inline', methods=['POST'])
+@staff_required
+@csrf.exempt
+def api_workout_inline():
+    """Create a workout inline from the phase builder. Returns {ok, workout:{id,name}}."""
+    data = request.get_json()
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'Name required'}), 400
+    workout = Workout(
+        name=name,
+        description=data.get('description', '').strip() or None,
+        trainer_id=current_user.id,
+    )
+    db.session.add(workout)
+    db.session.flush()
+    for i, item in enumerate(data.get('exercises', [])):
+        eid = item.get('exercise_id')
+        if not eid:
+            continue
+        db.session.add(WorkoutExercise(
+            workout_id=workout.id,
+            exercise_id=int(eid),
+            order=i,
+            sets=3,
+            reps='10',
+            rest_seconds=60,
+            notes=item.get('cues', '').strip() or None,
+        ))
+    db.session.commit()
+    return jsonify({'ok': True, 'workout': {'id': workout.id, 'name': workout.name}})
 
 
 @app.route('/programs/<int:program_id>/day', methods=['POST'])

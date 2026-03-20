@@ -18,36 +18,40 @@
   transition: all 0.15s ease;
 }
 .phase-tab-btn:hover { color: var(--accent); border-color: rgba(30,157,241,0.35); }
-.phase-tab-btn.active {
-  background: var(--bg-surface);
-  color: var(--accent);
-  border-color: rgba(30,157,241,0.5);
-}
+.phase-tab-btn.active { background: var(--bg-surface); color: var(--accent); border-color: rgba(30,157,241,0.5); }
 .phase-panel { display: none; }
 .phase-panel.active { display: block; }
 
-/* ─── Day grid ───────────────────────────────────────────────── */
-.day-names-row {
+/* ─── Calendar grid (week rows) ──────────────────────────────── */
+.cal-header-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 56px repeat(7, 1fr);
   gap: 4px;
   margin-bottom: 4px;
 }
-.day-names-row > div {
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.cal-header-row > div {
+  font-size: 10px; color: var(--text-muted); font-weight: 700;
+  text-align: center; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.phase-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+.cal-week-row {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.cal-week-label {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  white-space: nowrap;
+}
 .day-cell {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  min-height: 80px;
-  padding: 0.45rem 0.5rem;
+  min-height: 72px;
+  padding: 0.4rem 0.45rem;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
   font-size: 0.77rem;
@@ -55,61 +59,139 @@
 }
 .day-cell:hover { border-color: rgba(30,157,241,0.5); background: rgba(30,157,241,0.04); }
 .day-cell.has-workout { border-color: rgba(30,157,241,0.45); }
-.day-workout-name { color: var(--accent); font-weight: 600; font-size: 0.79rem; line-height: 1.3; }
+.day-cell.is-rest { opacity: 0.45; }
+.day-workout-name { color: var(--accent); font-weight: 600; font-size: 0.78rem; line-height: 1.3; }
 .day-label-text { color: var(--text-muted); font-size: 0.75rem; }
 .day-add-hint { color: var(--text-faint); font-size: 10px; }
-.repeats-badge {
-  position: absolute;
-  bottom: 5px;
-  right: 6px;
-  font-size: 9px;
-  color: var(--text-faint);
-  font-style: italic;
+
+/* ─── Phase meta ─────────────────────────────────────────────── */
+.phase-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.phase-meta-chip {
+  font-size: 0.78rem; color: var(--text-muted);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.2rem 0.65rem;
 }
 
-/* ─── Modal ──────────────────────────────────────────────────── */
+/* ─── Day-assign modal ───────────────────────────────────────── */
 .builder-modal-bg {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-  z-index: 500;
-  align-items: center;
-  justify-content: center;
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 500;
+  align-items: center; justify-content: center;
 }
 .builder-modal-bg.open { display: flex; }
 .builder-modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
+  background: var(--bg-surface); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md); padding: 1.5rem;
+  width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
 }
 
-/* ─── Phase meta info ────────────────────────────────────────── */
-.phase-meta {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-.phase-meta-chip {
-  font-size: 0.78rem;
-  color: var(--text-muted);
+/* ─── Workout builder panel ──────────────────────────────────── */
+.wb-panel {
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
 }
+.wb-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--accent);
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.wb-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 0.5rem;
+}
+
+/* Exercise library */
+.ex-search-wrap { position: relative; margin-bottom: 0.5rem; }
+.ex-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; pointer-events: none; }
+.ex-search-input {
+  width: 100%; background: var(--bg-surface); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+  padding: 0.5rem 0.75rem 0.5rem 2.2rem; outline: none;
+  transition: border-color 0.15s;
+}
+.ex-search-input:focus { border-color: var(--accent); }
+
+.ex-filter-row { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.ex-filter-btn {
+  font-size: 10px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; border: 1px solid var(--border-mid);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: all 0.12s; white-space: nowrap;
+}
+.ex-filter-btn.active { background: var(--accent-dim); border-color: rgba(30,157,241,0.4); color: var(--accent); }
+
+.ex-library-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.4rem; max-height: 220px; overflow-y: auto;
+  padding: 0.5rem; background: var(--bg-surface);
+  border: 1px solid var(--border-mid); border-radius: var(--radius-sm);
+}
+.ex-library-grid::-webkit-scrollbar { width: 4px; }
+.ex-library-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.ex-item {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.6rem;
+  cursor: pointer; transition: border-color 0.12s, background 0.12s;
+  user-select: none;
+}
+.ex-item:hover { border-color: rgba(30,157,241,0.4); background: var(--accent-dim); }
+.ex-item.selected { border-color: var(--accent); background: var(--accent-dim); }
+.ex-item-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.ex-item-group { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+/* Selected exercises list */
+.wb-selected-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; min-height: 40px; }
+.wb-selected-empty { font-size: 12px; color: var(--text-muted); text-align: center; padding: 1rem; }
+.wb-selected-item {
+  background: var(--bg-surface); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); padding: 0.6rem 0.75rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.wb-selected-item-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.wb-selected-item-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.wb-selected-item-group { font-size: 10px; color: var(--text-muted); }
+.wb-remove-btn {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px;
+  transition: color 0.12s; flex-shrink: 0;
+}
+.wb-remove-btn:hover { color: var(--red); }
+.wb-cues-input {
+  width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
+  padding: 0.4rem 0.6rem; outline: none; transition: border-color 0.15s;
+  resize: vertical; min-height: 36px;
+}
+.wb-cues-input:focus { border-color: var(--accent); }
+.wb-cues-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+.btn-wb-save {
+  background: linear-gradient(135deg, #1e9df1 0%, #69c0f5 100%);
+  border: none; color: #fff; font-size: 13px; font-weight: 600;
+  border-radius: var(--radius-sm); padding: 0.6rem 1.25rem;
+  cursor: pointer; transition: opacity 0.15s; width: 100%;
+  letter-spacing: 0.03em;
+}
+.btn-wb-save:hover { opacity: 0.88; }
+.btn-wb-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.wb-success-flash {
+  display: none; padding: 0.6rem 0.875rem; border-radius: var(--radius-sm);
+  background: var(--green-dim); color: var(--green);
+  border: 1px solid rgba(34,197,94,0.3); font-size: 12px; font-weight: 600;
+  margin-top: 0.75rem;
+}
+
 .no-phases-notice {
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.88rem;
+  padding: 2rem; text-align: center;
+  color: var(--text-muted); font-size: 0.88rem;
 }
 </style>
 {% endblock %}
@@ -126,27 +208,28 @@
 
 <div class="page-header mb-3">
   <div class="page-title">{{ prog.name }}</div>
-  <div class="page-subtitle">Phase Builder — click any day to assign a workout that repeats every week of the phase</div>
+  <div class="page-subtitle">Phase Builder — each phase shows all its weeks; click any day to assign a workout</div>
 </div>
 
 {% if not phases %}
 <div class="ffl-card">
   <div class="no-phases-notice">
     <i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:0.75rem;"></i>
-    This program has no phases configured. This may be a legacy program created before phase support was added.
+    This program has no phases configured.
     <br><br>
     <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">Back to Programs</a>
   </div>
 </div>
 {% else %}
 
-<!-- Tab strip -->
+<!-- Phase tab strip -->
 <div class="phase-tabs" id="phaseTabs">
   {% for phase in phases %}
   <button type="button" class="phase-tab-btn {% if loop.first %}active{% endif %}"
           data-phase="{{ phase.id }}"
           onclick="switchTab({{ phase.id }})">
     Phase {{ phase.phase_num }}{% if phase.name %}: {{ phase.name }}{% endif %}
+    <span style="font-size:9px; color:var(--text-muted); margin-left:4px;">{{ phase.weeks }}wk</span>
   </button>
   {% endfor %}
 </div>
@@ -162,7 +245,7 @@
       <i class="bi bi-calendar3 me-1"></i>{{ phase.weeks }} week{{ 's' if phase.weeks != 1 }}
     </span>
     <span class="phase-meta-chip" style="color:var(--text-soft);">
-      <i class="bi bi-arrow-repeat me-1"></i>Same schedule repeats every week
+      <i class="bi bi-arrow-repeat me-1"></i>Pattern repeats each week
     </span>
     <a href="{{ url_for('phase_progression', program_id=prog.id, phase_id=phase.id) }}"
        class="btn btn-outline-secondary btn-sm ms-auto">
@@ -170,35 +253,105 @@
     </a>
   </div>
 
-  <div class="day-names-row">
+  <!-- Day header -->
+  <div class="cal-header-row">
+    <div></div>
     {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
     <div>{{ d }}</div>
     {% endfor %}
   </div>
 
-  <div class="phase-grid">
-    {% set day_map = phase_day_map.get(phase.id, {}) %}
+  <!-- One row per week, all pointing to same day_num assignments -->
+  {% set day_map = phase_day_map.get(phase.id, {}) %}
+  {% for w in range(1, phase.weeks + 1) %}
+  <div class="cal-week-row">
+    <div class="cal-week-label">Wk {{ w }}</div>
     {% for d in range(1, 8) %}
     {% set phd = day_map.get(d) %}
     <div class="day-cell {{ 'has-workout' if phd and phd.workout_id else '' }}"
-         id="pcell-{{ phase.id }}-{{ d }}"
+         id="pcell-{{ phase.id }}-{{ w }}-{{ d }}"
          onclick="openModal({{ phase.id }}, {{ d }}, '{{ phd.workout_id if phd and phd.workout_id else '' }}', '{{ (phd.label or '')|replace("'","\\'")|replace('"','&quot;') if phd else '' }}')">
       {% if phd and phd.workout_id and phd.workout %}
-      <div class="day-workout-name">{{ phd.workout.name|truncate(30, true, '…') }}</div>
+      <div class="day-workout-name">{{ phd.workout.name|truncate(26, true, '…') }}</div>
       {% elif phd and phd.label %}
       <div class="day-label-text">{{ phd.label }}</div>
       {% else %}
       <div class="day-add-hint">+ assign</div>
       {% endif %}
-      {% if phase.weeks > 1 and phd and phd.workout_id %}
-      <span class="repeats-badge">×{{ phase.weeks }} wks</span>
-      {% endif %}
     </div>
     {% endfor %}
   </div>
-</div>
+  {% endfor %}
+
+</div><!-- /.phase-panel -->
 {% endfor %}
+
 {% endif %}
+
+<!-- ─── Inline Workout Builder ─────────────────────────────────── -->
+<div class="wb-panel" id="workoutBuilderPanel">
+  <div class="wb-title">
+    <i class="bi bi-plus-circle-fill"></i> Build a Workout
+  </div>
+
+  <!-- Workout name -->
+  <div style="margin-bottom:1.25rem;">
+    <div class="wb-section-label">Workout Name</div>
+    <input type="text" id="wbName" class="form-control" placeholder="e.g. Upper Body A, Full Body Power…"
+           style="font-size:13px;">
+  </div>
+
+  <!-- Exercise library -->
+  <div style="margin-bottom:1.25rem;">
+    <div class="wb-section-label">Exercise Library — click to add</div>
+    <div class="ex-search-wrap">
+      <i class="bi bi-search ex-search-icon"></i>
+      <input type="text" id="exSearch" class="ex-search-input"
+             placeholder="Search by name or muscle group…" oninput="filterExercises()">
+    </div>
+
+    <!-- Muscle group filters -->
+    <div class="ex-filter-row" id="exFilters">
+      <button type="button" class="ex-filter-btn active" data-group="" onclick="setGroupFilter(this, '')">All</button>
+      {% set groups = exercises | map(attribute='muscle_group') | select | unique | sort | list %}
+      {% for g in groups %}
+      <button type="button" class="ex-filter-btn" data-group="{{ g }}" onclick="setGroupFilter(this, '{{ g }}')">{{ g }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="ex-library-grid" id="exLibraryGrid">
+      {% for ex in exercises %}
+      <div class="ex-item"
+           data-id="{{ ex.id }}"
+           data-name="{{ ex.name | lower }}"
+           data-group="{{ ex.muscle_group or '' }}"
+           data-display-name="{{ ex.name }}"
+           data-display-group="{{ ex.muscle_group or '' }}"
+           data-category="{{ ex.category or '' }}"
+           onclick="addExercise(this)">
+        <div class="ex-item-name">{{ ex.name }}</div>
+        <div class="ex-item-group">{{ ex.muscle_group or ex.category or '' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Selected exercises -->
+  <div style="margin-bottom:1.25rem;">
+    <div class="wb-section-label">Selected Exercises
+      <span id="exCount" style="color:var(--accent); margin-left:4px;"></span>
+    </div>
+    <div class="wb-selected-list" id="wbSelectedList">
+      <div class="wb-selected-empty" id="wbEmptyState">No exercises added yet — click exercises above to add them.</div>
+    </div>
+  </div>
+
+  <!-- Save -->
+  <button type="button" class="btn-wb-save" id="wbSaveBtn" onclick="saveWorkout()" disabled>
+    <i class="bi bi-check2-circle me-1"></i> Save Workout
+  </button>
+  <div class="wb-success-flash" id="wbSuccessFlash"></div>
+</div>
 
 <!-- Day-assignment modal -->
 <div class="builder-modal-bg" id="builderModal" onclick="closeModalOnBg(event)">
@@ -215,7 +368,8 @@
     </div>
     <div class="mb-3">
       <label class="form-label" for="modalLabel">Label (optional)</label>
-      <input type="text" id="modalLabel" class="form-control" placeholder="e.g. Upper Body, Rest, Active Recovery">
+      <input type="text" id="modalLabel" class="form-control"
+             placeholder="e.g. Upper Body, Rest, Active Recovery">
     </div>
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-outline-secondary btn-sm" onclick="saveCell()">
@@ -225,32 +379,43 @@
     </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 let activePhase = null;
-let activeDay = null;
+let activeDay   = null;
+const PHASE_WEEKS = {
+  {% for phase in phases %}
+  {{ phase.id }}: {{ phase.weeks }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
 
+// ── Phase tab switching ──────────────────────────────────────────
 function switchTab(phaseId) {
-  document.querySelectorAll('.phase-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.phase == phaseId));
-  document.querySelectorAll('.phase-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + phaseId));
+  document.querySelectorAll('.phase-tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.phase == phaseId));
+  document.querySelectorAll('.phase-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + phaseId));
 }
 
+// ── Day-assign modal ─────────────────────────────────────────────
 function openModal(phaseId, dayNum, workoutId, label) {
   activePhase = phaseId;
-  activeDay = dayNum;
-  document.getElementById('modalTitle').textContent = DAY_NAMES[dayNum - 1];
+  activeDay   = dayNum;
+  document.getElementById('modalTitle').textContent =
+    `Phase ${phaseId} — ${DAY_NAMES[dayNum - 1]}`;
   document.getElementById('modalWorkout').value = workoutId || '';
-  document.getElementById('modalLabel').value = label || '';
+  document.getElementById('modalLabel').value   = label || '';
   document.getElementById('builderModal').classList.add('open');
 }
 
 function closeModal() {
   document.getElementById('builderModal').classList.remove('open');
   activePhase = null;
-  activeDay = null;
+  activeDay   = null;
 }
 
 function closeModalOnBg(e) {
@@ -260,33 +425,175 @@ function closeModalOnBg(e) {
 async function saveCell() {
   if (!activePhase || !activeDay) return;
   const workoutId = document.getElementById('modalWorkout').value || null;
-  const label = document.getElementById('modalLabel').value.trim() || null;
-  const url = `/programs/{{ prog.id }}/phase/${activePhase}/day`;
+  const label     = document.getElementById('modalLabel').value.trim() || null;
+  const url       = `/programs/{{ prog.id }}/phase/${activePhase}/day`;
 
   try {
-    const res = await fetch(url, {
+    const res  = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ day_num: activeDay, workout_id: workoutId, label: label })
+      body: JSON.stringify({ day_num: activeDay, workout_id: workoutId, label }),
     });
     const data = await res.json();
     if (data.ok) {
-      const cell = document.getElementById(`pcell-${activePhase}-${activeDay}`);
-      if (data.workout_name) {
-        cell.innerHTML = `<div class="day-workout-name">${data.workout_name.substring(0, 30)}</div>`;
-        cell.classList.add('has-workout');
-      } else if (data.label) {
-        cell.innerHTML = `<div class="day-label-text">${data.label}</div>`;
-        cell.classList.remove('has-workout');
-      } else {
-        cell.innerHTML = `<div class="day-add-hint">+ assign</div>`;
-        cell.classList.remove('has-workout');
+      // Update all week rows for this day in the active phase
+      const weeks = PHASE_WEEKS[activePhase] || 1;
+      for (let w = 1; w <= weeks; w++) {
+        const cell = document.getElementById(`pcell-${activePhase}-${w}-${activeDay}`);
+        if (!cell) continue;
+        if (data.workout_name) {
+          cell.innerHTML = `<div class="day-workout-name">${data.workout_name.substring(0, 26)}</div>`;
+          cell.classList.add('has-workout');
+        } else if (data.label) {
+          cell.innerHTML = `<div class="day-label-text">${data.label}</div>`;
+          cell.classList.remove('has-workout');
+        } else {
+          cell.innerHTML = `<div class="day-add-hint">+ assign</div>`;
+          cell.classList.remove('has-workout');
+        }
       }
     }
   } catch(err) {
     console.error('Save failed', err);
   }
   closeModal();
+}
+
+// ── Workout builder ──────────────────────────────────────────────
+let selectedExercises = []; // [{id, name, group, cues}]
+let activeGroupFilter = '';
+
+function setGroupFilter(btn, group) {
+  document.querySelectorAll('.ex-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeGroupFilter = group;
+  filterExercises();
+}
+
+function filterExercises() {
+  const q     = (document.getElementById('exSearch').value || '').toLowerCase();
+  const group = activeGroupFilter.toLowerCase();
+  document.querySelectorAll('.ex-item').forEach(el => {
+    const nameMatch  = !q || el.dataset.name.includes(q) || el.dataset.group.toLowerCase().includes(q);
+    const groupMatch = !group || el.dataset.group.toLowerCase() === group;
+    el.style.display = (nameMatch && groupMatch) ? '' : 'none';
+  });
+}
+
+function addExercise(el) {
+  const id    = el.dataset.id;
+  const name  = el.dataset.displayName;
+  const group = el.dataset.displayGroup;
+  if (selectedExercises.find(e => e.id === id)) return; // already added
+  selectedExercises.push({ id, name, group, cues: '' });
+  el.classList.add('selected');
+  renderSelected();
+}
+
+function removeExercise(id) {
+  selectedExercises = selectedExercises.filter(e => e.id !== id);
+  const libEl = document.querySelector(`.ex-item[data-id="${id}"]`);
+  if (libEl) libEl.classList.remove('selected');
+  renderSelected();
+}
+
+function updateCues(id, value) {
+  const ex = selectedExercises.find(e => e.id === id);
+  if (ex) ex.cues = value;
+}
+
+function renderSelected() {
+  const list     = document.getElementById('wbSelectedList');
+  const empty    = document.getElementById('wbEmptyState');
+  const countEl  = document.getElementById('exCount');
+  const saveBtn  = document.getElementById('wbSaveBtn');
+
+  if (selectedExercises.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(empty);
+    empty.style.display = '';
+    countEl.textContent = '';
+    saveBtn.disabled = true;
+    return;
+  }
+  empty.style.display = 'none';
+  countEl.textContent = `(${selectedExercises.length})`;
+  saveBtn.disabled = !document.getElementById('wbName').value.trim();
+
+  list.innerHTML = '';
+  selectedExercises.forEach((ex, idx) => {
+    const div = document.createElement('div');
+    div.className = 'wb-selected-item';
+    div.innerHTML = `
+      <div class="wb-selected-item-top">
+        <div>
+          <div class="wb-selected-item-name">${idx + 1}. ${ex.name}</div>
+          ${ex.group ? `<div class="wb-selected-item-group">${ex.group}</div>` : ''}
+        </div>
+        <button type="button" class="wb-remove-btn" onclick="removeExercise('${ex.id}')"
+                title="Remove">×</button>
+      </div>
+      <textarea class="wb-cues-input" placeholder="Description &amp; coaching cues (optional)…"
+                oninput="updateCues('${ex.id}', this.value)"
+                rows="2">${ex.cues}</textarea>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// Enable/disable save when name changes
+document.getElementById('wbName').addEventListener('input', function() {
+  const saveBtn = document.getElementById('wbSaveBtn');
+  saveBtn.disabled = !this.value.trim() || selectedExercises.length === 0;
+});
+
+async function saveWorkout() {
+  const name = document.getElementById('wbName').value.trim();
+  if (!name || selectedExercises.length === 0) return;
+
+  const saveBtn = document.getElementById('wbSaveBtn');
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving…';
+
+  try {
+    const res  = await fetch('/api/workouts/inline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        exercises: selectedExercises.map(e => ({ exercise_id: e.id, cues: e.cues })),
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Add new workout to the modal select
+      const sel = document.getElementById('modalWorkout');
+      const opt = document.createElement('option');
+      opt.value       = data.workout.id;
+      opt.textContent = data.workout.name;
+      sel.appendChild(opt);
+
+      // Show success flash
+      const flash = document.getElementById('wbSuccessFlash');
+      flash.textContent = `✓ "${data.workout.name}" saved — now available in the calendar dropdown above.`;
+      flash.style.display = 'block';
+      setTimeout(() => { flash.style.display = 'none'; }, 4000);
+
+      // Reset builder
+      document.getElementById('wbName').value = '';
+      selectedExercises = [];
+      document.querySelectorAll('.ex-item.selected').forEach(el => el.classList.remove('selected'));
+      renderSelected();
+    } else {
+      alert('Error: ' + (data.error || 'Save failed'));
+    }
+  } catch(err) {
+    console.error('Save failed', err);
+    alert('Network error — please try again.');
+  }
+
+  saveBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Save Workout';
+  saveBtn.disabled = false;
 }
 </script>
 {% endblock %}
