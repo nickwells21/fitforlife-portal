@@ -631,29 +631,61 @@ def api_sessions():
 
     sessions = query.all()
     events = []
+    seen_group_slots = {}  # (group_id, scheduled_at) -> index in events list
     for s in sessions:
         is_mine = current_user.role != 'client' or s.client_id == current_user.id
         color = STATUS_COLORS.get(s.status) or s.location.color
-        events.append({
-            'id': s.id,
-            'title': f'{s.trainer.name} + {s.client.name}',
-            'start': s.scheduled_at.isoformat(),
-            'end': s.end_time.isoformat(),
-            'color': color,
-            'extendedProps': {
-                'location': s.location.name,
-                'location_id': s.location_id,
-                'trainer': s.trainer.name,
-                'trainer_id': s.trainer_id,
-                'client': s.client.name,
-                'status': s.status,
-                'notes': s.notes or '',
-                'session_id': s.id,
-                'group_id': s.group_id,
-                'group_name': s.training_group.name if s.group_id else None,
-                'is_mine': is_mine,
-            }
-        })
+
+        if s.group_id:
+            key = (s.group_id, s.scheduled_at)
+            if key in seen_group_slots:
+                # Already emitted this group slot — just update is_mine if this client matches
+                if is_mine:
+                    events[seen_group_slots[key]]['extendedProps']['is_mine'] = True
+                continue
+            seen_group_slots[key] = len(events)
+            group_name = s.training_group.name if s.training_group else 'Group'
+            events.append({
+                'id': s.id,
+                'title': f'{s.trainer.name} + {group_name}',
+                'start': s.scheduled_at.isoformat(),
+                'end': s.end_time.isoformat(),
+                'color': color,
+                'extendedProps': {
+                    'location': s.location.name,
+                    'location_id': s.location_id,
+                    'trainer': s.trainer.name,
+                    'trainer_id': s.trainer_id,
+                    'client': group_name,
+                    'status': s.status,
+                    'notes': s.notes or '',
+                    'session_id': s.id,
+                    'group_id': s.group_id,
+                    'group_name': group_name,
+                    'is_mine': is_mine,
+                }
+            })
+        else:
+            events.append({
+                'id': s.id,
+                'title': f'{s.trainer.name} + {s.client.name}',
+                'start': s.scheduled_at.isoformat(),
+                'end': s.end_time.isoformat(),
+                'color': color,
+                'extendedProps': {
+                    'location': s.location.name,
+                    'location_id': s.location_id,
+                    'trainer': s.trainer.name,
+                    'trainer_id': s.trainer_id,
+                    'client': s.client.name,
+                    'status': s.status,
+                    'notes': s.notes or '',
+                    'session_id': s.id,
+                    'group_id': s.group_id,
+                    'group_name': None,
+                    'is_mine': is_mine,
+                }
+            })
     return jsonify(events)
 
 
