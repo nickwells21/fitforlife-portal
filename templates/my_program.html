@@ -49,6 +49,14 @@
   <i class="bi bi-calendar2-week" style="font-size:2.5rem;"></i>
   <div class="mt-2">You don't have a program assigned yet. Ask your trainer!</div>
 </div>
+{% elif program_complete %}
+<div class="ffl-card mb-3" style="border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.06);text-align:center;padding:2rem;">
+  <i class="bi bi-trophy-fill" style="font-size:2.5rem;color:#4ade80;"></i>
+  <div class="fw-700 mt-2" style="font-size:1.1rem;color:#4ade80;">Program Complete!</div>
+  <div style="font-size:0.85rem;color:var(--text-muted);margin-top:0.4rem;">
+    You finished <strong style="color:var(--text-soft);">{{ assignment.program.name }}</strong>. Great work — ask your trainer about your next program.
+  </div>
+</div>
 {% else %}
 {% set prog = assignment.program %}
 
@@ -74,7 +82,7 @@
   <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">
     {{ today_program_day.workout.exercises.count() }} exercise{{ 's' if today_program_day.workout.exercises.count() != 1 else '' }}
   </div>
-  <a href="{{ url_for('workout_detail', workout_id=today_program_day.workout_id) if current_user.role != 'client' else url_for('exercises_list') }}" class="btn btn-outline-secondary btn-sm me-2">
+  <a href="{{ url_for('client_workout_view', workout_id=today_program_day.workout_id) }}" class="btn btn-outline-secondary btn-sm me-2">
     <i class="bi bi-eye me-1"></i>View Workout
   </a>
   {% endif %}
@@ -100,12 +108,12 @@
 </div>
 {% endif %}
 
-<!-- Weekly view for current week -->
+<!-- Weekly view for current week — uses pre-loaded week_days dict (no per-day queries) -->
 <div class="ffl-card">
   <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Week {{ current_week }} Schedule</div>
   {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
   {% for d in range(1, 8) %}
-  {% set pd = assignment.program.days.filter_by(week=current_week, day=d).first() %}
+  {% set pd = week_days.get(d) %}
   <div class="day-row {{ 'today-row' if d == current_day else '' }}">
     <div class="day-num">{{ d }}</div>
     <div style="min-width:36px;color:var(--text-muted);">{{ day_names[d-1] }}</div>
@@ -124,6 +132,7 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}
 

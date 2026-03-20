@@ -105,7 +105,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for pa in prog.assignments.order_by('start_date desc').all() %}
+        {% for pa in assignments %}
         <tr>
           <td>{{ pa.client.name if pa.client else '—' }}</td>
           <td>{{ pa.start_date.strftime('%b %d, %Y') }}</td>

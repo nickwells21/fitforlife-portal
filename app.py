@@ -1911,6 +1911,8 @@ def workout_new():
 @staff_required
 def workout_detail(workout_id):
     workout = Workout.query.get_or_404(workout_id)
+    if current_user.role != 'admin' and workout.trainer_id != current_user.id:
+        abort(403)
     return render_template('workout_detail.html', workout=workout)
 
 
@@ -2005,19 +2007,31 @@ def program_new():
 @staff_required
 def program_detail(program_id):
     prog = Program.query.get_or_404(program_id)
-    clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
-    # Build day grid: dict[(week, day)] -> ProgramDay
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        abort(403)
+    if current_user.role == 'admin':
+        clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    else:
+        clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
     day_map = {}
     for pd in prog.days.all():
         day_map[(pd.week, pd.day)] = pd
-    return render_template('program_detail.html', prog=prog, day_map=day_map, clients=clients)
+    from datetime import date as date_type
+    assignments = prog.assignments.order_by(ProgramAssignment.start_date.desc()).all()
+    return render_template('program_detail.html', prog=prog, day_map=day_map, clients=clients,
+                           assignments=assignments, now_date=date_type.today().isoformat())
 
 
 @app.route('/programs/<int:program_id>/builder')
 @staff_required
 def program_builder(program_id):
     prog = Program.query.get_or_404(program_id)
-    workouts = Workout.query.order_by(Workout.name).all()
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        abort(403)
+    if current_user.role == 'admin':
+        workouts = Workout.query.order_by(Workout.name).all()
+    else:
+        workouts = Workout.query.filter_by(trainer_id=current_user.id).order_by(Workout.name).all()
     day_map = {}
     for pd in prog.days.all():
         day_map[(pd.week, pd.day)] = pd
@@ -2029,6 +2043,8 @@ def program_builder(program_id):
 @csrf.exempt
 def program_set_day(program_id):
     prog = Program.query.get_or_404(program_id)
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        return jsonify({'ok': False, 'error': 'Not authorized'}), 403
     data = request.get_json()
     week = int(data.get('week', 1))
     day = int(data.get('day', 1))
@@ -2059,17 +2075,39 @@ def program_assign(program_id):
         flash('Select at least one client and a start date.', 'danger')
         return redirect(url_for('program_detail', program_id=program_id))
     start_date = date_type.fromisoformat(start_raw)
+    # Trainers can only assign to their own clients
+    if current_user.role != 'admin':
+        allowed_ids = {str(c.id) for c in User.query.filter_by(role='client', trainer_id=current_user.id).all()}
+        client_ids = [cid for cid in client_ids if cid in allowed_ids]
+    if not client_ids:
+        flash('No valid clients selected.', 'danger')
+        return redirect(url_for('program_detail', program_id=program_id))
+    assigned = 0
     for cid in client_ids:
-        pa = ProgramAssignment(
+        # Skip if this client already has this program assigned on this start date
+        exists = ProgramAssignment.query.filter_by(
+            program_id=prog.id, client_id=int(cid), start_date=start_date
+        ).first()
+        if exists:
+            continue
+        db.session.add(ProgramAssignment(
             program_id=prog.id,
             client_id=int(cid),
             start_date=start_date,
             assigned_by_id=current_user.id,
-        )
-        db.session.add(pa)
+        ))
+        assigned += 1
     db.session.commit()
-    flash(f'Program assigned to {len(client_ids)} client(s).', 'success')
+    flash(f'Program assigned to {assigned} client(s).', 'success')
     return redirect(url_for('program_detail', program_id=program_id))
+
+
+@app.route('/my-workout/<int:workout_id>')
+@login_required
+def client_workout_view(workout_id):
+    """Read-only workout view accessible to clients (for their assigned program workouts)."""
+    workout = Workout.query.get_or_404(workout_id)
+    return render_template('workout_detail.html', workout=workout)
 
 
 @app.route('/my-program')
@@ -2089,15 +2127,27 @@ def my_program():
     today_program_day = None
     checkin_done = False
 
+    program_complete = False
+    week_days = {}  # {day_num: ProgramDay} for current week — avoids 7 template queries
+
     if assignment:
         days_since_start = (today - assignment.start_date).days
-        current_week = min((days_since_start // 7) + 1, assignment.program.weeks)
-        current_day = (days_since_start % 7) + 1
-        today_program_day = ProgramDay.query.filter_by(
-            program_id=assignment.program_id,
-            week=current_week,
-            day=current_day
-        ).first()
+        total_program_days = assignment.program.weeks * 7
+        if days_since_start >= total_program_days:
+            program_complete = True
+            current_week = assignment.program.weeks
+            current_day = 7
+        else:
+            current_week = (days_since_start // 7) + 1
+            current_day = (days_since_start % 7) + 1
+
+        # Fetch all days for current week in one query
+        week_day_rows = ProgramDay.query.filter_by(
+            program_id=assignment.program_id, week=current_week
+        ).all()
+        week_days = {pd.day: pd for pd in week_day_rows}
+
+        today_program_day = week_days.get(current_day)
         if today_program_day:
             checkin_done = WorkoutCheckin.query.filter_by(
                 client_id=current_user.id,
@@ -2113,6 +2163,8 @@ def my_program():
         today_program_day=today_program_day,
         checkin_done=checkin_done,
         today=today,
+        program_complete=program_complete,
+        week_days=week_days,
     )
 
 
@@ -2129,7 +2181,7 @@ def client_progress():
     exercises = Exercise.query.order_by(Exercise.name).all()
     return render_template('progress_client.html',
         entries=entries, ex_logs=ex_logs, exercises=exercises,
-        client=current_user)
+        client=current_user, today_date=date_type.today().isoformat())
 
 
 @app.route('/progress/log', methods=['POST'])
@@ -2202,6 +2254,8 @@ def staff_progress(client_id):
     client = User.query.get_or_404(client_id)
     if client.role != 'client':
         abort(404)
+    if current_user.role == 'trainer' and client.trainer_id != current_user.id:
+        abort(403)
     entries = ProgressEntry.query.filter_by(client_id=client_id).order_by(ProgressEntry.log_date).all()
     ex_logs = ExerciseLog.query.filter_by(client_id=client_id).order_by(ExerciseLog.log_date.desc()).all()
     return render_template('progress_staff.html', client=client, entries=entries, ex_logs=ex_logs)
@@ -2259,6 +2313,13 @@ def compliance_dashboard():
         if pa.client_id not in seen_clients:
             seen_clients[pa.client_id] = pa
 
+    # Bulk-load all program days for relevant programs in one query
+    program_ids = {pa.program_id for pa in seen_clients.values()}
+    all_program_days = ProgramDay.query.filter(ProgramDay.program_id.in_(program_ids)).all()
+    days_by_program = {}
+    for pd in all_program_days:
+        days_by_program.setdefault(pd.program_id, []).append(pd)
+
     rows = []
     for client_id, pa in seen_clients.items():
         client = db.session.get(User, client_id)
@@ -2268,10 +2329,9 @@ def compliance_dashboard():
         if days_since_start < 0:
             continue
         prog = pa.program
-        # Total assigned workout days so far (non-rest days up to today)
         current_week = min((days_since_start // 7) + 1, prog.weeks)
         current_day_num = (days_since_start % 7) + 1
-        all_days = prog.days.all()
+        all_days = days_by_program.get(prog.id, [])
         assigned_so_far = [
             pd for pd in all_days
             if pd.workout_id is not None and (
