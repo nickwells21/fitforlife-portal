@@ -1355,7 +1355,7 @@ def admin_new_package():
 @app.route('/admin/packages/<int:pkg_id>/delete', methods=['POST'])
 @admin_required
 def admin_delete_package(pkg_id):
-    pkg = SessionPackage.query.get_or_404(pkg_id)
+    pkg = db.get_or_404(SessionPackage, pkg_id)
     db.session.delete(pkg)
     db.session.commit()
     flash('Package deleted.', 'success')
