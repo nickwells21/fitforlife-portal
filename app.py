@@ -1474,6 +1474,17 @@ def internal_error(e):
 
 def init_db():
     db.create_all()
+    # ── Column migrations (db.create_all won't add columns to existing tables) ─
+    with db.engine.connect() as conn:
+        for col, ddl in [
+            ('plan_id',  'ALTER TABLE session_packages ADD COLUMN IF NOT EXISTS plan_id INTEGER REFERENCES membership_plans(id)'),
+            ('is_crew',  'ALTER TABLE session_packages ADD COLUMN IF NOT EXISTS is_crew BOOLEAN NOT NULL DEFAULT FALSE'),
+        ]:
+            try:
+                conn.execute(db.text(ddl))
+                conn.commit()
+            except Exception:
+                conn.rollback()
     if not Location.query.first():
         db.session.add_all([
             Location(name='West Mobile', color='#7c3aed'),
