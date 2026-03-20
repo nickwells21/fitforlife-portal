@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block title %}Messages — Fit For Life{% endblock %}
 
 {% block content %}
 <style>
@@ -295,9 +296,9 @@ function loadFullMessages() {
   fetch(`/api/messages/conversation/${fullRecipientId}`)
     .then(r => r.json())
     .then(data => {
-      if (data.messages.length === fullLastMsgCount) return;
-      fullLastMsgCount = data.messages.length;
-      renderFullMessages(data.messages);
+      if (data.length === fullLastMsgCount) return;
+      fullLastMsgCount = data.length;
+      renderFullMessages(data);
     })
     .catch(() => {});
 }
@@ -315,7 +316,7 @@ function renderFullMessages(messages) {
   let lastDate = null;
 
   messages.forEach(m => {
-    const d = new Date(m.created_at + 'Z');
+    const d = new Date((m.created_at_iso || m.created_at) + 'Z');
     const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     if (dateStr !== lastDate) {
       html += `<div class="chat-date-sep">${dateStr}</div>`;

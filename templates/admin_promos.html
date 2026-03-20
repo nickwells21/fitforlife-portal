@@ -399,7 +399,7 @@
             <div class="promo-actions">
               <form method="POST" action="{{ url_for('toggle_promo', promo_id=promo.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn-promo-toggle">
+                <button type="submit" class="btn-promo-toggle">
                   {% if promo.is_active %}
                     <i class="bi bi-pause-circle me-1"></i>Deactivate
                   {% else %}
@@ -410,17 +410,19 @@
               <form method="POST" action="{{ url_for('delete_promo', promo_id=promo.id) }}"
                     onsubmit="return confirm('Delete this promo?')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn-promo-delete">
+                <button type="submit" class="btn-promo-delete">
                   <i class="bi bi-trash3"></i>
                 </button>
               </form>
             </div>
           </div>
           <div class="promo-description">{{ promo.description }}</div>
-          {% if promo.end_date %}
+          {% if promo.start_date or promo.end_date %}
           <div class="promo-date-range">
             <i class="bi bi-calendar-event" style="font-size:10px;"></i>
-            Expires {{ promo.end_date.strftime('%B %d, %Y') }}
+            {% if promo.start_date %}{{ promo.start_date.strftime('%b %d') }}{% endif %}
+            {% if promo.start_date and promo.end_date %} – {% endif %}
+            {% if promo.end_date %}Expires {{ promo.end_date.strftime('%B %d, %Y') }}{% endif %}
           </div>
           {% endif %}
         </div>

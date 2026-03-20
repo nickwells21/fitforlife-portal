@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}Fit For Life{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -190,6 +190,62 @@
       font-size: 9px; font-weight: 700;
       padding: 1px 5px; border-radius: 999px;
       margin-left: auto; flex-shrink: 0;
+    }
+
+    /* ─── Mobile top nav bar: iPhone-safe, top-anchored ─────────────────── */
+    /*
+     * On ≤768px screens the topbar becomes a fixed top bar that:
+     *   1. Clears the iOS status bar via env(safe-area-inset-top)
+     *   2. Uses a known height of 48px (topbar inner content)
+     *   3. The main-content gets a matching padding-top so nothing is hidden
+     *      under the fixed bar: 48px + env(safe-area-inset-top)
+     *
+     * The iPhone Safari URL bar sits at the BOTTOM (~50px) and the home
+     * indicator safe area is ~34px. With the nav moved to the TOP those
+     * bottom obstructions only affect scrollable content, not nav controls.
+     * env(safe-area-inset-bottom) is applied to .content-area so the last
+     * card is never swallowed by the home indicator.
+     */
+    @media (max-width: 768px) {
+      /* Fix the topbar to the top of the screen */
+      .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        /* Lift inner content clear of the iOS status bar */
+        padding-top: calc(0.6rem + env(safe-area-inset-top, 0px)) !important;
+        padding-bottom: 0.6rem !important;
+        /* Ensure it layers above sidebar overlay */
+        z-index: 210 !important;
+      }
+
+      /* Push all page content down by: topbar inner height (48px)
+         + the iOS status bar safe area so nothing is hidden underneath */
+      .main-content {
+        padding-top: calc(48px + env(safe-area-inset-top, 0px)) !important;
+      }
+
+      /* Add bottom breathing room so the last card clears the iPhone
+         home indicator (~34px) + Safari URL bar (~50px).
+         env(safe-area-inset-bottom) covers the home indicator; the extra
+         50px accounts for the retractable Safari URL bar. */
+      .content-area {
+        padding-bottom: calc(1rem + 50px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      /* Keep sidebar off-screen but ensure it starts below the topbar
+         (sidebar is already fixed top:0 and slides in from the left;
+         we add a top offset so it doesn't overlap the new fixed topbar) */
+      .sidebar {
+        top: calc(48px + env(safe-area-inset-top, 0px)) !important;
+        height: calc(100vh - 48px - env(safe-area-inset-top, 0px)) !important;
+      }
+
+      /* Sidebar overlay should also start below the topbar */
+      .sidebar-overlay {
+        top: calc(48px + env(safe-area-inset-top, 0px)) !important;
+      }
     }
 
   </style>

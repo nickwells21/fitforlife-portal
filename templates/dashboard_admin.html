@@ -492,11 +492,12 @@
             <span class="sess-time-main">{{ sess.scheduled_at.strftime('%I:%M').lstrip('0') or '12:00' }}</span>
             <span class="sess-time-sub">{{ sess.scheduled_at.strftime('%p') }}</span>
           </div>
-          <div class="sess-loc-dot" style="background:{{ sess.location.color }};box-shadow:0 0 5px {{ sess.location.color }}55;"></div>
-          <div class="avatar-sm avatar-client">{{ sess.client.name[0] }}</div>
+          <div class="sess-loc-dot" style="background:{{ sess.location.color if sess.location else '#888' }};box-shadow:0 0 5px {{ sess.location.color if sess.location else '#888' }}55;"></div>
+          {% set display_name = sess.group.name if sess.group else (sess.client.name if sess.client else '—') %}
+          <div class="avatar-sm avatar-client">{{ display_name[0] }}</div>
           <div class="sess-info">
-            <div class="sess-client-name">{{ sess.client.name }}</div>
-            <div class="sess-meta">{{ sess.trainer.name }} &middot; {{ sess.location.name }}</div>
+            <div class="sess-client-name">{{ display_name }}</div>
+            <div class="sess-meta">{{ sess.trainer.name if sess.trainer else '—' }} &middot; {{ sess.location.name if sess.location else '—' }}</div>
           </div>
           <span class="status-badge {{ sess.status }}">{{ sess.status }}</span>
         </div>

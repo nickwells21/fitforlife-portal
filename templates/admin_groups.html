@@ -178,7 +178,7 @@
         </div>
       </div>
       <span style="font-size:0.7rem; font-weight:700; background:rgba(245,158,11,0.12); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); padding:0.2rem 0.6rem; border-radius:99px;">
-        {{ g.memberships.count() }} members
+        {{ g.client_list | length }} members
       </span>
     </div>
 
@@ -205,7 +205,7 @@
         <i class="bi bi-pencil me-1"></i> Edit
       </button>
       <form method="POST" action="{{ url_for('admin_delete_group', group_id=g.id) }}"
-            onsubmit="return confirm('Delete {{ g.name }}? This cannot be undone.')">
+            onsubmit="return confirm('Delete ' + {{ g.name | tojson }} + '? This cannot be undone.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-delete-group"><i class="bi bi-trash"></i></button>
       </form>

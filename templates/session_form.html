@@ -725,21 +725,25 @@ function setBookingType(type) {
   const clientWrap = document.getElementById('clientSelectWrap');
   const groupWrap  = document.getElementById('groupSelectWrap');
   const clientSel  = document.getElementById('client_id');
+  const groupSel   = document.getElementById('group_id');
   const btnInd     = document.getElementById('btnIndividual');
   const btnGrp     = document.getElementById('btnGroup');
   if (type === 'group') {
     clientWrap.style.display = 'none';
     if (groupWrap) groupWrap.style.display = 'block';
     if (clientSel) clientSel.removeAttribute('required');
+    if (groupSel) groupSel.setAttribute('required', '');
     if (btnInd) btnInd.classList.remove('active');
     if (btnGrp) btnGrp.classList.add('active');
   } else {
     clientWrap.style.display = 'block';
     if (groupWrap) groupWrap.style.display = 'none';
     if (clientSel) clientSel.setAttribute('required', '');
+    if (groupSel) groupSel.removeAttribute('required');
     if (btnInd) btnInd.classList.add('active');
     if (btnGrp) btnGrp.classList.remove('active');
   }
+  checkConflict();
 }
 
 {% if not sess %}
@@ -826,7 +830,7 @@ function initRepeat() {
     const days = Array.from(selectedDays).sort().map(d => dayNames[d]).join(', ');
     const freq = selectedFreq === 1 ? 'weekly' : 'every 2 weeks';
     const weeks = parseInt(weeksInput.value) || 4;
-    const count = selectedDays.size * weeks;
+    const count = selectedDays.size * Math.ceil(weeks / selectedFreq);
     summary.textContent = `${days} — ${freq} for ${weeks} weeks (${count} sessions)`;
   }
 }

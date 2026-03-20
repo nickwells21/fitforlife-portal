@@ -596,10 +596,21 @@ def dashboard():
                 at_risk.append({'client': c, 'remaining': rem, 'purchased': p, 'completed': comp})
         at_risk.sort(key=lambda x: x['remaining'], reverse=True)
 
-        today_sessions = Session.query.filter(
+        _today_raw = Session.query.filter(
             db.func.date(Session.scheduled_at) == today,
             Session.status != 'cancelled'
         ).order_by(Session.scheduled_at).all()
+        # Deduplicate group sessions — show once per group slot
+        _seen = {}
+        today_sessions = []
+        for s in _today_raw:
+            if s.group_id:
+                key = (s.group_id, s.scheduled_at)
+                if key not in _seen:
+                    _seen[key] = True
+                    today_sessions.append(s)
+            else:
+                today_sessions.append(s)
 
         return render_template('dashboard_admin.html',
             total_clients=total_clients,
@@ -839,7 +850,7 @@ def new_session():
             return render_template('session_form.html',
                 sess=None, trainers=trainers, clients=clients,
                 locations=locations, booking_groups=booking_groups,
-                prefill_date=request.form.get('scheduled_at', '')[:10],
+                prefill_date=request.form.get('scheduled_at', ''),
                 prefill_trainer=request.form.get('trainer_id', '')
             )
 
@@ -938,6 +949,7 @@ def edit_session(session_id):
         trainers=trainers,
         clients=clients,
         locations=locations,
+        booking_groups=[],
         prefill_date='',
         prefill_trainer=''
     )
@@ -1447,6 +1459,7 @@ def api_get_conversation(user_id):
         'sender_id': m.sender_id,
         'sender_name': m.sender.name,
         'created_at': m.created_at.strftime('%I:%M %p'),
+        'created_at_iso': m.created_at.isoformat(),
         'is_mine': m.sender_id == current_user.id,
     } for m in msgs])
 

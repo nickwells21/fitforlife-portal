@@ -479,7 +479,7 @@
           <form method="POST" action="{{ url_for('admin_delete_package', pkg_id=pkg.id) }}"
                 onsubmit="return confirm('Delete this package?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn-pkg-delete">
+            <button type="submit" class="btn-pkg-delete">
               <i class="bi bi-trash3 me-1"></i>Delete
             </button>
           </form>

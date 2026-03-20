@@ -1042,8 +1042,61 @@ textarea.form-control {
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
+/*
+ * TOP NAV STRATEGY (≤767px / ≤768px via base.html override):
+ *
+ * iPhone Safari places its URL bar at the BOTTOM (~50px) and the home
+ * indicator safe area is ~34px — together ~84px of bottom obstruction.
+ * To keep ALL navigation controls out of that danger zone, the topbar is
+ * promoted to position:fixed at the TOP of the screen.
+ *
+ * Safe-area breakdown:
+ *   iOS status bar height  → env(safe-area-inset-top)  (~44–54px)
+ *   Topbar inner height    → 48px  (0.6rem padding × 2 + ~36px content)
+ *   Total push-down        → 48px + env(safe-area-inset-top)
+ *
+ *   Bottom breathing room  → env(safe-area-inset-bottom) + 50px Safari URL bar
+ *
+ * The viewport meta MUST include viewport-fit=cover (set in base.html)
+ * for env() safe-area values to work on iOS.
+ */
 @media (max-width: 767px) {
-  .sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+  /* ── Topbar: fixed to top, clear iOS status bar ── */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding-top: calc(0.6rem + env(safe-area-inset-top, 0px));
+    padding-bottom: 0.6rem;
+    z-index: 210;
+  }
+
+  /* ── Main content: push down by fixed topbar height + status bar ── */
+  .main-content {
+    margin-left: 0 !important;
+    padding-top: calc(48px + env(safe-area-inset-top, 0px));
+  }
+
+  /* ── Content area: side padding + bottom safe area for home indicator ── */
+  .content-area {
+    padding: 1rem;
+    padding-bottom: calc(1rem + 50px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── Sidebar: start below the fixed topbar, not at top:0 ── */
+  .sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width) !important;
+    top: calc(48px + env(safe-area-inset-top, 0px));
+    height: calc(100vh - 48px - env(safe-area-inset-top, 0px));
+  }
+
+  /* ── Sidebar overlay: also start below the fixed topbar ── */
+  .sidebar-overlay {
+    top: calc(48px + env(safe-area-inset-top, 0px));
+  }
+
   .sidebar.open {
     transform: translateX(0);
     box-shadow: 8px 0 32px rgba(0,0,0,0.6);
@@ -1063,8 +1116,6 @@ textarea.form-control {
   .sidebar.open .sidebar-brand { padding: 1.25rem 1rem 1rem; justify-content: flex-start; }
   .sidebar.open .sidebar-nav .nav-link { padding: 0.45rem 0.625rem; justify-content: flex-start; }
   .sidebar.open .sidebar-footer { padding: 0.75rem; flex-direction: row; justify-content: space-between; }
-  .main-content { margin-left: 0 !important; }
-  .content-area { padding: 1rem; }
   .page-title { font-size: 1.1rem; }
 }
 
@@ -1505,7 +1556,11 @@ textarea.form-control {
 
 /* Small mobile (max 480px) */
 @media (max-width: 480px) {
-  .content-area { padding: 0.75rem; }
+  /* Preserve bottom safe-area padding — only tighten top/side */
+  .content-area {
+    padding: 0.75rem;
+    padding-bottom: calc(0.75rem + 50px + env(safe-area-inset-bottom, 0px));
+  }
   .ffl-card { padding: 1rem !important; }
   .ffl-gallery__slide { flex: 0 0 92vw; max-width: 92vw; }
   .quick-actions-row { grid-template-columns: 1fr 1fr !important; }

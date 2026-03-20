@@ -199,15 +199,20 @@ async function openConversation(partnerId, partnerName, partnerRole) {
 }
 
 async function loadConversation(partnerId) {
-  const res = await fetch(`/api/messages/conversation/${partnerId}`);
-  const msgs = await res.json();
-  renderMessages(msgs);
-  // Update unread badge
-  const row = document.querySelector(`[data-partner-id="${partnerId}"]`);
-  if (row) {
-    row.classList.remove('has-unread');
-    const badge = row.querySelector('.conv-badge');
-    if (badge) badge.remove();
+  try {
+    const res = await fetch(`/api/messages/conversation/${partnerId}`);
+    if (!res.ok) return;
+    const msgs = await res.json();
+    renderMessages(msgs);
+    // Update unread badge
+    const row = document.querySelector(`[data-partner-id="${partnerId}"]`);
+    if (row) {
+      row.classList.remove('has-unread');
+      const badge = row.querySelector('.conv-badge');
+      if (badge) badge.remove();
+    }
+  } catch (e) {
+    // Network error — silently ignore, will retry on next poll
   }
 }
 
