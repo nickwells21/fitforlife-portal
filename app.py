@@ -835,46 +835,6 @@ def new_session():
         else:
             session_times = [scheduled_at]
 
-        # ── Package balance check ──────────────────────────────────────
-        package_errors = []
-        for cid in client_ids:
-            client_user = db.session.get(User, cid)
-            # Group sessions by month so we know how many are being added per month
-            from collections import defaultdict
-            sessions_by_month = defaultdict(int)
-            for dt in session_times:
-                sessions_by_month[(dt.month, dt.year)] += 1
-            # Get the client's subscription rate (most recent package)
-            subscription = SessionPackage.query.filter_by(client_id=cid).order_by(
-                SessionPackage.year.desc(), SessionPackage.month.desc()
-            ).first()
-            if not subscription:
-                package_errors.append(
-                    f'{client_user.name} has no package on file. '
-                    f'Add one under Admin → Session Packages first.'
-                )
-                continue
-            monthly_rate = subscription.sessions_purchased
-            for (mo, yr), adding in sessions_by_month.items():
-                already_booked = get_month_booked_count(cid, mo, yr)
-                if already_booked + adding > monthly_rate:
-                    from calendar import month_name as _mn
-                    package_errors.append(
-                        f'{client_user.name}: subscription allows {monthly_rate} sessions/mo — '
-                        f'{_mn[mo]} {yr} already has {already_booked} booked, '
-                        f'trying to add {adding} more.'
-                    )
-        if package_errors:
-            for err in package_errors:
-                flash(err, 'danger')
-            return render_template('session_form.html',
-                sess=None, trainers=trainers, clients=clients,
-                locations=locations, booking_groups=booking_groups,
-                prefill_date=request.form.get('scheduled_at', ''),
-                prefill_trainer=request.form.get('trainer_id', ''),
-                prefill_client=request.form.get('client_id', '')
-            )
-
         # ── Create sessions ────────────────────────────────────────────
         if client_ids and session_times:
             created, skipped = 0, []
