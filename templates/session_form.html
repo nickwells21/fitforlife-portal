@@ -756,9 +756,18 @@
         </div>
 
         <div style="display:flex; align-items:center; gap:0.5rem; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-          <button type="submit" class="btn-sf-submit" id="submitBtn">
+          <input type="hidden" name="edit_all" id="editAllInput" value="0">
+          <button type="submit" class="btn-sf-submit" id="submitBtn"
+                  onclick="document.getElementById('editAllInput').value='0'">
             {{ 'Save Changes' if sess else 'Book Session' }}
           </button>
+          {% if sess %}
+          <button type="submit" class="btn btn-outline-secondary" id="submitBtnAll"
+                  onclick="document.getElementById('editAllInput').value='1'"
+                  title="Apply these changes to this session and all future repeats on the same day/time">
+            Save to All Future
+          </button>
+          {% endif %}
           <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary">Cancel</a>
           {% if sess and current_user.role == 'admin' %}
           <div style="margin-left:auto; display:flex; gap:0.4rem;">

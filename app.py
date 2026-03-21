@@ -913,18 +913,51 @@ def edit_session(session_id):
         end_dt = scheduled_at + timedelta(minutes=duration)
         conflicts = check_conflict(trainer_id, location_id, scheduled_at, end_dt, exclude_session_id=sess.id)
 
-        if conflicts:
+        edit_all = request.form.get('edit_all') == '1'
+
+        if conflicts and not edit_all:
             msgs = [f'{c.trainer.name} + {c.client.name} at {c.location.name}' for c in conflicts]
             flash('Conflict: ' + ', '.join(msgs), 'danger')
         else:
+            # Always update this session
             sess.trainer_id = trainer_id
             sess.client_id = client_id
             sess.location_id = location_id
             sess.scheduled_at = scheduled_at
             sess.duration = duration
             sess.notes = notes
-            db.session.commit()
-            flash('Session updated.', 'success')
+
+            if edit_all:
+                # Apply trainer/location/duration/notes to all future sessions in the same series.
+                # Keep each session's date but update the time component.
+                orig_dow = sess.scheduled_at.weekday()
+                orig_time = sess.scheduled_at.time()
+                new_time = scheduled_at.time()
+                if sess.group_id:
+                    siblings = Session.query.filter(
+                        Session.trainer_id == sess.trainer_id,
+                        Session.group_id == sess.group_id,
+                        Session.scheduled_at > sess.scheduled_at,
+                    ).all()
+                else:
+                    siblings = Session.query.filter(
+                        Session.client_id == sess.client_id,
+                        Session.scheduled_at > sess.scheduled_at,
+                    ).all()
+                updated = 0
+                for s in siblings:
+                    if s.scheduled_at.weekday() == orig_dow and s.scheduled_at.time() == orig_time:
+                        s.trainer_id = trainer_id
+                        s.location_id = location_id
+                        s.duration = duration
+                        s.notes = notes
+                        s.scheduled_at = datetime.combine(s.scheduled_at.date(), new_time)
+                        updated += 1
+                db.session.commit()
+                flash(f'Session updated · {updated} future repeat{"s" if updated != 1 else ""} also updated.', 'success')
+            else:
+                db.session.commit()
+                flash('Session updated.', 'success')
             return redirect(url_for('session_detail', session_id=sess.id))
 
     return render_template('session_form.html',
