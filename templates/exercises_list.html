@@ -7,7 +7,8 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 0;
   transition: border-color 0.18s ease, transform 0.18s ease;
   cursor: pointer;
   text-decoration: none;
@@ -38,14 +39,21 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 2rem;
+  font-size: 1.25rem;
   margin-bottom: 0.75rem;
+  opacity: 0.5;
 }
 .badge-muscle { background: rgba(30,157,241,0.15); color: var(--accent); border: 1px solid rgba(30,157,241,0.3); }
 .badge-strength { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
 .badge-cardio { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
 .badge-mobility { background: rgba(22,163,74,0.15); color: #4ade80; border: 1px solid rgba(22,163,74,0.3); }
-.card-actions { display: flex; gap: 0.35rem; margin-top: 0.5rem; }
+.card-actions {
+  display: flex;
+  gap: 0.35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+}
 .search-box {
   background: var(--bg-elevated);
   border: 1px solid var(--border-mid);
@@ -59,6 +67,60 @@
 }
 .search-box:focus { border-color: var(--accent); }
 .search-box::placeholder { color: var(--text-muted); }
+
+/* Cues list */
+.ex-cues-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.ex-cues-list li {
+  font-size: 11px;
+  color: var(--text-soft);
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.ex-cues-list li:last-child {
+  border-bottom: none;
+}
+
+/* Filter chips */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.filter-chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.filter-chip:hover {
+  border-color: rgba(30,157,241,0.4);
+  color: var(--text);
+}
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
 </style>
 {% endblock %}
 
@@ -79,10 +141,46 @@
   <input type="text" id="exerciseSearch" class="search-box" placeholder="Search by name, muscle group, or category…" autocomplete="off">
 </div>
 
+<!-- Muscle group filter chips -->
+<div class="mb-1">
+  <div class="filter-label">Muscle Group</div>
+  <div class="filter-chips" id="muscleChips">
+    <span class="filter-chip active" data-filter="all">All</span>
+    <span class="filter-chip" data-filter="legs">Legs</span>
+    <span class="filter-chip" data-filter="back">Back</span>
+    <span class="filter-chip" data-filter="chest">Chest</span>
+    <span class="filter-chip" data-filter="shoulders">Shoulders</span>
+    <span class="filter-chip" data-filter="arms">Arms</span>
+    <span class="filter-chip" data-filter="core">Core</span>
+    <span class="filter-chip" data-filter="hamstrings">Hamstrings</span>
+    <span class="filter-chip" data-filter="hips">Hips</span>
+    <span class="filter-chip" data-filter="full body">Full Body</span>
+    <span class="filter-chip" data-filter="mobility">Mobility</span>
+  </div>
+</div>
+
+<!-- Category filter chips -->
+<div class="mb-3">
+  <div class="filter-label">Category</div>
+  <div class="filter-chips" id="categoryChips">
+    <span class="filter-chip active" data-filter="all">All</span>
+    <span class="filter-chip" data-filter="squat">Squat</span>
+    <span class="filter-chip" data-filter="hinge">Hinge</span>
+    <span class="filter-chip" data-filter="row">Row</span>
+    <span class="filter-chip" data-filter="lunge">Lunge</span>
+    <span class="filter-chip" data-filter="bench press">Bench Press</span>
+    <span class="filter-chip" data-filter="oh press">OH Press</span>
+    <span class="filter-chip" data-filter="cable">Cable</span>
+    <span class="filter-chip" data-filter="mobility">Mobility</span>
+    <span class="filter-chip" data-filter="strength">Strength</span>
+    <span class="filter-chip" data-filter="cardio">Cardio</span>
+  </div>
+</div>
+
 {% if exercises %}
-<div class="row g-3" id="exerciseGrid">
+<div class="row g-4" id="exerciseGrid">
   {% for ex in exercises %}
-  <div class="col-12 col-sm-6 col-md-4 col-lg-3 exercise-grid-item"
+  <div class="col-12 col-sm-6 col-lg-4 exercise-grid-item"
        data-name="{{ ex.name|lower }}"
        data-muscle="{{ (ex.muscle_group or '')|lower }}"
        data-category="{{ (ex.category or '')|lower }}">
@@ -105,9 +203,16 @@
         <span class="badge badge-{{ ex.category|lower }}" style="font-size:10px;font-weight:600;">{{ ex.category }}</span>
         {% endif %}
       </div>
+      {% if ex.instructions %}
+      <ul class="ex-cues-list">
+        {% for cue in ex.instructions.split(' | ') %}
+        <li>{{ loop.index }}. {{ cue }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
     </a>
     {% if current_user.role in ('admin', 'trainer') %}
-    <div class="card-actions mt-1">
+    <div class="card-actions">
       <a href="{{ url_for('exercise_edit', ex_id=ex.id) }}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;">
         <i class="bi bi-pencil"></i>
       </a>
@@ -146,20 +251,59 @@
 const searchInput = document.getElementById('exerciseSearch');
 const items = document.querySelectorAll('.exercise-grid-item');
 const noResults = document.getElementById('noResults');
+
+// Filter state
+let activeMuscleFil = 'all';
+let activeCategoryFil = 'all';
+let searchQuery = '';
+
+function applyFilters() {
+  let visible = 0;
+  items.forEach(item => {
+    const name = item.dataset.name || '';
+    const muscle = item.dataset.muscle || '';
+    const category = item.dataset.category || '';
+
+    const muscleMatch = activeMuscleFil === 'all' || muscle.includes(activeMuscleFil);
+    const categoryMatch = activeCategoryFil === 'all' || category.includes(activeCategoryFil);
+    const searchMatch = !searchQuery ||
+      name.includes(searchQuery) ||
+      muscle.includes(searchQuery) ||
+      category.includes(searchQuery);
+
+    const show = muscleMatch && categoryMatch && searchMatch;
+    item.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  if (noResults) noResults.style.display = (visible === 0) ? 'block' : 'none';
+}
+
+// Search input
 if (searchInput) {
   searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim();
-    let visible = 0;
-    items.forEach(item => {
-      const match = !q ||
-        item.dataset.name.includes(q) ||
-        item.dataset.muscle.includes(q) ||
-        item.dataset.category.includes(q);
-      item.style.display = match ? '' : 'none';
-      if (match) visible++;
-    });
-    if (noResults) noResults.style.display = (visible === 0 && q) ? 'block' : 'none';
+    searchQuery = searchInput.value.toLowerCase().trim();
+    applyFilters();
   });
 }
+
+// Muscle chips
+document.getElementById('muscleChips').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('#muscleChips .filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeMuscleFil = chip.dataset.filter;
+  applyFilters();
+});
+
+// Category chips
+document.getElementById('categoryChips').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('#categoryChips .filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeCategoryFil = chip.dataset.filter;
+  applyFilters();
+});
 </script>
 {% endblock %}
