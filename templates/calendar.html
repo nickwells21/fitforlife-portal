@@ -215,7 +215,58 @@
   border: none !important;
   font-size: 11px !important;
   font-weight: 600 !important;
-  padding: 2px 6px !important;
+  padding: 0 !important;
+}
+
+/* Make the event-main div fill the colored box completely */
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* The custom inner wrapper */
+.fc-ev-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  padding: 3px 4px;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.fc-ev-time {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.80;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.fc-ev-trainer {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.fc-ev-client {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0.88;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .fc .fc-event:hover {
@@ -520,28 +571,18 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     eventContent(info) {
-      const p   = info.event.extendedProps;
-      const start = info.event.start;
-      const timeStr = start ? start.toLocaleTimeString('en-US', {
+      const p        = info.event.extendedProps;
+      const start    = info.event.start;
+      const timeStr  = start ? start.toLocaleTimeString('en-US', {
         hour: 'numeric', minute: '2-digit', hour12: true
       }) : '';
       const clientLine = p.group_name || p.client || '';
       return {
-        html: `
-          <div style="
-            display:flex; flex-direction:column; align-items:center;
-            justify-content:center; text-align:center;
-            width:100%; height:100%; padding:2px 4px; gap:1px;
-            overflow:hidden;
-          ">
-            <div style="font-size:9px; font-weight:600; opacity:0.75; line-height:1.2;">${timeStr}</div>
-            <div style="font-size:10px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">
-              Trainer: ${p.trainer || ''}
-            </div>
-            <div style="font-size:10px; font-weight:600; line-height:1.2; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">
-              ${clientLine}
-            </div>
-          </div>`
+        html: `<div class="fc-ev-inner">
+          <div class="fc-ev-time">${timeStr}</div>
+          <div class="fc-ev-trainer">Trainer: ${p.trainer || ''}</div>
+          <div class="fc-ev-client">${clientLine}</div>
+        </div>`
       };
     },
 
