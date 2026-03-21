@@ -350,82 +350,138 @@
     </div>
   </div>
 
-  <!-- Stat cards -->
-  <div class="fin-cards-grid">
+  <!-- ── Stat cards (6-month totals) ──────────────────────────────────────── -->
+  <div class="fin-cards-grid" style="grid-template-columns:repeat(4,1fr);">
     <div class="fin-stat-card">
-      <div class="fin-stat-label">This Month Revenue</div>
-      <div class="fin-stat-value">${{ "{:,.0f}".format(current_month.revenue_cents / 100) }}</div>
-      <div class="fin-stat-sub">{{ current_month.month_name }} {{ current_month.year }}</div>
+      <div class="fin-stat-label">Total Revenue (6 mo)</div>
+      <div class="fin-stat-value">${{ "{:,.0f}".format(totals.revenue) }}</div>
+      <div class="fin-stat-sub">This month: ${{ "{:,.0f}".format(current_month.revenue) }}</div>
     </div>
     <div class="fin-stat-card">
-      <div class="fin-stat-label">Sessions This Month</div>
-      <div class="fin-stat-value blue">{{ current_month.total_sessions }}</div>
-      <div class="fin-stat-sub">{{ current_month.completed }} done · {{ current_month.missed }} missed</div>
+      <div class="fin-stat-label">Total Sessions (6 mo)</div>
+      <div class="fin-stat-value blue">{{ totals.sessions }}</div>
+      <div class="fin-stat-sub">{{ totals.completed }} completed</div>
     </div>
     <div class="fin-stat-card">
-      <div class="fin-stat-label">Sessions This Week</div>
-      <div class="fin-stat-value blue">{{ week_sessions }}</div>
-      <div class="fin-stat-sub">Mon – Sun running total</div>
+      <div class="fin-stat-label">Total Payout (6 mo)</div>
+      <div class="fin-stat-value yellow">${{ "{:,.0f}".format(totals.payout) }}</div>
+      <div class="fin-stat-sub">Nick $45/$30 · Others $30/$20</div>
     </div>
     <div class="fin-stat-card">
-      <div class="fin-stat-label">Avg Cost / Session</div>
-      <div class="fin-stat-value yellow">
-        {% if current_month.avg_cost %}${{ "%.2f"|format(current_month.avg_cost) }}{% else %}—{% endif %}
-      </div>
-      <div class="fin-stat-sub">Based on this month's packages</div>
+      <div class="fin-stat-label">Net Profit (6 mo)</div>
+      <div class="fin-stat-value green">${{ "{:,.0f}".format(totals.net_profit) }}</div>
+      <div class="fin-stat-sub">Revenue minus payouts</div>
     </div>
   </div>
 
-  <!-- Bar charts: Revenue + Sessions side by side -->
+  <!-- ── Chart macros ───────────────────────────────────────────────────────── -->
+  {# Compute chart maxes #}
   {% set max_rev = namespace(v=1) %}
-  {% set max_ses = namespace(v=1) %}
+  {% set max_net = namespace(v=1) %}
+  {% set max_loc = namespace(v=1) %}
   {% for m in months_data %}
-    {% if m.revenue_cents > max_rev.v %}{% set max_rev.v = m.revenue_cents %}{% endif %}
-    {% if m.total_sessions > max_ses.v %}{% set max_ses.v = m.total_sessions %}{% endif %}
+    {% if m.revenue    > max_rev.v %}{% set max_rev.v = m.revenue    %}{% endif %}
+    {% if m.net_profit > max_net.v %}{% set max_net.v = m.net_profit %}{% endif %}
+    {% if m.west_revenue    > max_loc.v %}{% set max_loc.v = m.west_revenue    %}{% endif %}
+    {% if m.midtown_revenue > max_loc.v %}{% set max_loc.v = m.midtown_revenue %}{% endif %}
+    {% if m.west_net    > max_loc.v %}{% set max_loc.v = m.west_net    %}{% endif %}
+    {% if m.midtown_net > max_loc.v %}{% set max_loc.v = m.midtown_net %}{% endif %}
   {% endfor %}
 
+  <!-- ── Row 1: Overall Revenue + Net Profit ───────────────────────────────── -->
   <div class="fin-charts-grid">
 
-    <!-- Revenue bar chart -->
     <div class="fin-panel" style="margin-bottom:0;">
-      <div class="fin-panel-title">
-        <span style="color:var(--fin-red);">▮</span> Total Revenue
-      </div>
+      <div class="fin-panel-title"><span style="color:var(--fin-red);">▮</span> Overall Revenue</div>
       <div class="fin-bar-wrap">
         {% for m in months_data %}
-        {% set pct = ((m.revenue_cents / max_rev.v) * 90)|int if max_rev.v > 0 else 4 %}
+        {% set pct = ((m.revenue / max_rev.v) * 90)|int if max_rev.v > 0 else 4 %}
         <div class="fin-bar-col">
           <div class="fin-bar red {% if loop.last %}current{% endif %}"
-               style="height:{{ [pct, 4]|max }}%;"
-               title="{{ m.month_name }} {{ m.year }}: ${{ '{:,.0f}'.format(m.revenue_cents / 100) }}"></div>
+               style="height:{{ [pct,4]|max }}%;"
+               title="{{ m.month_name }}: ${{ '{:,.0f}'.format(m.revenue) }}"></div>
           <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
         </div>
         {% endfor %}
       </div>
     </div>
 
-    <!-- Sessions bar chart -->
+    <div class="fin-panel" style="margin-bottom:0;">
+      <div class="fin-panel-title"><span style="color:var(--fin-green);">▮</span> Net Profit</div>
+      <div class="fin-bar-wrap">
+        {% for m in months_data %}
+        {% set pct = ((m.net_profit / max_net.v) * 90)|int if max_net.v > 0 else 4 %}
+        <div class="fin-bar-col">
+          <div class="fin-bar {% if loop.last %}current{% endif %}"
+               style="height:{{ [pct,4]|max }}%; background:var(--fin-green);"
+               title="{{ m.month_name }}: ${{ '{:,.0f}'.format(m.net_profit) }}"></div>
+          <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- /.row-1 -->
+
+  <!-- ── Row 2: Location charts ─────────────────────────────────────────────── -->
+  <div class="fin-charts-grid" style="margin-top:1.25rem;">
+
+    <!-- West Mobile -->
     <div class="fin-panel" style="margin-bottom:0;">
       <div class="fin-panel-title">
-        <span style="color:var(--fin-blue);">▮</span> Total Sessions
+        <span style="color:#7c3aed;">▮</span> {{ west_name }}
+      </div>
+      <div style="font-family:'Space Mono',monospace; font-size:8px; color:var(--fin-faint); margin-bottom:0.75rem; display:flex; gap:1rem;">
+        <span style="color:var(--fin-red);">▮ Revenue</span>
+        <span style="color:var(--fin-green);">▮ Net Profit</span>
       </div>
       <div class="fin-bar-wrap">
         {% for m in months_data %}
-        {% set pct = ((m.total_sessions / max_ses.v) * 90)|int if max_ses.v > 0 else 4 %}
-        <div class="fin-bar-col">
-          <div class="fin-bar blue {% if loop.last %}current{% endif %}"
-               style="height:{{ [pct, 4]|max }}%;"
-               title="{{ m.month_name }} {{ m.year }}: {{ m.total_sessions }} sessions"></div>
+        {% set pr = ((m.west_revenue / max_loc.v) * 85)|int if max_loc.v > 0 else 4 %}
+        {% set pn = ((m.west_net    / max_loc.v) * 85)|int if max_loc.v > 0 else 4 %}
+        <div class="fin-bar-col" style="gap:2px;">
+          <div style="width:100%; display:flex; gap:2px; height:{{ [pr,pn]|max + 4 }}px; align-items:flex-end; justify-content:center;">
+            <div class="fin-bar red" style="height:{{ [pr,4]|max }}px; width:47%; min-height:4px;"
+                 title="{{ m.month_name }} Revenue: ${{ '{:,.0f}'.format(m.west_revenue) }}"></div>
+            <div class="fin-bar" style="height:{{ [pn,4]|max }}px; width:47%; min-height:4px; background:var(--fin-green);"
+                 title="{{ m.month_name }} Net: ${{ '{:,.0f}'.format(m.west_net) }}"></div>
+          </div>
           <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
         </div>
         {% endfor %}
       </div>
     </div>
 
-  </div><!-- /.fin-charts-grid -->
+    <!-- Midtown -->
+    <div class="fin-panel" style="margin-bottom:0;">
+      <div class="fin-panel-title">
+        <span style="color:#06b6d4;">▮</span> {{ midtown_name }}
+      </div>
+      <div style="font-family:'Space Mono',monospace; font-size:8px; color:var(--fin-faint); margin-bottom:0.75rem; display:flex; gap:1rem;">
+        <span style="color:var(--fin-red);">▮ Revenue</span>
+        <span style="color:var(--fin-green);">▮ Net Profit</span>
+      </div>
+      <div class="fin-bar-wrap">
+        {% for m in months_data %}
+        {% set pr = ((m.midtown_revenue / max_loc.v) * 85)|int if max_loc.v > 0 else 4 %}
+        {% set pn = ((m.midtown_net    / max_loc.v) * 85)|int if max_loc.v > 0 else 4 %}
+        <div class="fin-bar-col" style="gap:2px;">
+          <div style="width:100%; display:flex; gap:2px; height:{{ [pr,pn]|max + 4 }}px; align-items:flex-end; justify-content:center;">
+            <div class="fin-bar red" style="height:{{ [pr,4]|max }}px; width:47%; min-height:4px;"
+                 title="{{ m.month_name }} Revenue: ${{ '{:,.0f}'.format(m.midtown_revenue) }}"></div>
+            <div class="fin-bar" style="height:{{ [pn,4]|max }}px; width:47%; min-height:4px; background:var(--fin-green);"
+                 title="{{ m.month_name }} Net: ${{ '{:,.0f}'.format(m.midtown_net) }}"></div>
+          </div>
+          <div class="fin-bar-label">{{ m.month_name[:3] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
 
-  <!-- Monthly breakdown table -->
-  <div class="fin-panel">
+  </div><!-- /.row-2 -->
+
+  <!-- ── Monthly breakdown table ──────────────────────────────────────────── -->
+  <div class="fin-panel" style="margin-top:1.25rem;">
     <div class="fin-panel-title">
       <span style="color:var(--fin-red);">▮</span> Monthly Breakdown
     </div>
@@ -434,10 +490,11 @@
         <tr>
           <th>Month</th>
           <th>Revenue</th>
+          <th>Payout</th>
+          <th>Net Profit</th>
           <th>Sessions</th>
           <th>Completed</th>
           <th>Missed</th>
-          <th>Avg / Session</th>
         </tr>
       </thead>
       <tbody>
@@ -445,24 +502,14 @@
         <tr {% if loop.first %}class="t-current"{% endif %}>
           <td class="t-month">
             {{ m.month_name }} {{ m.year }}
-            {% if loop.first %}
-            <span style="font-family:'Space Mono',monospace; font-size:7px; font-weight:700;
-                         color:var(--fin-red); text-transform:uppercase; letter-spacing:0.1em; margin-left:8px;">
-              NOW
-            </span>
-            {% endif %}
+            {% if loop.first %}<span style="font-family:'Space Mono',monospace;font-size:7px;font-weight:700;color:var(--fin-red);text-transform:uppercase;letter-spacing:0.1em;margin-left:8px;">NOW</span>{% endif %}
           </td>
-          <td class="t-revenue">${{ "{:,.0f}".format(m.revenue_cents / 100) }}</td>
+          <td class="t-revenue">${{ "{:,.0f}".format(m.revenue) }}</td>
+          <td class="t-avg">${{ "{:,.0f}".format(m.payout) }}</td>
+          <td><span style="color:var(--fin-green);font-family:'Space Mono',monospace;font-weight:700;">${{ "{:,.0f}".format(m.net_profit) }}</span></td>
           <td class="t-sessions">{{ m.total_sessions }}</td>
           <td><span style="color:var(--fin-green);">{{ m.completed }}</span></td>
-          <td>
-            <span style="color:{% if m.missed > 0 %}var(--fin-red){% else %}var(--fin-faint){% endif %};">
-              {{ m.missed }}
-            </span>
-          </td>
-          <td class="t-avg">
-            {% if m.avg_cost %}${{ "%.2f"|format(m.avg_cost) }}{% else %}<span style="color:var(--fin-faint);">—</span>{% endif %}
-          </td>
+          <td><span style="color:{% if m.missed > 0 %}var(--fin-red){% else %}var(--fin-faint){% endif %};">{{ m.missed }}</span></td>
         </tr>
         {% endfor %}
       </tbody>

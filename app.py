@@ -1473,7 +1473,38 @@ def admin_delete_package(pkg_id):
 def admin_finances():
     now = datetime.now(timezone.utc)
 
-    # Build last 6 months of data
+    # ── Payout rates ──────────────────────────────────────────────────────────
+    # Nick (gym owner): $45 group / $30 individual
+    # Other trainers:   $30 group / $20 individual
+    nick_user = User.query.filter_by(email='nick@fitforlife.com').first()
+    nick_id = nick_user.id if nick_user else None
+
+    NICK_GROUP = 45;  NICK_INDIV = 30
+    OTHER_GROUP = 30; OTHER_INDIV = 20
+
+    def calc_payout(sessions):
+        """Sum trainer payouts for a list of Session objects.
+        Group sessions are de-duplicated per trainer+group+timeslot."""
+        seen_group = set()
+        total = 0
+        for s in sessions:
+            if s.group_id:
+                key = (s.trainer_id, s.group_id, s.scheduled_at)
+                if key in seen_group:
+                    continue
+                seen_group.add(key)
+                total += NICK_GROUP if s.trainer_id == nick_id else OTHER_GROUP
+            else:
+                total += NICK_INDIV if s.trainer_id == nick_id else OTHER_INDIV
+        return total
+
+    # ── Find locations ────────────────────────────────────────────────────────
+    west_loc    = Location.query.filter(Location.name.ilike('%west%')).first()
+    midtown_loc = Location.query.filter(Location.name.ilike('%midtown%')).first()
+    west_id    = west_loc.id    if west_loc    else None
+    midtown_id = midtown_loc.id if midtown_loc else None
+
+    # ── Build last 6 months ───────────────────────────────────────────────────
     months_data = []
     for i in range(5, -1, -1):
         m = now.month - i
@@ -1483,55 +1514,80 @@ def admin_finances():
             y -= 1
 
         pkgs = SessionPackage.query.filter_by(month=m, year=y).all()
-        revenue_cents = sum(
-            p.plan.price_cents for p in pkgs if p.plan and p.plan.price_cents
-        )
+        revenue_cents = sum(p.plan.price_cents for p in pkgs if p.plan and p.plan.price_cents)
+        revenue = revenue_cents / 100
 
-        if m == 12:
-            month_start = datetime(y, m, 1, tzinfo=timezone.utc)
-            month_end   = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
-        else:
-            month_start = datetime(y, m, 1, tzinfo=timezone.utc)
-            month_end   = datetime(y, m + 1, 1, tzinfo=timezone.utc)
+        month_start = datetime(y, m, 1, tzinfo=timezone.utc)
+        month_end   = datetime(y + 1, 1, 1, tzinfo=timezone.utc) if m == 12 \
+                      else datetime(y, m + 1, 1, tzinfo=timezone.utc)
 
-        total_sessions = Session.query.filter(
+        all_sess = Session.query.filter(
             Session.scheduled_at >= month_start,
             Session.scheduled_at < month_end,
-        ).count()
-        completed = Session.query.filter(
-            Session.scheduled_at >= month_start,
-            Session.scheduled_at < month_end,
-            Session.status == 'completed',
-        ).count()
-        missed = Session.query.filter(
-            Session.scheduled_at >= month_start,
-            Session.scheduled_at < month_end,
-            Session.status == 'missed',
-        ).count()
+        ).all()
+        completed_sess = [s for s in all_sess if s.status == 'completed']
+        missed_count   = sum(1 for s in all_sess if s.status == 'missed')
 
-        avg_cost = (revenue_cents / 100 / total_sessions) if total_sessions else 0
+        total_sessions = len(all_sess)
+        completed      = len(completed_sess)
+
+        payout     = calc_payout(completed_sess)
+        net_profit = revenue - payout
+
+        # Location split
+        west_sess    = [s for s in completed_sess if s.location_id == west_id]
+        midtown_sess = [s for s in completed_sess if s.location_id == midtown_id]
+
+        # Allocate revenue proportionally by completed sessions
+        frac_west    = len(west_sess)    / completed if completed else 0
+        frac_midtown = len(midtown_sess) / completed if completed else 0
+        west_revenue    = round(revenue * frac_west,    2)
+        midtown_revenue = round(revenue * frac_midtown, 2)
+        west_payout    = calc_payout(west_sess)
+        midtown_payout = calc_payout(midtown_sess)
+        west_net    = round(west_revenue    - west_payout,    2)
+        midtown_net = round(midtown_revenue - midtown_payout, 2)
+
+        avg_cost = revenue / total_sessions if total_sessions else 0
 
         months_data.append({
-            'month': m,
-            'year': y,
-            'month_name': month_name[m],
-            'revenue_cents': revenue_cents,
+            'month': m, 'year': y, 'month_name': month_name[m],
+            'revenue':        revenue,
+            'revenue_cents':  revenue_cents,
+            'payout':         payout,
+            'net_profit':     net_profit,
             'total_sessions': total_sessions,
-            'completed': completed,
-            'missed': missed,
-            'avg_cost': avg_cost,
+            'completed':      completed,
+            'missed':         missed_count,
+            'avg_cost':       avg_cost,
+            'west_revenue':   west_revenue,
+            'west_payout':    west_payout,
+            'west_net':       west_net,
+            'west_sessions':  len(west_sess),
+            'midtown_revenue':   midtown_revenue,
+            'midtown_payout':    midtown_payout,
+            'midtown_net':       midtown_net,
+            'midtown_sessions':  len(midtown_sess),
         })
 
-    # This week
+    # ── 6-month totals ────────────────────────────────────────────────────────
+    totals = {
+        'revenue':    sum(d['revenue']    for d in months_data),
+        'payout':     sum(d['payout']     for d in months_data),
+        'net_profit': sum(d['net_profit'] for d in months_data),
+        'sessions':   sum(d['total_sessions'] for d in months_data),
+        'completed':  sum(d['completed']  for d in months_data),
+    }
+
+    # ── This week ─────────────────────────────────────────────────────────────
     week_start = (now - timedelta(days=now.weekday())).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+        hour=0, minute=0, second=0, microsecond=0)
     week_sessions = Session.query.filter(
         Session.scheduled_at >= week_start,
         Session.scheduled_at < week_start + timedelta(days=7),
     ).count()
 
-    # Session log: completed + missed (most recent 100)
+    # ── Session log ───────────────────────────────────────────────────────────
     session_log = Session.query.filter(
         Session.status.in_(['completed', 'missed']),
     ).order_by(Session.scheduled_at.desc()).limit(100).all()
@@ -1540,10 +1596,13 @@ def admin_finances():
     return render_template(
         'admin_finances.html',
         months_data=months_data,
+        totals=totals,
         week_sessions=week_sessions,
         session_log=session_log,
         current_month=current_month,
         month_name=month_name,
+        west_name=west_loc.name   if west_loc    else 'West Mobile',
+        midtown_name=midtown_loc.name if midtown_loc else 'Midtown',
     )
 
 
