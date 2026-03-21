@@ -889,6 +889,10 @@
     <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
     <div class="modal-time" id="mTime"></div>
     <div class="modal-date" id="mDate"></div>
+    <div class="modal-detail-row" id="mClientRow" style="display:none;">
+      <i class="bi bi-person-fill" aria-hidden="true" style="color:var(--accent);"></i>
+      <span id="mClient"></span>
+    </div>
     <div class="modal-detail-row">
       <i class="bi bi-person" aria-hidden="true"></i>
       <span id="mTrainer"></span>
@@ -1148,7 +1152,8 @@
     const textEl = document.createElement('span');
     textEl.className = 'mcal-chip-text';
 
-    if (isMine) {
+    const showFull = showAllSessions || isMine;
+    if (showFull) {
       chip.className = `mcal-chip status-${status}`;
       chip.setAttribute('aria-label', `${status} session at ${timeStr}`);
       dotEl.style.background = STATUS_DOT[status] || STATUS_DOT.scheduled;
@@ -1191,13 +1196,27 @@
     document.getElementById('mDate').textContent = startDt.toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric'
     });
+    const showFull = showAllSessions || isMine;
+
+    // Client row — show when in All Sessions mode (so you can see whose session it is)
+    const mClientRow = document.getElementById('mClientRow');
+    const mClientEl  = document.getElementById('mClient');
+    if (mClientRow && mClientEl) {
+      if (showAllSessions && !isMine && p.client) {
+        mClientEl.textContent = p.client;
+        mClientRow.style.display = 'flex';
+      } else {
+        mClientRow.style.display = 'none';
+      }
+    }
+
     document.getElementById('mTrainer').textContent  = p.trainer  || '—';
     document.getElementById('mLocation').textContent = p.location || '—';
     document.getElementById('mDuration').textContent = `${mins} min session`;
 
     const mGroupRow = document.getElementById('mGroupRow');
     if (mGroupRow) {
-      if (isMine && p.group_name) {
+      if (p.group_name && showFull) {
         mGroupRow.style.display = 'flex';
         document.getElementById('mGroupName').textContent = p.group_name;
       } else {
@@ -1217,13 +1236,8 @@
     }
 
     const chip = document.getElementById('mStatus');
-    if (isMine) {
-      chip.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-      chip.className   = `modal-status-chip ${status}`;
-    } else {
-      chip.textContent = 'Occupied';
-      chip.className   = 'modal-status-chip cancelled';
-    }
+    chip.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    chip.className   = `modal-status-chip ${status}`;
 
     closePopover();
     modal.classList.add('active');
@@ -1242,9 +1256,10 @@
     sessions.forEach(function (s) {
       const p = s.extendedProps || {};
       const isMine = p.is_mine !== false;
+      const showFull = showAllSessions || isMine;
       const status = p.status || 'scheduled';
       const startDt = parseISO(s.start);
-      const dot = isMine ? (STATUS_DOT[status] || STATUS_DOT.scheduled) : 'rgba(255,255,255,0.18)';
+      const dot = showFull ? (STATUS_DOT[status] || STATUS_DOT.scheduled) : 'rgba(255,255,255,0.18)';
       const trainerFirst = firstName(p.trainer || '');
       const timeStr = fmtTime(startDt);
 
@@ -1256,7 +1271,7 @@
       dotEl.style.background = dot;
 
       const label = document.createElement('span');
-      label.textContent = isMine
+      label.textContent = showFull
         ? (trainerFirst ? `${timeStr} · ${trainerFirst}` : timeStr)
         : `${timeStr} · Occupied`;
 
