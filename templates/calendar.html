@@ -519,6 +519,32 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = `/sessions/new?date=${encodeURIComponent(info.dateStr.replace('Z',''))}`;
     },
 
+    eventContent(info) {
+      const p   = info.event.extendedProps;
+      const start = info.event.start;
+      const timeStr = start ? start.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true
+      }) : '';
+      const clientLine = p.group_name || p.client || '';
+      return {
+        html: `
+          <div style="
+            display:flex; flex-direction:column; align-items:center;
+            justify-content:center; text-align:center;
+            width:100%; height:100%; padding:2px 4px; gap:1px;
+            overflow:hidden;
+          ">
+            <div style="font-size:9px; font-weight:600; opacity:0.75; line-height:1.2;">${timeStr}</div>
+            <div style="font-size:10px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">
+              Trainer: ${p.trainer || ''}
+            </div>
+            <div style="font-size:10px; font-weight:600; line-height:1.2; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">
+              ${clientLine}
+            </div>
+          </div>`
+      };
+    },
+
     eventDidMount(info) {
       const p = info.event.extendedProps;
       info.el.title = `${p.client} with ${p.trainer} @ ${p.location}`;
