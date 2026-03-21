@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}{{ workout.name }} — Log Workout — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.ex-log-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.625rem;
+}
+.ex-log-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+.ex-prescription {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a78bfa;
+  background: rgba(124,58,237,0.1);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 999px;
+  padding: 0.18rem 0.65rem;
+  margin-bottom: 0.75rem;
+}
+.ex-prescription.default {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: rgba(30,157,241,0.2);
+}
+.log-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+@media (max-width: 480px) { .log-fields { grid-template-columns: 1fr 1fr; } }
+.log-field-wrap label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+.log-field-wrap input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.87rem;
+  padding: 0.45rem 0.6rem;
+  width: 100%;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.log-field-wrap input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(30,157,241,0.04);
+}
+.log-field-wrap input::placeholder { color: var(--text-faint); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+  {% if phase_id and week_num %}
+  <span style="font-size:0.75rem; color:var(--text-muted);">Week {{ week_num }} prescription</span>
+  {% endif %}
+</div>
+
+<div class="page-header mb-1">
+  <div class="page-title">{{ workout.name }}</div>
+  <div class="page-subtitle">Log your sets, reps, and weight for today</div>
+</div>
+
+<p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
+  Your trainer's prescribed sets and reps are shown in purple. Enter the weight you used for each exercise.
+</p>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if phase_id %}<input type="hidden" name="phase_id" value="{{ phase_id }}">{% endif %}
+  {% if week_num  %}<input type="hidden" name="week_num"  value="{{ week_num }}">{% endif %}
+
+  {% for we in workout_exercises %}
+  {% set ex = we.exercise %}
+  {% set ov = override_map.get(ex.id) %}
+  <div class="ex-log-card">
+    <div class="ex-log-name">{{ ex.name }}</div>
+
+    <!-- Prescription pill -->
+    {% if ov and (ov.sets or ov.reps or ov.weight_note) %}
+    <div class="ex-prescription">
+      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+      {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
+    </div>
+    {% elif we.sets or we.reps %}
+    <div class="ex-prescription default">
+      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+      {{ we.sets }}×{{ we.reps }}{% if we.rest_seconds %} · {{ we.rest_seconds }}s rest{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Log inputs -->
+    <div class="log-fields">
+      <div class="log-field-wrap">
+        <label>Sets done</label>
+        <input type="number" name="sets_{{ ex.id }}" min="0" max="20"
+               placeholder="{{ ov.sets if ov and ov.sets else we.sets }}">
+      </div>
+      <div class="log-field-wrap">
+        <label>Reps done</label>
+        <input type="text" name="reps_{{ ex.id }}"
+               placeholder="{{ ov.reps if ov and ov.reps else we.reps }}">
+      </div>
+      <div class="log-field-wrap">
+        <label>Weight (lbs)</label>
+        <input type="number" name="weight_{{ ex.id }}" min="0" step="2.5"
+               placeholder="0">
+      </div>
+    </div>
+    {% if ex.muscle_group or ex.movement_pattern %}
+    <div style="margin-top:0.5rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
+      {% if ex.muscle_group %}
+      <span style="font-size:10px; background:rgba(124,58,237,0.1); color:#a78bfa; border:1px solid rgba(124,58,237,0.2); border-radius:999px; padding:1px 8px; font-weight:600;">{{ ex.muscle_group }}</span>
+      {% endif %}
+      {% if ex.movement_pattern %}
+      <span style="font-size:10px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(30,157,241,0.2); border-radius:999px; padding:1px 8px; font-weight:600;">{{ ex.movement_pattern }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if not workout_exercises %}
+  <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+    This workout has no exercises yet.
+  </div>
+  {% else %}
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="bi bi-check-lg me-1"></i>Save Workout Log
+    </button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Skip</a>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

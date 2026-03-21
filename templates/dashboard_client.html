@@ -725,6 +725,17 @@
   .hero-right          { margin-top: 0; }
 }
 
+/* ── Stack next-session card on mobile ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  .next-session-card { grid-template-columns: 1fr !important; }
+  .next-session-card > div:last-child {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding-top: 1rem;
+  }
+}
+
 /* ── Enhanced Mobile (≤ 480px) — stack stats, fix next-session layout ─────── */
 @media (max-width: 480px) {
   /* Stats row → single column on very small screens */
@@ -929,7 +940,10 @@
 {% endif %}
 
 <!-- ─── Next Session ──────────────────────────────────────────────────────── -->
-<div class="next-session-card">
+<div class="next-session-card" style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
+
+  <!-- LEFT: session info -->
+  <div>
   {% if next_session %}
   {% set trainer_first = next_session.trainer.name.split()[0] %}
 
@@ -1004,6 +1018,50 @@
     {% endif %}
   </div>
   {% endif %}
+  </div><!-- end left col -->
+
+  <!-- RIGHT: upcoming workout from program -->
+  <div style="border-left:1px solid rgba(255,255,255,0.07); padding-left:1.5rem;">
+    <span class="nsc-label" style="color:rgba(124,58,237,0.8);">Up Next in Your Program</span>
+
+    {% if next_program_workout %}
+    {%- set log_url = url_for('client_workout_log', workout_id=next_program_workout.id,
+                               phase_id=next_workout_phase_id, week=next_workout_week) %}
+    <a href="{{ log_url }}"
+       style="display:block; font-size:1.05rem; font-weight:700; color:var(--text); text-decoration:none; margin-bottom:0.75rem; line-height:1.2; transition:color 0.15s;"
+       onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='var(--text)'">
+      {{ next_program_workout.name }}
+      <i class="bi bi-arrow-right-circle" style="font-size:0.85rem; margin-left:4px; opacity:0.5;"></i>
+    </a>
+
+    <div style="display:flex; flex-direction:column; gap:0.3rem;">
+      {% for ex in next_program_exercises[:8] %}
+      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-soft);">
+        <span style="width:5px; height:5px; border-radius:50%; background:rgba(124,58,237,0.6); flex-shrink:0;"></span>
+        {{ ex.name }}
+      </div>
+      {% endfor %}
+      {% if next_program_exercises|length > 8 %}
+      <div style="font-size:0.75rem; color:var(--text-faint); margin-top:0.2rem;">
+        +{{ next_program_exercises|length - 8 }} more
+      </div>
+      {% endif %}
+    </div>
+
+    <a href="{{ log_url }}"
+       style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:1rem; font-size:0.78rem; font-weight:700; color:#a78bfa; text-decoration:none; background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.25); padding:0.35rem 0.85rem; border-radius:999px; transition:background 0.15s;"
+       onmouseover="this.style.background='rgba(124,58,237,0.2)'" onmouseout="this.style.background='rgba(124,58,237,0.1)'">
+      <i class="bi bi-pencil-square"></i> Log this workout
+    </a>
+
+    {% else %}
+    <div style="color:var(--text-faint); font-size:0.85rem; margin-top:0.5rem;">
+      <i class="bi bi-hourglass" style="display:block; font-size:1.5rem; opacity:0.25; margin-bottom:0.5rem;"></i>
+      Coming soon — your trainer is building your program.
+    </div>
+    {% endif %}
+  </div>
+
 </div>
 
 <!-- ─── Quick Actions ─────────────────────────────────────────────────────── -->

@@ -504,6 +504,45 @@ def dashboard():
         now_naive = now.replace(tzinfo=None)
         quarter_progress = get_program_quarter_progress(now_naive)
 
+        # ── Next program workout ───────────────────────────────────────────────
+        next_program_workout = None   # Workout object
+        next_program_exercises = []   # [Exercise, ...]  names only
+        next_workout_phase_id = None
+        next_workout_week = None
+
+        assignment = ProgramAssignment.query.filter_by(
+            client_id=current_user.id
+        ).order_by(ProgramAssignment.start_date.desc()).first()
+
+        if assignment:
+            days_since_start = (today - assignment.start_date).days
+            if days_since_start >= 0:
+                phases = assignment.program.phases.order_by(ProgramPhase.phase_num).all()
+                running = 0
+                for ph in phases:
+                    phase_total = ph.weeks * 7
+                    if days_since_start < running + phase_total:
+                        days_in_phase = days_since_start - running
+                        current_day_num = (days_in_phase % 7) + 1   # 1=Mon … 7=Sun
+                        week_in_phase   = (days_in_phase // 7) + 1
+                        # Search from today's weekday slot forward in the phase
+                        for d in range(current_day_num, 8):
+                            phd = PhaseDay.query.filter(
+                                PhaseDay.phase_id == ph.id,
+                                PhaseDay.day_num == d,
+                                PhaseDay.workout_id.isnot(None)
+                            ).first()
+                            if phd and phd.workout:
+                                next_program_workout = phd.workout
+                                next_program_exercises = [
+                                    we.exercise for we in phd.workout.exercises.order_by(WorkoutExercise.order).all()
+                                ]
+                                next_workout_phase_id = ph.id
+                                next_workout_week = week_in_phase
+                                break
+                        break
+                    running += phase_total
+
         return render_template('dashboard_client.html',
             upcoming=upcoming,
             next_session=next_session,
@@ -524,6 +563,10 @@ def dashboard():
             notifications=notifications,
             unread_notif_count=unread_notif_count,
             quarter_progress=quarter_progress,
+            next_program_workout=next_program_workout,
+            next_program_exercises=next_program_exercises,
+            next_workout_phase_id=next_workout_phase_id,
+            next_workout_week=next_workout_week,
         )
 
     elif current_user.role == 'trainer':
@@ -2464,6 +2507,63 @@ def client_workout_view(workout_id):
     """Read-only workout view accessible to clients (for their assigned program workouts)."""
     workout = Workout.query.get_or_404(workout_id)
     return render_template('workout_detail.html', workout=workout)
+
+
+@app.route('/workout-log/<int:workout_id>', methods=['GET', 'POST'])
+@login_required
+def client_workout_log(workout_id):
+    """Client workout logging page — shows prescribed sets/reps/RPE + weight input."""
+    if current_user.role not in ('client',):
+        return redirect(url_for('dashboard'))
+    workout = Workout.query.get_or_404(workout_id)
+    phase_id = request.args.get('phase_id', type=int)
+    week_num  = request.args.get('week', type=int)
+
+    # Load exercises in order
+    workout_exercises = workout.exercises.order_by(WorkoutExercise.order).all()
+
+    # Load progression overrides for this phase+week (if available)
+    override_map = {}
+    if phase_id and week_num:
+        overrides = ProgressionOverride.query.filter_by(phase_id=phase_id, week_num=week_num).all()
+        override_map = {o.exercise_id: o for o in overrides}
+
+    if request.method == 'POST':
+        from datetime import date as date_type
+        log_date = date_type.today()
+        saved = 0
+        for we in workout_exercises:
+            weight_val = request.form.get(f'weight_{we.exercise_id}', '').strip()
+            sets_val   = request.form.get(f'sets_{we.exercise_id}', '').strip()
+            reps_val   = request.form.get(f'reps_{we.exercise_id}', '').strip()
+            notes_val  = request.form.get(f'notes_{we.exercise_id}', '').strip()
+            if not any([weight_val, sets_val, reps_val]):
+                continue
+            try:
+                weight_f = float(weight_val) if weight_val else None
+            except ValueError:
+                weight_f = None
+            db.session.add(ExerciseLog(
+                client_id=current_user.id,
+                exercise_id=we.exercise_id,
+                log_date=log_date,
+                sets_completed=int(sets_val) if sets_val.isdigit() else None,
+                reps_completed=reps_val or None,
+                weight_lbs=weight_f,
+                notes=notes_val or None,
+            ))
+            saved += 1
+        db.session.commit()
+        flash(f'Workout logged! {saved} exercise{"s" if saved != 1 else ""} recorded.', 'success')
+        return redirect(url_for('dashboard'))
+
+    return render_template('workout_log.html',
+        workout=workout,
+        workout_exercises=workout_exercises,
+        override_map=override_map,
+        phase_id=phase_id,
+        week_num=week_num,
+    )
 
 
 @app.route('/my-program')
