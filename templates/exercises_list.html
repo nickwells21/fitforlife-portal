@@ -160,7 +160,7 @@
 </div>
 
 <!-- Category filter chips -->
-<div class="mb-3">
+<div class="mb-1">
   <div class="filter-label">Category</div>
   <div class="filter-chips" id="categoryChips">
     <span class="filter-chip active" data-filter="all">All</span>
@@ -177,13 +177,34 @@
   </div>
 </div>
 
+<!-- Equipment filter chips -->
+<div class="mb-3">
+  <div class="filter-label">Equipment</div>
+  <div class="filter-chips" id="equipChips">
+    <span class="filter-chip active" data-filter="all">All</span>
+    <span class="filter-chip" data-filter="barbell">Barbell</span>
+    <span class="filter-chip" data-filter="dumbbell">Dumbbell</span>
+    <span class="filter-chip" data-filter="kettlebell">Kettlebell</span>
+    <span class="filter-chip" data-filter="cable">Cable</span>
+    <span class="filter-chip" data-filter="machine">Machine</span>
+    <span class="filter-chip" data-filter="smith machine">Smith Machine</span>
+    <span class="filter-chip" data-filter="bodyweight">Bodyweight</span>
+    <span class="filter-chip" data-filter="resistance band">Resistance Band</span>
+    <span class="filter-chip" data-filter="landmine">Landmine</span>
+    <span class="filter-chip" data-filter="rings">Rings</span>
+    <span class="filter-chip" data-filter="trx">TRX</span>
+    <span class="filter-chip" data-filter="cardio machine">Cardio Machine</span>
+  </div>
+</div>
+
 {% if exercises %}
 <div class="row g-4" id="exerciseGrid">
   {% for ex in exercises %}
   <div class="col-12 col-sm-6 col-lg-4 exercise-grid-item"
        data-name="{{ ex.name|lower }}"
        data-muscle="{{ (ex.muscle_group or '')|lower }}"
-       data-category="{{ (ex.category or '')|lower }}">
+       data-category="{{ (ex.category or '')|lower }}"
+       data-equipment="{{ (ex.equipment or '')|lower }}">
     <a href="{{ url_for('exercise_detail', ex_id=ex.id) }}" class="exercise-card">
       {% set yt_id = extract_youtube_id(ex.youtube_url) %}
       {% if yt_id %}
@@ -255,6 +276,7 @@ const noResults = document.getElementById('noResults');
 // Filter state
 let activeMuscleFil = 'all';
 let activeCategoryFil = 'all';
+let activeEquipFil = 'all';
 let searchQuery = '';
 
 function applyFilters() {
@@ -263,15 +285,17 @@ function applyFilters() {
     const name = item.dataset.name || '';
     const muscle = item.dataset.muscle || '';
     const category = item.dataset.category || '';
+    const equipment = item.dataset.equipment || '';
 
     const muscleMatch = activeMuscleFil === 'all' || muscle.includes(activeMuscleFil);
     const categoryMatch = activeCategoryFil === 'all' || category.includes(activeCategoryFil);
+    const equipMatch = activeEquipFil === 'all' || equipment.includes(activeEquipFil);
     const searchMatch = !searchQuery ||
       name.includes(searchQuery) ||
       muscle.includes(searchQuery) ||
       category.includes(searchQuery);
 
-    const show = muscleMatch && categoryMatch && searchMatch;
+    const show = muscleMatch && categoryMatch && equipMatch && searchMatch;
     item.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -303,6 +327,16 @@ document.getElementById('categoryChips').addEventListener('click', e => {
   document.querySelectorAll('#categoryChips .filter-chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   activeCategoryFil = chip.dataset.filter;
+  applyFilters();
+});
+
+// Equipment chips
+document.getElementById('equipChips').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('#equipChips .filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeEquipFil = chip.dataset.filter;
   applyFilters();
 });
 </script>
