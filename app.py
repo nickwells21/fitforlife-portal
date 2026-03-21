@@ -985,9 +985,39 @@ def update_session_status(session_id):
 @admin_required
 def delete_session(session_id):
     sess = Session.query.get_or_404(session_id)
-    db.session.delete(sess)
-    db.session.commit()
-    flash('Session deleted.', 'success')
+    delete_all = request.form.get('delete_all') == '1'
+
+    if delete_all:
+        # Find all future sessions in the same series:
+        # same trainer, same client (or group), same time-of-day, same weekday, on or after this session
+        t = sess.scheduled_at.time()
+        dow = sess.scheduled_at.weekday()
+        if sess.group_id:
+            siblings = Session.query.filter(
+                Session.trainer_id == sess.trainer_id,
+                Session.group_id == sess.group_id,
+                Session.scheduled_at >= sess.scheduled_at,
+            ).all()
+        else:
+            siblings = Session.query.filter(
+                Session.trainer_id == sess.trainer_id,
+                Session.client_id == sess.client_id,
+                Session.scheduled_at >= sess.scheduled_at,
+            ).all()
+        # Keep only those on the same weekday and same time
+        to_delete = [s for s in siblings
+                     if s.scheduled_at.weekday() == dow
+                     and s.scheduled_at.time() == t]
+        count = len(to_delete)
+        for s in to_delete:
+            db.session.delete(s)
+        db.session.commit()
+        flash(f'{count} session{"s" if count != 1 else ""} deleted.', 'success')
+    else:
+        db.session.delete(sess)
+        db.session.commit()
+        flash('Session deleted.', 'success')
+
     return redirect(url_for('calendar_view'))
 
 

@@ -761,11 +761,14 @@
           </button>
           <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-secondary">Cancel</a>
           {% if sess and current_user.role == 'admin' %}
-          <div style="margin-left:auto;">
-            <form method="POST" action="{{ url_for('delete_session', session_id=sess.id) }}"
-                  onsubmit="return confirm('Delete this session? This cannot be undone.')">
+          <div style="margin-left:auto; display:flex; gap:0.4rem;">
+            <form method="POST" action="{{ url_for('delete_session', session_id=sess.id) }}" id="delForm">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+              <input type="hidden" name="delete_all" id="delAllInput" value="0">
+              <button type="button" class="btn btn-outline-danger btn-sm"
+                      onclick="deleteThis()">Delete</button>
+              <button type="button" class="btn btn-outline-danger btn-sm"
+                      onclick="deleteAll()">Delete All Repeats</button>
             </form>
           </div>
           {% endif %}
@@ -1207,6 +1210,19 @@ function initRepeat() {
     const count = selectedDays.size * Math.ceil(weeks / selectedFreq);
     summary.textContent = `${days} — ${freq} for ${weeks} weeks (${count} sessions)`;
   }
+}
+{% endif %}
+
+{% if sess and current_user.role == 'admin' %}
+function deleteThis() {
+  if (!confirm('Delete this session? This cannot be undone.')) return;
+  document.getElementById('delAllInput').value = '0';
+  document.getElementById('delForm').submit();
+}
+function deleteAll() {
+  if (!confirm('Delete this session AND all future repeats on the same day/time? This cannot be undone.')) return;
+  document.getElementById('delAllInput').value = '1';
+  document.getElementById('delForm').submit();
 }
 {% endif %}
 </script>

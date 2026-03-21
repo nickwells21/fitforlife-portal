@@ -21,13 +21,22 @@
 {% endblock %}
 
 {% block content %}
-<div class="mb-3 d-flex gap-2 flex-wrap">
+<div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
   <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>Programs
   </a>
   <a href="{{ url_for('program_phase_builder', program_id=prog.id) }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-grid-3x3 me-1"></i>Phase Builder
   </a>
+  {% if current_user.role == 'admin' or prog.trainer_id == current_user.id %}
+  <form method="POST" action="{{ url_for('program_delete', program_id=prog.id) }}"
+        onsubmit="return confirm('Delete ' + {{ prog.name | tojson }} + '? This cannot be undone.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash me-1"></i>Delete Program
+    </button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="page-header mb-3">
