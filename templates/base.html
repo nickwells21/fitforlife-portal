@@ -362,11 +362,7 @@
           <i class="bi bi-person-gear"></i><span class="nav-label"> Users</span>
         </a>
       </li>
-      <li>
-        <a href="{{ url_for('admin_promos') }}" class="nav-link {% if request.endpoint and 'promo' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-tag"></i><span class="nav-label"> Promos</span>
-        </a>
-      </li>
+
       <li>
         <a href="{{ url_for('admin_events') }}" class="nav-link {% if request.endpoint and 'event' in request.endpoint %}active{% endif %}">
           <i class="bi bi-star"></i><span class="nav-label"> Events</span>
