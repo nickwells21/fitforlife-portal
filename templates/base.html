@@ -348,32 +348,32 @@
       {% if current_user.role == 'admin' %}
       <li class="nav-section"><span class="nav-label">Manage</span></li>
       <li>
-        <a href="{{ url_for('admin_packages') }}" class="nav-link {% if 'package' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_packages') }}" class="nav-link {% if request.endpoint and 'package' in request.endpoint %}active{% endif %}">
           <i class="bi bi-layers"></i><span class="nav-label"> Packages</span>
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin_users') }}" class="nav-link {% if 'user' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_users') }}" class="nav-link {% if request.endpoint and 'user' in request.endpoint %}active{% endif %}">
           <i class="bi bi-person-gear"></i><span class="nav-label"> Users</span>
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin_promos') }}" class="nav-link {% if 'promo' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_promos') }}" class="nav-link {% if request.endpoint and 'promo' in request.endpoint %}active{% endif %}">
           <i class="bi bi-tag"></i><span class="nav-label"> Promos</span>
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin_events') }}" class="nav-link {% if 'event' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_events') }}" class="nav-link {% if request.endpoint and 'event' in request.endpoint %}active{% endif %}">
           <i class="bi bi-star"></i><span class="nav-label"> Events</span>
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin_groups') }}" class="nav-link {% if 'group' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_groups') }}" class="nav-link {% if request.endpoint and 'group' in request.endpoint %}active{% endif %}">
           <i class="bi bi-people-fill"></i><span class="nav-label"> Groups</span>
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin_finances') }}" class="nav-link {% if 'finance' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('admin_finances') }}" class="nav-link {% if request.endpoint and 'finance' in request.endpoint %}active{% endif %}">
           <i class="bi bi-bar-chart-line"></i><span class="nav-label"> Finances</span>
         </a>
       </li>
