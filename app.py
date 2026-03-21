@@ -2260,26 +2260,28 @@ def phase_progression(program_id, phase_id):
     phase = ProgramPhase.query.get_or_404(phase_id)
     if phase.program_id != prog.id:
         abort(404)
-    # Collect all exercises from all workouts assigned to this phase's days
-    phase_days = phase.days.all()
-    workout_ids = list({pd.workout_id for pd in phase_days if pd.workout_id})
-    # Get unique exercises across all workouts in this phase, preserving order
-    seen_ex_ids = []
-    exercises = []
-    for wid in workout_ids:
+    # Build workout groups: one entry per unique workout assigned in this phase,
+    # in the order they first appear across the days (Mon→Sun).
+    phase_days = sorted(phase.days.all(), key=lambda d: d.day_num)
+    seen_workout_ids = []
+    for pd in phase_days:
+        if pd.workout_id and pd.workout_id not in seen_workout_ids:
+            seen_workout_ids.append(pd.workout_id)
+
+    workout_groups = []  # [(workout, [exercise, ...])]
+    for wid in seen_workout_ids:
         w = db.session.get(Workout, wid)
         if w:
-            for we in w.exercises.all():
-                if we.exercise_id not in seen_ex_ids:
-                    seen_ex_ids.append(we.exercise_id)
-                    exercises.append(we.exercise)
+            exs = [we.exercise for we in w.exercises.order_by('order').all()]
+            if exs:
+                workout_groups.append((w, exs))
+
     # Load existing overrides for this phase
     overrides = ProgressionOverride.query.filter_by(phase_id=phase.id).all()
-    # Build override map: {(exercise_id, week_num): override}
     override_map = {(o.exercise_id, o.week_num): o for o in overrides}
     weeks = list(range(1, phase.weeks + 1))
     return render_template('phase_progression.html', prog=prog, phase=phase,
-                           exercises=exercises, weeks=weeks, override_map=override_map)
+                           workout_groups=workout_groups, weeks=weeks, override_map=override_map)
 
 
 @app.route('/programs/<int:program_id>/phase/<int:phase_id>/progression', methods=['POST'])
