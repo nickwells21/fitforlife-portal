@@ -1085,11 +1085,14 @@ def delete_session(session_id):
                      if s.scheduled_at.weekday() == dow
                      and s.scheduled_at.time() == t]
         count = len(to_delete)
+        ids = [s.id for s in to_delete]
+        Notification.query.filter(Notification.session_id.in_(ids)).delete(synchronize_session=False)
         for s in to_delete:
             db.session.delete(s)
         db.session.commit()
         flash(f'{count} session{"s" if count != 1 else ""} deleted.', 'success')
     else:
+        Notification.query.filter_by(session_id=sess.id).delete()
         db.session.delete(sess)
         db.session.commit()
         flash('Session deleted.', 'success')
