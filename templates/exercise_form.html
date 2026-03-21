@@ -44,6 +44,24 @@
           {% endfor %}
         </select>
       </div>
+      <div class="col-6">
+        <label class="form-label" for="movementPattern">Movement Pattern</label>
+        <select id="movementPattern" name="movement_pattern" class="form-select">
+          <option value="">— Select —</option>
+          {% for mp in movement_patterns %}
+          <option value="{{ mp }}" {{ 'selected' if ex and ex.movement_pattern == mp else '' }}>{{ mp }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label" for="equipment">Equipment</label>
+        <select id="equipment" name="equipment" class="form-select">
+          <option value="">— Select —</option>
+          {% for eq in equipment_options %}
+          <option value="{{ eq }}" {{ 'selected' if ex and ex.equipment == eq else '' }}>{{ eq }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
     <div class="mb-3">

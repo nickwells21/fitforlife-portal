@@ -1645,12 +1645,17 @@ def extract_youtube_id(url):
     return m.group(1) if m else None
 
 
+MOVEMENT_PATTERNS = ['Push', 'Pull', 'Squat', 'Hinge', 'Carry', 'Rotation', 'Isolation', 'Cardio']
+EQUIPMENT_OPTIONS = ['Barbell', 'Dumbbell', 'Kettlebell', 'Cable', 'Machine', 'Bodyweight', 'Resistance Band', 'TRX / Suspension', 'Smith Machine', 'Other']
+
 class Exercise(db.Model):
     __tablename__ = 'exercises'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     muscle_group = db.Column(db.String(80))
     category = db.Column(db.String(40))
+    movement_pattern = db.Column(db.String(80))
+    equipment = db.Column(db.String(80))
     instructions = db.Column(db.Text)
     youtube_url = db.Column(db.String(300))
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -1825,6 +1830,8 @@ def exercise_new():
             name=name,
             muscle_group=request.form.get('muscle_group', '').strip() or None,
             category=request.form.get('category', '').strip() or None,
+            movement_pattern=request.form.get('movement_pattern', '').strip() or None,
+            equipment=request.form.get('equipment', '').strip() or None,
             instructions=request.form.get('instructions', '').strip() or None,
             youtube_url=request.form.get('youtube_url', '').strip() or None,
             created_by_id=current_user.id,
@@ -1833,7 +1840,8 @@ def exercise_new():
         db.session.commit()
         flash(f'Exercise "{ex.name}" created.', 'success')
         return redirect(url_for('exercises_list'))
-    return render_template('exercise_form.html', ex=None)
+    return render_template('exercise_form.html', ex=None,
+                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
 
 
 @app.route('/exercises/<int:ex_id>')
@@ -1856,12 +1864,15 @@ def exercise_edit(ex_id):
         ex.name = name
         ex.muscle_group = request.form.get('muscle_group', '').strip() or None
         ex.category = request.form.get('category', '').strip() or None
+        ex.movement_pattern = request.form.get('movement_pattern', '').strip() or None
+        ex.equipment = request.form.get('equipment', '').strip() or None
         ex.instructions = request.form.get('instructions', '').strip() or None
         ex.youtube_url = request.form.get('youtube_url', '').strip() or None
         db.session.commit()
         flash(f'Exercise "{ex.name}" updated.', 'success')
         return redirect(url_for('exercise_detail', ex_id=ex.id))
-    return render_template('exercise_form.html', ex=ex)
+    return render_template('exercise_form.html', ex=ex,
+                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
 
 
 @app.route('/exercises/<int:ex_id>/delete', methods=['POST'])
@@ -1895,7 +1906,8 @@ def workout_new():
         name = request.form.get('name', '').strip()
         if not name:
             flash('Workout name is required.', 'danger')
-            return render_template('workout_form.html', workout=None, exercises=exercises)
+            return render_template('workout_form.html', workout=None, exercises=exercises,
+                               movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
         workout = Workout(
             name=name,
             description=request.form.get('description', '').strip() or None,
@@ -1924,7 +1936,7 @@ def workout_new():
         db.session.commit()
         flash(f'Workout "{workout.name}" created.', 'success')
         return redirect(url_for('workout_detail', workout_id=workout.id))
-    return render_template('workout_form.html', workout=None, exercises=exercises)
+    return render_template('workout_form.html', workout=None, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
 
 
 @app.route('/workouts/<int:workout_id>')
@@ -1948,7 +1960,7 @@ def workout_edit(workout_id):
         name = request.form.get('name', '').strip()
         if not name:
             flash('Workout name is required.', 'danger')
-            return render_template('workout_form.html', workout=workout, exercises=exercises)
+            return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
         workout.name = name
         workout.description = request.form.get('description', '').strip() or None
         # Clear existing exercises
@@ -1974,7 +1986,7 @@ def workout_edit(workout_id):
         db.session.commit()
         flash(f'Workout "{workout.name}" updated.', 'success')
         return redirect(url_for('workout_detail', workout_id=workout.id))
-    return render_template('workout_form.html', workout=workout, exercises=exercises)
+    return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
 
 
 @app.route('/workouts/<int:workout_id>/delete', methods=['POST'])
