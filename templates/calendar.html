@@ -380,6 +380,7 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script>
 const isStaff = {{ 'true' if current_user.role in ('admin','trainer') else 'false' }};
+const isAdmin = {{ 'true' if current_user.role == 'admin' else 'false' }};
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 function fetchEvents(fetchInfo, successCb, failureCb) {
@@ -451,6 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Actions
       const actions = document.getElementById('modalActions');
       actions.innerHTML = '';
+      actions.style.justifyContent = 'flex-start';
+
       if (isStaff) {
         actions.innerHTML += `<a href="/sessions/${id}" class="btn btn-outline-secondary btn-sm">View / Edit</a>`;
         if (p.status === 'scheduled') {
@@ -468,6 +471,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      // Trash icon — admin only, pushed to far right
+      if (isAdmin) {
+        actions.innerHTML += `
+          <div style="margin-left:auto; position:relative;" id="deleteWrap_${id}">
+            <button type="button"
+                    onclick="toggleDeleteMenu(${id})"
+                    style="background:none;border:none;color:rgba(239,68,68,0.55);font-size:17px;cursor:pointer;padding:2px 4px;border-radius:4px;transition:color 0.15s;"
+                    onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(239,68,68,0.55)'"
+                    title="Delete session">
+              <i class="bi bi-trash"></i>
+            </button>
+            <div id="deleteMenu_${id}"
+                 style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--bg-elevated);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);padding:0.5rem;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:10;">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:0.4rem;font-weight:600;">Delete session?</div>
+              <form method="POST" action="/sessions/${id}/delete" style="display:flex;flex-direction:column;gap:0.35rem;">
+                <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
+                <input type="hidden" name="delete_all" value="0">
+                <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:12px;text-align:left;">
+                  <i class="bi bi-x-circle me-1"></i>This session only
+                </button>
+              </form>
+              <form method="POST" action="/sessions/${id}/delete" style="display:flex;flex-direction:column;gap:0.35rem;margin-top:0.2rem;">
+                <input type="hidden" name="csrf_token" value="${CSRF_TOKEN}">
+                <input type="hidden" name="delete_all" value="1">
+                <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:12px;text-align:left;">
+                  <i class="bi bi-trash me-1"></i>This + all future repeats
+                </button>
+              </form>
+            </div>
+          </div>`;
+      }
+
       new bootstrap.Modal(document.getElementById('sessionModal')).show();
     },
 
@@ -483,6 +518,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   calendar.render();
+});
+
+function toggleDeleteMenu(id) {
+  const menu = document.getElementById('deleteMenu_' + id);
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close delete menu if clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('[id^="deleteWrap_"]')) {
+    document.querySelectorAll('[id^="deleteMenu_"]').forEach(m => m.style.display = 'none');
+  }
 });
 </script>
 {% endblock %}
