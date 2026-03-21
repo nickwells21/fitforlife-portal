@@ -1569,3 +1569,39 @@ textarea.form-control {
   .admin-stats-row { grid-template-columns: 1fr !important; }
   .stat-card { flex-direction: row; }
 }
+
+/* ── Mobile touch-target & layout fixes (P1/P2 audit) ─────────────────────── */
+
+/* Ensure topbar has enough height so sidebar top-offset doesn't gap (Issue 2) */
+.topbar { min-height: 48px; }
+
+/* Topbar: hide logout button — sidebar already has Sign Out (Issue 3) */
+@media (max-width: 767px) {
+  .topbar .logout-btn { display: none !important; }
+
+  /* Hamburger + home button: raise to 44px iOS minimum (Issue 1) */
+  #sidebarToggle { min-width: 44px; min-height: 44px; padding: 0 !important; display:flex; align-items:center; justify-content:center; }
+  .topbar-home-btn { width: 44px !important; height: 44px !important; }
+
+  /* Calendar nav buttons: 30→44px (Issue 7) */
+  .mcal-nav-btn { width: 44px !important; height: 44px !important; }
+
+  /* Session filter toggle buttons: raise touch target (Issue 14) */
+  .cal-show-toggle { min-height: 44px; padding: 6px 12px; }
+
+  /* Workout log inputs: raise touch target from ~25px to 44px (Issue 10) */
+  .log-field-wrap input { min-height: 44px; padding: 0.75rem 0.6rem; }
+
+  /* Workout form exercise row inputs: P1 fix — raise from ~20px to 44px (Issue 12) */
+  .exercise-row input[type="number"],
+  .exercise-row input[type="text"] { min-height: 44px; padding: 0.65rem 0.5rem; }
+
+  /* Exercise library: lower minmax so 320px screens get 2 usable columns (Issue 11) */
+  .ex-library { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* Filter pills: icon-only text at very small screens so they don't wrap (Issue 6) */
+@media (max-width: 479px) {
+  #btnAllSessions .btn-text,
+  #btnMySessions .btn-text { display: none; }
+}
