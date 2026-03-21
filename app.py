@@ -1057,6 +1057,57 @@ def update_session_status(session_id):
     return redirect(request.referrer or url_for('calendar_view'))
 
 
+@app.route('/sessions/complete-week', methods=['POST'])
+@staff_required
+@csrf.exempt
+def complete_week():
+    """Mark all scheduled sessions in a given Mon-Sun week as completed."""
+    data = request.get_json() or {}
+    week_start_str = data.get('week_start')  # ISO date string e.g. "2026-03-18"
+    trainer_id = data.get('trainer_id')       # optional — filter by trainer
+
+    if not week_start_str:
+        return jsonify({'ok': False, 'error': 'week_start required'}), 400
+
+    try:
+        week_start = datetime.fromisoformat(week_start_str).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=None
+        )
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid date'}), 400
+
+    week_end = week_start + timedelta(days=7)
+
+    query = Session.query.filter(
+        Session.status == 'scheduled',
+        Session.scheduled_at >= week_start,
+        Session.scheduled_at < week_end,
+    )
+    if trainer_id:
+        query = query.filter(Session.trainer_id == int(trainer_id))
+
+    sessions = query.all()
+    count = 0
+    for s in sessions:
+        s.status = 'completed'
+        # Create notification for individual (non-group) sessions
+        if s.client_id:
+            try:
+                date_str = s.scheduled_at.strftime('%b %-d')
+                db.session.add(Notification(
+                    user_id=s.client_id,
+                    message=f'Session completed {date_str} with {s.trainer.name}. Great work! 💪',
+                    notif_type='session_completed',
+                    session_id=s.id,
+                ))
+            except Exception:
+                pass
+        count += 1
+
+    db.session.commit()
+    return jsonify({'ok': True, 'count': count})
+
+
 @app.route('/sessions/<int:session_id>/delete', methods=['POST'])
 @admin_required
 def delete_session(session_id):

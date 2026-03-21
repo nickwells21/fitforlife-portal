@@ -319,9 +319,17 @@
     <span class="loc-pill completed"><span class="loc-pill-dot"></span>Completed</span>
     <span class="loc-pill missed"><span class="loc-pill-dot"></span>Missed</span>
   </div>
-  <a href="{{ url_for('new_session') }}" class="btn btn-ffl btn-sm">
-    <i class="bi bi-plus-lg me-1"></i>Book Session
-  </a>
+  <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+    <button type="button" id="btnCompleteWeek"
+            class="btn btn-sm"
+            style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#4ade80;font-size:12px;font-weight:600;"
+            onclick="completeCurrentWeek()">
+      <i class="bi bi-check-all me-1"></i>Complete Week
+    </button>
+    <a href="{{ url_for('new_session') }}" class="btn btn-ffl btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Book Session
+    </a>
+  </div>
 </div>
 {% endif %}
 
@@ -532,5 +540,56 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('[id^="deleteMenu_"]').forEach(m => m.style.display = 'none');
   }
 });
+
+// ── Complete Week ────────────────────────────────────────────────────────────
+async function completeCurrentWeek() {
+  if (!calendar) return;
+
+  // Get the Monday of the currently visible week
+  const view = calendar.view;
+  const weekStart = view.activeStart; // FullCalendar gives Mon for timeGridWeek
+  const iso = weekStart.toISOString().split('T')[0];
+
+  // Respect the trainer filter if one is active
+  const trainerSel = document.getElementById('filterTrainer');
+  const trainerId  = trainerSel ? trainerSel.value : '';
+
+  const trainerLabel = trainerSel && trainerSel.value
+    ? trainerSel.options[trainerSel.selectedIndex].text
+    : 'all trainers';
+
+  const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (!confirm(`Mark all scheduled sessions the week of ${weekLabel} as completed (${trainerLabel})?`)) return;
+
+  const btn = document.getElementById('btnCompleteWeek');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Marking…';
+
+  try {
+    const res = await fetch('/sessions/complete-week', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: iso, trainer_id: trainerId || null }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      calendar.refetchEvents();
+      btn.innerHTML = `<i class="bi bi-check-all me-1"></i>${data.count} Completed`;
+      setTimeout(() => {
+        btn.innerHTML = '<i class="bi bi-check-all me-1"></i>Complete Week';
+        btn.disabled = false;
+      }, 2500);
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-all me-1"></i>Complete Week';
+    }
+  } catch (err) {
+    alert('Network error — please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-all me-1"></i>Complete Week';
+  }
+}
 </script>
 {% endblock %}
