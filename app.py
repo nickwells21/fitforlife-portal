@@ -714,17 +714,9 @@ def api_sessions():
     if end:
         query = query.filter(Session.scheduled_at <= end[:19])
 
-    if current_user.role == 'client':
-        # Only return this client's own sessions + any group sessions they belong to
-        client_group_ids = [gm.group_id for gm in GroupMembership.query.filter_by(client_id=current_user.id).all()]
-        if client_group_ids:
-            query = query.filter(
-                db.or_(Session.client_id == current_user.id, Session.group_id.in_(client_group_ids))
-            )
-        else:
-            query = query.filter(Session.client_id == current_user.id)
-    elif current_user.role == 'trainer':
+    if current_user.role == 'trainer':
         query = query.filter(Session.trainer_id == current_user.id)
+    # clients: no filter — they see all sessions; is_mine flag marks their own
 
     sessions = query.all()
     events = []
