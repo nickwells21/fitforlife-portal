@@ -355,9 +355,23 @@ def trainer_color(trainer_id):
 
 
 def get_session_streak(client_id):
-    """Consecutive weeks (going back) with at least 1 completed session."""
+    """Consecutive weeks (going back) with at least 1 completed session.
+    If the current week has no completed sessions yet (still in progress),
+    we skip it so that a maintained streak from previous weeks still shows."""
     now = datetime.now(timezone.utc)
     week_start = now.date() - timedelta(days=now.weekday())
+
+    # Check current week — if no sessions yet, start counting from last week
+    week_end = week_start + timedelta(days=7)
+    current_week_count = Session.query.filter(
+        Session.client_id == client_id,
+        Session.status == 'completed',
+        Session.scheduled_at >= datetime(week_start.year, week_start.month, week_start.day),
+        Session.scheduled_at < datetime(week_end.year, week_end.month, week_end.day),
+    ).count()
+    if current_week_count == 0:
+        week_start -= timedelta(days=7)
+
     streak = 0
     for _ in range(52):
         week_end = week_start + timedelta(days=7)
@@ -1012,37 +1026,47 @@ def update_session_status(session_id):
     sess = Session.query.get_or_404(session_id)
     new_status = request.form.get('status')
     if new_status in ('completed', 'missed', 'cancelled', 'scheduled'):
-        old_status = sess.status
-        sess.status = new_status
 
-        # Auto-create notification when a session is marked completed
-        if new_status == 'completed' and old_status != 'completed':
-            date_str = sess.scheduled_at.strftime('%b %d').replace(' 0', ' ')
-            notif = Notification(
-                user_id=sess.client_id,
-                message=f'Session completed {date_str} with {sess.trainer.name}. Great work! 💪',
-                notif_type='session_completed',
-                session_id=sess.id
-            )
-            db.session.add(notif)
+        # For group sessions, update ALL rows for this group slot so every
+        # member's progress bar and streak reflect the change
+        if sess.group_id:
+            siblings = Session.query.filter_by(
+                group_id=sess.group_id,
+                scheduled_at=sess.scheduled_at,
+            ).all()
+        else:
+            siblings = [sess]
 
-            # Check for streak milestones after this completion
-            streak = get_session_streak(sess.client_id)
-            milestone_msgs = {
-                1:  '🔥 Your streak starts now — keep it going!',
-                3:  '🔥🔥🔥 3-week streak — you\'re building momentum!',
-                5:  '🔥 5-week streak — incredible consistency!',
-                10: '⚡ 10-week streak — you are unstoppable!',
-                15: '🏅 15-week streak — elite level dedication!',
-                20: '🏆 20-week streak — absolute legend!',
-            }
-            if streak in milestone_msgs:
+        milestone_msgs = {
+            1:  '🔥 Your streak starts now — keep it going!',
+            3:  '🔥🔥🔥 3-week streak — you\'re building momentum!',
+            5:  '🔥 5-week streak — incredible consistency!',
+            10: '⚡ 10-week streak — you are unstoppable!',
+            15: '🏅 15-week streak — elite level dedication!',
+            20: '🏆 20-week streak — absolute legend!',
+        }
+
+        for s in siblings:
+            old_status = s.status
+            s.status = new_status
+
+            if new_status == 'completed' and old_status != 'completed' and s.client_id:
+                date_str = s.scheduled_at.strftime('%b %-d')
+                trainer_name = s.trainer.name if s.trainer else 'your trainer'
                 db.session.add(Notification(
-                    user_id=sess.client_id,
-                    message=milestone_msgs[streak],
-                    notif_type='streak_milestone',
-                    session_id=sess.id
+                    user_id=s.client_id,
+                    message=f'Session completed {date_str} with {trainer_name}. Great work! 💪',
+                    notif_type='session_completed',
+                    session_id=s.id
                 ))
+                streak = get_session_streak(s.client_id)
+                if streak in milestone_msgs:
+                    db.session.add(Notification(
+                        user_id=s.client_id,
+                        message=milestone_msgs[streak],
+                        notif_type='streak_milestone',
+                        session_id=s.id
+                    ))
 
         db.session.commit()
         flash(f'Session marked as {new_status}.', 'success')
