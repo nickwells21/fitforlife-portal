@@ -1810,8 +1810,9 @@ def extract_youtube_id(url):
     return m.group(1) if m else None
 
 
-MOVEMENT_PATTERNS = ['Push', 'Pull', 'Squat', 'Hinge', 'Carry', 'Rotation', 'Isolation', 'Cardio']
-EQUIPMENT_OPTIONS = ['Barbell', 'Dumbbell', 'Kettlebell', 'Cable', 'Machine', 'Bodyweight', 'Resistance Band', 'TRX / Suspension', 'Smith Machine', 'Other']
+MOVEMENT_PATTERNS = ['Push', 'Pull', 'Squat', 'Hinge', 'Lunge', 'Carry', 'Rotation', 'Isolation', 'Cardio', 'Mobility']
+EQUIPMENT_OPTIONS = ['Barbell', 'Dumbbell', 'Kettlebell', 'Cable', 'Machine', 'Smith Machine', 'Bodyweight', 'Resistance Band', 'Landmine', 'Rings', 'TRX', 'Cardio Machine']
+MUSCLE_GROUPS    = ['Legs', 'Back', 'Chest', 'Shoulders', 'Arms', 'Core', 'Hamstrings', 'Hips', 'Full Body']
 
 class Exercise(db.Model):
     __tablename__ = 'exercises'
@@ -2010,7 +2011,7 @@ def exercise_new():
         flash(f'Exercise "{ex.name}" created.', 'success')
         return redirect(url_for('exercises_list'))
     return render_template('exercise_form.html', ex=None,
-                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
 
 
 @app.route('/exercises/<int:ex_id>')
@@ -2041,7 +2042,7 @@ def exercise_edit(ex_id):
         flash(f'Exercise "{ex.name}" updated.', 'success')
         return redirect(url_for('exercise_detail', ex_id=ex.id))
     return render_template('exercise_form.html', ex=ex,
-                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+                           movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
 
 
 @app.route('/exercises/<int:ex_id>/delete', methods=['POST'])
@@ -2076,7 +2077,7 @@ def workout_new():
         if not name:
             flash('Workout name is required.', 'danger')
             return render_template('workout_form.html', workout=None, exercises=exercises,
-                               movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+                               movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
         workout = Workout(
             name=name,
             description=request.form.get('description', '').strip() or None,
@@ -2105,7 +2106,7 @@ def workout_new():
         db.session.commit()
         flash(f'Workout "{workout.name}" created.', 'success')
         return redirect(url_for('workout_detail', workout_id=workout.id))
-    return render_template('workout_form.html', workout=None, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+    return render_template('workout_form.html', workout=None, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
 
 
 @app.route('/workouts/<int:workout_id>')
@@ -2129,7 +2130,7 @@ def workout_edit(workout_id):
         name = request.form.get('name', '').strip()
         if not name:
             flash('Workout name is required.', 'danger')
-            return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+            return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
         workout.name = name
         workout.description = request.form.get('description', '').strip() or None
         # Clear existing exercises
@@ -2155,7 +2156,7 @@ def workout_edit(workout_id):
         db.session.commit()
         flash(f'Workout "{workout.name}" updated.', 'success')
         return redirect(url_for('workout_detail', workout_id=workout.id))
-    return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS)
+    return render_template('workout_form.html', workout=workout, exercises=exercises, movement_patterns=MOVEMENT_PATTERNS, equipment_options=EQUIPMENT_OPTIONS, muscle_groups=MUSCLE_GROUPS)
 
 
 @app.route('/workouts/<int:workout_id>/delete', methods=['POST'])

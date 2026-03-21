@@ -227,8 +227,17 @@
       <input type="text" id="ex-search-input" placeholder="&#xF52A; Search by name, muscle, pattern, equipment…" autocomplete="off">
     </div>
 
+    <!-- Muscle Group filters -->
+    <div class="filter-label">Muscle Group</div>
+    <div class="filter-row" id="muscleFilters">
+      <span class="fp active" data-filter="muscle" data-value="">All</span>
+      {% for mg in muscle_groups %}
+      <span class="fp" data-filter="muscle" data-value="{{ mg }}">{{ mg }}</span>
+      {% endfor %}
+    </div>
+
     <!-- Movement Pattern filters -->
-    <div class="filter-label">Movement Pattern</div>
+    <div class="filter-label mt-2">Movement Pattern</div>
     <div class="filter-row" id="patternFilters">
       <span class="fp active" data-filter="pattern" data-value="">All</span>
       {% for mp in movement_patterns %}
@@ -265,8 +274,9 @@ const ALL_EXERCISES = [
     name: {{ ex.name | tojson }},
     muscle: {{ (ex.muscle_group or '') | tojson }},
     category: {{ (ex.category or '') | tojson }},
-    pattern: {{ (ex.movement_pattern or '') | tojson }},
-    equip: {{ (ex.equipment or '') | tojson }}
+    pattern: {{ (ex.category or '') | tojson }},
+    equip: {{ (ex.equipment or '') | tojson }},
+    muscle: {{ (ex.muscle_group or '') | tojson }}
   }{{ ',' if not loop.last }}
   {% endfor %}
 ];
@@ -279,6 +289,7 @@ const searchInput  = document.getElementById('ex-search-input');
 
 let activePattern = '';
 let activeEquip   = '';
+let activeMuscle  = '';
 
 /* ── Track which exercises are already in the workout ─────────────────── */
 function getAddedIds() {
@@ -337,6 +348,7 @@ function renderLibrary() {
   const addedIds = getAddedIds();
 
   const filtered = ALL_EXERCISES.filter(ex => {
+    if (activeMuscle  && ex.muscle  !== activeMuscle)  return false;
     if (activePattern && ex.pattern !== activePattern) return false;
     if (activeEquip   && ex.equip   !== activeEquip)   return false;
     if (q && !ex.name.toLowerCase().includes(q) &&
@@ -392,7 +404,8 @@ document.querySelectorAll('.fp').forEach(pill => {
     document.querySelectorAll(`.fp[data-filter="${filterType}"]`).forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
 
-    if (filterType === 'pattern') activePattern = val;
+    if (filterType === 'muscle')  activeMuscle  = val;
+    else if (filterType === 'pattern') activePattern = val;
     else                          activeEquip   = val;
 
     renderLibrary();

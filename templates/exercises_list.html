@@ -287,9 +287,9 @@ function applyFilters() {
     const category = item.dataset.category || '';
     const equipment = item.dataset.equipment || '';
 
-    const muscleMatch = activeMuscleFil === 'all' || muscle.includes(activeMuscleFil);
-    const categoryMatch = activeCategoryFil === 'all' || category.includes(activeCategoryFil);
-    const equipMatch = activeEquipFil === 'all' || equipment.includes(activeEquipFil);
+    const muscleMatch    = activeMuscleFil    === 'all' || muscle    === activeMuscleFil;
+    const categoryMatch  = activeCategoryFil  === 'all' || category  === activeCategoryFil;
+    const equipMatch     = activeEquipFil      === 'all' || equipment === activeEquipFil;
     const searchMatch = !searchQuery ||
       name.includes(searchQuery) ||
       muscle.includes(searchQuery) ||
