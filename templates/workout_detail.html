@@ -2,13 +2,22 @@
 {% block title %}{{ workout.name }} — Fit For Life{% endblock %}
 
 {% block content %}
-<div class="mb-3 d-flex gap-2 flex-wrap">
+<div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
   <a href="{{ url_for('workouts_list') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>Workouts
   </a>
+  {% if current_user.role == 'admin' or workout.trainer_id == current_user.id %}
   <a href="{{ url_for('workout_edit', workout_id=workout.id) }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-pencil me-1"></i>Edit
   </a>
+  <form method="POST" action="{{ url_for('workout_delete', workout_id=workout.id) }}"
+        onsubmit="return confirm('Delete ' + {{ workout.name | tojson }} + '? This cannot be undone.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash me-1"></i>Delete
+    </button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="page-header mb-3">
