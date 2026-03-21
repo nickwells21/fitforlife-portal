@@ -436,7 +436,34 @@
 }
 .mcal-chip.other-session .mcal-chip-dot { background: rgba(255,255,255,0.15); }
 
-/* ── Other-sessions legend pill ─────────────────────────────────────────── */
+/* ── Show-all toggle button ──────────────────────────────────────────────── */
+.cal-show-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.cal-show-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.cal-show-toggle.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Other-sessions legend pill ──────────────────────────────────────────── */
 .loc-pill.other {
   background: rgba(255,255,255,0.03);
   border-color: rgba(255,255,255,0.08);
@@ -796,6 +823,13 @@
       </button>
     </div>
 
+    <!-- Centre: show-all toggle -->
+    <button type="button" class="cal-show-toggle active" id="showAllToggle"
+            onclick="toggleShowAll()" aria-pressed="true">
+      <i class="bi bi-eye-fill" id="toggleIcon"></i>
+      <span id="toggleLabel">All Sessions</span>
+    </button>
+
     <!-- Right: month + year selects -->
     <div class="mcal-selects">
       <select class="mcal-select" id="calMonthSelect" aria-label="Select month">
@@ -905,8 +939,9 @@
   const today      = new Date();
   let viewYear     = today.getFullYear();
   let viewMonth    = today.getMonth(); // 0-indexed
-  let allSessions  = [];               // raw API array, kept in memory
-  let sessionMap   = {};               // { "YYYY-MM-DD": [session, …] }
+  let allSessions    = [];             // raw API array, kept in memory
+  let sessionMap     = {};             // { "YYYY-MM-DD": [session, …] }
+  let showAllSessions = true;          // toggle state
 
   /* ── DOM refs ───────────────────────────────────────────────────────────── */
 
@@ -964,6 +999,36 @@
   }
 
   /* ── Build session map ──────────────────────────────────────────────────── */
+
+  /* ── Toggle show-all / my sessions only ──────────────────────────────── */
+  function toggleShowAll() {
+    showAllSessions = !showAllSessions;
+    const btn   = document.getElementById('showAllToggle');
+    const icon  = document.getElementById('toggleIcon');
+    const label = document.getElementById('toggleLabel');
+    if (showAllSessions) {
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+      icon.className  = 'bi bi-eye-fill';
+      label.textContent = 'All Sessions';
+    } else {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
+      icon.className  = 'bi bi-eye-slash';
+      label.textContent = 'My Sessions';
+    }
+    rebuildMap();
+  }
+
+  function rebuildMap() {
+    const visible = showAllSessions
+      ? allSessions
+      : allSessions.filter(function(s) {
+          return !s.extendedProps || s.extendedProps.is_mine !== false;
+        });
+    sessionMap = buildSessionMap(visible);
+    renderGrid();
+  }
 
   function buildSessionMap(sessions) {
     const map = {};
@@ -1275,8 +1340,7 @@
     })
     .then(function (data) {
       allSessions = Array.isArray(data) ? data : [];
-      sessionMap  = buildSessionMap(allSessions);
-      renderGrid();
+      rebuildMap();
     })
     .catch(function (err) {
       console.error('Calendar: failed to load sessions', err);
