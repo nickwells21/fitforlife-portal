@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% block title %}Program Assignments — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.client-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.client-row:last-child { border-bottom: none; }
+.client-row:hover { background: rgba(255,255,255,0.02); }
+
+.client-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  flex-shrink: 0;
+  border: 1px solid rgba(30,157,241,0.2);
+}
+
+.client-name {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.prog-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.prog-badge.assigned {
+  background: rgba(30,157,241,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(30,157,241,0.25);
+}
+.prog-badge.none {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+
+.assign-form-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  position: sticky;
+  top: 1.25rem;
+}
+.assign-form-card .form-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+/* Client checklist */
+.client-checklist {
+  max-height: 340px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0;
+}
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+.check-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.check-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px; height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.check-item.checked { color: var(--text); }
+
+.toggle-all-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.toggle-all-btn:hover { opacity: 0.75; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <div>
+    <div class="page-title">Program Assignments</div>
+    <div class="page-subtitle">Assign programs to clients with individual start dates</div>
+  </div>
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Programs
+  </a>
+</div>
+
+<div class="row g-3">
+
+  <!-- Left: client roster -->
+  <div class="col-lg-7">
+    <div class="ffl-card p-0" style="overflow:hidden;">
+      <div style="padding:0.875rem 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">
+          <i class="bi bi-people me-1" style="color:var(--accent);"></i>Clients ({{ client_data|length }})
+        </span>
+      </div>
+
+      {% if client_data %}
+      {% for row in client_data %}
+      {% set c = row.client %}
+      {% set pa = row.assignment %}
+      <div class="client-row">
+        <div class="client-avatar">{{ c.name[0] }}</div>
+        <div style="flex:1; min-width:0;">
+          <div class="client-name">{{ c.name }}</div>
+          {% if pa %}
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">
+            Started {{ pa.start_date.strftime('%b %d, %Y') }}
+          </div>
+          {% endif %}
+        </div>
+
+        {% if pa %}
+        <span class="prog-badge assigned" title="{{ pa.program.name if pa.program else '' }}">
+          {{ (pa.program.name if pa.program else '—') | truncate(22, true, '…') }}
+        </span>
+        <form method="POST" action="{{ url_for('program_assignment_remove', pa_id=pa.id) }}"
+              onsubmit="return confirm('Remove {{ c.name | replace("'","\\'")}}\\'s program assignment?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm" style="padding:0.2rem 0.45rem;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;" title="Remove assignment">
+            <i class="bi bi-x"></i>
+          </button>
+        </form>
+        {% else %}
+        <span class="prog-badge none">No program</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+        No clients found.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right: assign form -->
+  <div class="col-lg-5">
+    <div class="assign-form-card">
+      <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--accent);margin-bottom:1.1rem;">
+        <i class="bi bi-person-plus me-1"></i>Assign Program
+      </div>
+
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+          <label class="form-label">Program</label>
+          <select name="program_id" class="form-select" required>
+            <option value="">— Select program —</option>
+            {% for prog in all_programs %}
+            <option value="{{ prog.id }}">{{ prog.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Start Date</label>
+          <input type="date" name="start_date" class="form-control" required value="{{ today }}">
+        </div>
+
+        <div class="mb-3">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.35rem;">
+            <label class="form-label mb-0">Clients</label>
+            <button type="button" class="toggle-all-btn" onclick="toggleAll()">Select all</button>
+          </div>
+          <div class="client-checklist" id="clientChecklist">
+            {% for row in client_data %}
+            {% set c = row.client %}
+            <label class="check-item" id="label_{{ c.id }}">
+              <input type="checkbox" name="client_ids" value="{{ c.id }}"
+                     onchange="syncCheck(this)">
+              <span>{{ c.name }}</span>
+              {% if row.assignment and row.assignment.program %}
+              <span style="margin-left:auto;font-size:10px;color:var(--text-faint);">
+                {{ row.assignment.program.name | truncate(16, true, '…') }}
+              </span>
+              {% endif %}
+            </label>
+            {% endfor %}
+          </div>
+          <div id="selectedCount" style="font-size:11px;color:var(--text-muted);margin-top:0.4rem;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-person-check me-1"></i>Assign Program
+        </button>
+      </form>
+
+      <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border); font-size:11px; color:var(--text-faint); line-height:1.5;">
+        Assigning a new program to a client who already has one will switch them to the new program on the selected start date.
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allSelected = false;
+
+function syncCheck(cb) {
+  const label = cb.closest('label');
+  if (label) label.classList.toggle('checked', cb.checked);
+  updateCount();
+}
+
+function updateCount() {
+  const checked = document.querySelectorAll('#clientChecklist input:checked');
+  const el = document.getElementById('selectedCount');
+  el.textContent = checked.length ? `${checked.length} client${checked.length !== 1 ? 's' : ''} selected` : '';
+}
+
+function toggleAll() {
+  const boxes = document.querySelectorAll('#clientChecklist input[type="checkbox"]');
+  allSelected = !allSelected;
+  boxes.forEach(cb => {
+    cb.checked = allSelected;
+    syncCheck(cb);
+  });
+  document.querySelector('.toggle-all-btn').textContent = allSelected ? 'Deselect all' : 'Select all';
+}
+</script>
+{% endblock %}

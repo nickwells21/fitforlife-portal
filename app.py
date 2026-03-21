@@ -1797,7 +1797,8 @@ class ProgramPhase(db.Model):
     weeks = db.Column(db.Integer, nullable=False)        # 2, 3, or 4
     name = db.Column(db.String(100))                     # e.g. "Foundation", "Intensification"
     program = db.relationship('Program', backref=db.backref('phases', lazy='dynamic',
-                              order_by='ProgramPhase.phase_num'))
+                              order_by='ProgramPhase.phase_num',
+                              cascade='all, delete-orphan'))
 
 
 class PhaseDay(db.Model):
@@ -1809,7 +1810,8 @@ class PhaseDay(db.Model):
     workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=True)
     label = db.Column(db.String(100))
     __table_args__ = (db.UniqueConstraint('phase_id', 'day_num', name='uq_phase_day'),)
-    phase = db.relationship('ProgramPhase', backref=db.backref('days', lazy='dynamic'))
+    phase = db.relationship('ProgramPhase', backref=db.backref('days', lazy='dynamic',
+                            cascade='all, delete-orphan'))
     workout = db.relationship('Workout')
 
 
@@ -1824,6 +1826,8 @@ class ProgressionOverride(db.Model):
     reps = db.Column(db.String(20))                     # "10", "8-12", "AMRAP"
     weight_note = db.Column(db.String(100))             # "65% 1RM", "RPE 8", "135 lbs"
     __table_args__ = (db.UniqueConstraint('phase_id', 'exercise_id', 'week_num', name='uq_progression'),)
+    phase = db.relationship('ProgramPhase', backref=db.backref('overrides', lazy='dynamic',
+                            cascade='all, delete-orphan'))
     phase = db.relationship('ProgramPhase')
     exercise = db.relationship('Exercise')
 
@@ -2371,6 +2375,74 @@ def program_assign(program_id):
     db.session.commit()
     flash(f'Program assigned to {assigned} client(s).', 'success')
     return redirect(url_for('program_detail', program_id=program_id))
+
+
+@app.route('/programs/manage-assignments', methods=['GET', 'POST'])
+@staff_required
+def program_manage_assignments():
+    from datetime import date as date_type
+    if current_user.role == 'admin':
+        all_clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+        all_programs = Program.query.order_by(Program.name).all()
+    else:
+        all_clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
+        all_programs = Program.query.filter_by(trainer_id=current_user.id).order_by(Program.name).all()
+
+    if request.method == 'POST':
+        program_id = request.form.get('program_id', '').strip()
+        start_raw = request.form.get('start_date', '').strip()
+        client_ids = request.form.getlist('client_ids')
+        if not program_id or not start_raw or not client_ids:
+            flash('Select a program, start date, and at least one client.', 'danger')
+        else:
+            prog = Program.query.get_or_404(int(program_id))
+            start_date = date_type.fromisoformat(start_raw)
+            if current_user.role != 'admin':
+                allowed = {str(c.id) for c in all_clients}
+                client_ids = [cid for cid in client_ids if cid in allowed]
+            assigned = 0
+            for cid in client_ids:
+                exists = ProgramAssignment.query.filter_by(
+                    program_id=prog.id, client_id=int(cid), start_date=start_date
+                ).first()
+                if not exists:
+                    db.session.add(ProgramAssignment(
+                        program_id=prog.id,
+                        client_id=int(cid),
+                        start_date=start_date,
+                        assigned_by_id=current_user.id,
+                    ))
+                    assigned += 1
+            db.session.commit()
+            flash(f'Assigned {prog.name} to {assigned} client(s) starting {start_date.strftime("%b %d, %Y")}.', 'success')
+        return redirect(url_for('program_manage_assignments'))
+
+    # Build per-client current assignment info
+    client_data = []
+    for c in all_clients:
+        active = ProgramAssignment.query.filter_by(client_id=c.id).order_by(
+            ProgramAssignment.start_date.desc()
+        ).first()
+        client_data.append({'client': c, 'assignment': active})
+
+    from datetime import date as date_type
+    return render_template('program_assignments.html',
+        client_data=client_data,
+        all_programs=all_programs,
+        today=date_type.today().isoformat(),
+    )
+
+
+@app.route('/programs/assignments/<int:pa_id>/remove', methods=['POST'])
+@staff_required
+def program_assignment_remove(pa_id):
+    pa = ProgramAssignment.query.get_or_404(pa_id)
+    if current_user.role != 'admin' and pa.assigned_by_id != current_user.id:
+        abort(403)
+    db.session.delete(pa)
+    db.session.commit()
+    flash('Assignment removed.', 'success')
+    return redirect(url_for('program_manage_assignments'))
 
 
 @app.route('/programs/<int:program_id>/delete', methods=['POST'])

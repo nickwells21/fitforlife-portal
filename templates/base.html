@@ -325,8 +325,13 @@
         </a>
       </li>
       <li>
-        <a href="{{ url_for('programs_list') }}" class="nav-link {% if request.endpoint and 'program' in request.endpoint %}active{% endif %}">
+        <a href="{{ url_for('programs_list') }}" class="nav-link {% if request.endpoint and 'program' in request.endpoint and request.endpoint != 'program_manage_assignments' %}active{% endif %}">
           <i class="bi bi-calendar2-week"></i><span class="nav-label"> Programs</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('program_manage_assignments') }}" class="nav-link {% if request.endpoint == 'program_manage_assignments' %}active{% endif %}">
+          <i class="bi bi-person-lines-fill"></i><span class="nav-label"> Assign Programs</span>
         </a>
       </li>
       <li>
