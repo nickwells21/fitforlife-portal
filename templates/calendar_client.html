@@ -823,12 +823,15 @@
       </button>
     </div>
 
-    <!-- Centre: show-all toggle -->
-    <button type="button" class="cal-show-toggle active" id="showAllToggle"
-            onclick="toggleShowAll()" aria-pressed="true">
-      <i class="bi bi-eye-fill" id="toggleIcon"></i>
-      <span id="toggleLabel">All Sessions</span>
-    </button>
+    <!-- Centre: session filter buttons -->
+    <div style="display:flex; gap:0.35rem;">
+      <button type="button" class="cal-show-toggle active" id="btnAllSessions" aria-pressed="true">
+        <i class="bi bi-eye-fill"></i> All Sessions
+      </button>
+      <button type="button" class="cal-show-toggle" id="btnMySessions" aria-pressed="false">
+        <i class="bi bi-person-fill"></i> My Sessions
+      </button>
+    </div>
 
     <!-- Right: month + year selects -->
     <div class="mcal-selects">
@@ -999,26 +1002,6 @@
   }
 
   /* ── Build session map ──────────────────────────────────────────────────── */
-
-  /* ── Toggle show-all / my sessions only ──────────────────────────────── */
-  function toggleShowAll() {
-    showAllSessions = !showAllSessions;
-    const btn   = document.getElementById('showAllToggle');
-    const icon  = document.getElementById('toggleIcon');
-    const label = document.getElementById('toggleLabel');
-    if (showAllSessions) {
-      btn.classList.add('active');
-      btn.setAttribute('aria-pressed', 'true');
-      icon.className  = 'bi bi-eye-fill';
-      label.textContent = 'All Sessions';
-    } else {
-      btn.classList.remove('active');
-      btn.setAttribute('aria-pressed', 'false');
-      icon.className  = 'bi bi-eye-slash';
-      label.textContent = 'My Sessions';
-    }
-    rebuildMap();
-  }
 
   function rebuildMap() {
     const visible = showAllSessions
@@ -1380,6 +1363,22 @@
   });
 
   /* ── Boot ───────────────────────────────────────────────────────────────── */
+
+  /* ── Session filter buttons ──────────────────────────────────────────── */
+  const btnAll  = document.getElementById('btnAllSessions');
+  const btnMine = document.getElementById('btnMySessions');
+
+  function setFilter(all) {
+    showAllSessions = all;
+    btnAll .classList.toggle('active', all);
+    btnMine.classList.toggle('active', !all);
+    btnAll .setAttribute('aria-pressed', String(all));
+    btnMine.setAttribute('aria-pressed', String(!all));
+    rebuildMap();
+  }
+
+  if (btnAll)  btnAll .addEventListener('click', function() { setFilter(true);  });
+  if (btnMine) btnMine.addEventListener('click', function() { setFilter(false); });
 
   populateYearSelect();
   syncToolbar();   // show label immediately (before fetch resolves)
