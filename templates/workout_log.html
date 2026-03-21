@@ -3,19 +3,38 @@
 
 {% block head %}
 <style>
+/* ── Exercise card ── */
 .ex-log-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1rem 1.1rem;
-  margin-bottom: 0.625rem;
+  border-radius: var(--radius-lg);
+  padding: 1.125rem 1.25rem;
+  margin-bottom: 0.875rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
 }
+
+@media (max-width: 640px) {
+  .ex-log-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  /* On mobile: video/cues first, then inputs below */
+  .ex-log-right { order: -1; }
+}
+
+/* ── Left column: name + prescription + inputs ── */
+.ex-log-left {}
+
 .ex-log-name {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
 }
+
 .ex-prescription {
   display: inline-flex;
   align-items: center;
@@ -27,19 +46,21 @@
   border: 1px solid rgba(124,58,237,0.2);
   border-radius: 999px;
   padding: 0.18rem 0.65rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.875rem;
 }
+
 .ex-prescription.default {
   color: var(--accent);
   background: var(--accent-dim);
   border-color: rgba(30,157,241,0.2);
 }
+
 .log-fields {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0.5rem;
 }
-@media (max-width: 480px) { .log-fields { grid-template-columns: 1fr 1fr; } }
+
 .log-field-wrap label {
   font-size: 10px;
   font-weight: 700;
@@ -49,23 +70,132 @@
   margin-bottom: 0.25rem;
   display: block;
 }
+
 .log-field-wrap input {
   background: var(--bg-surface);
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 0.87rem;
-  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 0.6rem;
   width: 100%;
   transition: border-color 0.15s;
   font-family: inherit;
+  text-align: center;
 }
+
 .log-field-wrap input:focus {
   outline: none;
   border-color: var(--accent);
   background: rgba(30,157,241,0.04);
 }
-.log-field-wrap input::placeholder { color: var(--text-faint); }
+
+.log-field-wrap input::placeholder {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* ── Right column: video + cues ── */
+.ex-log-right {}
+
+.ex-video-wrap {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-surface);
+  margin-bottom: 0.75rem;
+}
+
+.ex-video-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.ex-video-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ex-cues-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.ex-cues-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ex-cues-list li {
+  font-size: 12px;
+  color: var(--text-soft);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.4;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ex-cues-list li:last-child { border-bottom: none; }
+
+.ex-cue-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+/* ── Tags ── */
+.ex-tags {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.ex-tag-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.ex-tag-muscle {
+  background: rgba(124,58,237,0.1);
+  color: #a78bfa;
+  border: 1px solid rgba(124,58,237,0.2);
+}
+
+.ex-tag-pattern {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(30,157,241,0.2);
+}
+
+.ex-tag-equip {
+  background: rgba(245,158,11,0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,0.2);
+}
 </style>
 {% endblock %}
 
@@ -81,11 +211,11 @@
 
 <div class="page-header mb-1">
   <div class="page-title">{{ workout.name }}</div>
-  <div class="page-subtitle">Log your sets, reps, and weight for today</div>
+  <div class="page-subtitle">Log your sets, reps, and weight · Watch the demo video for each movement</div>
 </div>
 
 <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
-  Your trainer's prescribed sets and reps are shown in purple. Enter the weight you used for each exercise.
+  Purple = your trainer's prescription. Enter what you actually did.
 </p>
 
 <form method="POST">
@@ -96,50 +226,90 @@
   {% for we in workout_exercises %}
   {% set ex = we.exercise %}
   {% set ov = override_map.get(ex.id) %}
+  {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
+
   <div class="ex-log-card">
-    <div class="ex-log-name">{{ ex.name }}</div>
 
-    <!-- Prescription pill -->
-    {% if ov and (ov.sets or ov.reps or ov.weight_note) %}
-    <div class="ex-prescription">
-      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
-      {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
-    </div>
-    {% elif we.sets or we.reps %}
-    <div class="ex-prescription default">
-      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
-      {{ we.sets }}×{{ we.reps }}{% if we.rest_seconds %} · {{ we.rest_seconds }}s rest{% endif %}
-    </div>
-    {% endif %}
+    <!-- LEFT: name + prescription + set/rep/weight inputs -->
+    <div class="ex-log-left">
+      <div class="ex-log-name">{{ ex.name }}</div>
 
-    <!-- Log inputs -->
-    <div class="log-fields">
-      <div class="log-field-wrap">
-        <label>Sets done</label>
-        <input type="number" name="sets_{{ ex.id }}" min="0" max="20"
-               placeholder="{{ ov.sets if ov and ov.sets else we.sets }}">
+      <!-- Prescription pill -->
+      {% if ov and (ov.sets or ov.reps or ov.weight_note) %}
+      <div class="ex-prescription">
+        <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+        {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
       </div>
-      <div class="log-field-wrap">
-        <label>Reps done</label>
-        <input type="text" name="reps_{{ ex.id }}"
-               placeholder="{{ ov.reps if ov and ov.reps else we.reps }}">
+      {% elif we.sets or we.reps %}
+      <div class="ex-prescription default">
+        <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+        {{ we.sets }}×{{ we.reps }}{% if we.rest_seconds %} · {{ we.rest_seconds }}s rest{% endif %}
       </div>
-      <div class="log-field-wrap">
-        <label>Weight (lbs)</label>
-        <input type="number" name="weight_{{ ex.id }}" min="0" step="2.5"
-               placeholder="0">
-      </div>
-    </div>
-    {% if ex.muscle_group or ex.movement_pattern %}
-    <div style="margin-top:0.5rem; display:flex; gap:0.35rem; flex-wrap:wrap;">
-      {% if ex.muscle_group %}
-      <span style="font-size:10px; background:rgba(124,58,237,0.1); color:#a78bfa; border:1px solid rgba(124,58,237,0.2); border-radius:999px; padding:1px 8px; font-weight:600;">{{ ex.muscle_group }}</span>
       {% endif %}
-      {% if ex.movement_pattern %}
-      <span style="font-size:10px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(30,157,241,0.2); border-radius:999px; padding:1px 8px; font-weight:600;">{{ ex.movement_pattern }}</span>
+
+      <!-- Log inputs -->
+      <div class="log-fields">
+        <div class="log-field-wrap">
+          <label>Sets</label>
+          <input type="number" name="sets_{{ ex.id }}" min="0" max="20"
+                 placeholder="{{ ov.sets if ov and ov.sets else we.sets }}">
+        </div>
+        <div class="log-field-wrap">
+          <label>Reps</label>
+          <input type="text" name="reps_{{ ex.id }}"
+                 placeholder="{{ ov.reps if ov and ov.reps else we.reps }}">
+        </div>
+        <div class="log-field-wrap">
+          <label>Weight (lbs)</label>
+          <input type="number" name="weight_{{ ex.id }}" min="0" step="2.5"
+                 placeholder="0">
+        </div>
+      </div>
+
+      <!-- Tags -->
+      {% if ex.muscle_group or ex.category or ex.equipment %}
+      <div class="ex-tags">
+        {% if ex.muscle_group %}
+        <span class="ex-tag-pill ex-tag-muscle">{{ ex.muscle_group }}</span>
+        {% endif %}
+        {% if ex.category %}
+        <span class="ex-tag-pill ex-tag-pattern">{{ ex.category }}</span>
+        {% endif %}
+        {% if ex.equipment %}
+        <span class="ex-tag-pill ex-tag-equip">{{ ex.equipment }}</span>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
-    {% endif %}
+
+    <!-- RIGHT: video + cues -->
+    <div class="ex-log-right">
+      {% if yt_id %}
+      <div class="ex-video-wrap">
+        <iframe src="https://www.youtube.com/embed/{{ yt_id }}?rel=0&modestbranding=1"
+                title="{{ ex.name }} demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+      </div>
+      {% else %}
+      <div class="ex-video-placeholder">
+        <i class="bi bi-play-circle"></i>
+      </div>
+      {% endif %}
+
+      {% if ex.instructions %}
+      <div class="ex-cues-label">Coaching Cues</div>
+      <ul class="ex-cues-list">
+        {% for cue in ex.instructions.split(' | ') %}
+        <li>
+          <span class="ex-cue-num">{{ loop.index }}</span>
+          <span>{{ cue }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+
   </div>
   {% endfor %}
 

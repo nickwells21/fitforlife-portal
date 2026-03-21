@@ -2669,6 +2669,7 @@ def client_workout_log(workout_id):
         override_map=override_map,
         phase_id=phase_id,
         week_num=week_num,
+        extract_youtube_id=extract_youtube_id,
     )
 
 
