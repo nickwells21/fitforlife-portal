@@ -2336,6 +2336,19 @@ def program_assign(program_id):
     return redirect(url_for('program_detail', program_id=program_id))
 
 
+@app.route('/programs/<int:program_id>/delete', methods=['POST'])
+@staff_required
+def program_delete(program_id):
+    prog = Program.query.get_or_404(program_id)
+    if current_user.role != 'admin' and prog.trainer_id != current_user.id:
+        abort(403)
+    name = prog.name
+    db.session.delete(prog)
+    db.session.commit()
+    flash(f'Program "{name}" deleted.', 'success')
+    return redirect(url_for('programs_list'))
+
+
 @app.route('/my-workout/<int:workout_id>')
 @login_required
 def client_workout_view(workout_id):
