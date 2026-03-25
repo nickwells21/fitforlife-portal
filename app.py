@@ -16,14 +16,12 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# SECRET_KEY — REQUIRED in production
+# SECRET_KEY — use env var, fall back to a generated key with warning
 _secret_key = os.environ.get('SECRET_KEY')
 if not _secret_key:
-    if os.environ.get('FLASK_ENV') == 'development':
-        _secret_key = 'dev-only-insecure-key-not-for-production'
-        app.logger.warning('SECRET_KEY not set — using insecure dev key.')
-    else:
-        raise ValueError('SECRET_KEY environment variable is required. Generate one with: python -c "import secrets; print(secrets.token_hex(32))"')
+    import secrets as _secrets
+    _secret_key = _secrets.token_hex(32)
+    logging.warning('SECRET_KEY not set — generated a random key. Sessions will reset on restart. Set SECRET_KEY in environment for persistence.')
 app.config['SECRET_KEY'] = _secret_key
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///fitforlife.db')
@@ -262,9 +260,10 @@ def set_security_headers(response):
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
-        "font-src 'self' https://fonts.gstatic.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "
+        "frame-src https://www.youtube.com https://www.youtube-nocookie.com; "
         "connect-src 'self'"
     )
     return response
