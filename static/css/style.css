@@ -170,7 +170,7 @@ a:hover { color: var(--text); }
   border-radius: 7px;
   object-fit: cover;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 5px rgba(30,157,241,0.35));
+  filter: none;
 }
 
 .brand-name {
@@ -694,7 +694,7 @@ textarea.form-control {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--border-focus) !important;
-  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+  box-shadow: 0 0 0 2px rgba(30,157,241,0.15) !important;
   outline: none !important;
   background: var(--bg-elevated) !important;
   color: var(--text) !important;
@@ -726,8 +726,8 @@ textarea.form-control {
 
 .btn-primary:hover,
 .btn-ffl:hover {
-  opacity: 0.85 !important;
-  box-shadow: 0 0 0 3px var(--accent-glow) !important;
+  opacity: 0.88 !important;
+  box-shadow: none !important;
 }
 
 .btn-outline-secondary,
@@ -906,7 +906,7 @@ textarea.form-control {
   justify-content: center;
   background: var(--bg);
   background-image:
-    radial-gradient(ellipse 60% 50% at 50% -10%, rgba(30,157,241,0.18) 0%, transparent 100%);
+    radial-gradient(ellipse 60% 50% at 50% -10%, rgba(30,157,241,0.08) 0%, transparent 100%);
 }
 
 .login-box {
@@ -1122,7 +1122,7 @@ textarea.form-control {
 /* ── Animations & Keyframes ──────────────────────────────────────────────── */
 @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-@keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(30,157,241,0); } 50% { box-shadow: 0 0 20px 4px rgba(30,157,241,0.2); } }
+@keyframes pulseGlow { 0%,100% { box-shadow: none; } 50% { box-shadow: none; } }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes countUp { from { opacity:0; transform:scale(0.85); } to { opacity:1; transform:scale(1); } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -1133,7 +1133,7 @@ textarea.form-control {
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 .ffl-card:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(30,157,241,0.12);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .ffl-card.card-accent-left {
   border-left: 3px solid var(--accent) !important;
@@ -1154,8 +1154,6 @@ textarea.form-control {
 }
 .stat-card:hover {
   border-color: var(--border-mid);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
 .stat-icon {
   width: 48px;
@@ -1203,7 +1201,7 @@ textarea.form-control {
   background: currentColor;
 }
 .badge-status.scheduled { background: var(--accent-dim); color: var(--accent); }
-.badge-status.scheduled::before { animation: pulseGlow 1.5s ease infinite; }
+.badge-status.scheduled::before { }
 .badge-status.completed { background: var(--green-dim); color: var(--green); }
 .badge-status.missed    { background: var(--red-dim); color: var(--red); }
 .badge-status.cancelled { background: rgba(255,255,255,0.06); color: var(--text-muted); }
@@ -1272,9 +1270,8 @@ textarea.form-control {
   transition: all 0.15s ease;
 }
 .ffl-gallery-controls button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: scale(1.1);
+  border-color: var(--border-mid);
+  color: var(--text);
 }
 .ffl-gallery-controls button:disabled {
   opacity: 0.3;

@@ -223,10 +223,26 @@
   {% if phase_id %}<input type="hidden" name="phase_id" value="{{ phase_id }}">{% endif %}
   {% if week_num  %}<input type="hidden" name="week_num"  value="{{ week_num }}">{% endif %}
 
+  {% set ns = namespace(current_group=None) %}
   {% for we in workout_exercises %}
   {% set ex = we.exercise %}
   {% set ov = override_map.get(ex.id) %}
   {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
+
+  {# Group start label #}
+  {% if we.group_id and we.group_id != ns.current_group %}
+    {% if ns.current_group %}
+    </div>
+    {% endif %}
+    {% set ns.current_group = we.group_id %}
+    <div style="border-left:3px solid {% if we.group_type == 'circuit' %}#f59e0b{% else %}#a78bfa{% endif %};border-radius:4px;padding-left:0.625rem;margin-bottom:0.5rem;">
+    <div style="margin-bottom:0.5rem;padding:0.25rem 0;">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:3px;{% if we.group_type == 'circuit' %}background:rgba(245,158,11,0.12);color:#fbbf24;{% else %}background:rgba(167,139,250,0.12);color:#a78bfa;{% endif %}">{{ (we.group_type or 'superset') | upper }}</span>
+    </div>
+  {% elif not we.group_id and ns.current_group %}
+    </div>
+    {% set ns.current_group = None %}
+  {% endif %}
 
   <div class="ex-log-card">
 
@@ -312,6 +328,7 @@
 
   </div>
   {% endfor %}
+  {% if ns.current_group %}</div>{% endif %}
 
   {% if not workout_exercises %}
   <div class="ffl-card text-center py-4" style="color:var(--text-muted);">

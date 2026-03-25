@@ -524,6 +524,27 @@ setInterval(updateStaffMsgBadge, 30000);
 </script>
 {% endif %}
 
+<script>
+/* Global CSRF token injection for all fetch() POST/PUT/DELETE requests */
+(function() {
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  if (!csrfMeta) return;
+  const token = csrfMeta.getAttribute('content');
+  const _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    if (opts.method && ['POST','PUT','DELETE','PATCH'].includes(opts.method.toUpperCase())) {
+      opts.headers = opts.headers || {};
+      if (opts.headers instanceof Headers) {
+        if (!opts.headers.has('X-CSRFToken')) opts.headers.set('X-CSRFToken', token);
+      } else {
+        if (!opts.headers['X-CSRFToken']) opts.headers['X-CSRFToken'] = token;
+      }
+    }
+    return _origFetch.call(this, url, opts);
+  };
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,6 +1,41 @@
 {% extends 'base.html' %}
 {% block title %}{{ workout.name }} — Fit For Life{% endblock %}
 
+{% block head %}
+<style>
+.group-bracket {
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+  padding-left: 0;
+}
+.group-bracket.superset { border-left-color: #a78bfa; }
+.group-bracket.circuit  { border-left-color: #f59e0b; }
+.group-type-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: inline-block;
+  margin: 0.5rem 0 0.25rem 0.75rem;
+}
+.group-type-label.superset {
+  background: rgba(167,139,250,0.12);
+  color: #a78bfa;
+}
+.group-type-label.circuit {
+  background: rgba(245,158,11,0.12);
+  color: #fbbf24;
+}
+/* Remove bottom border on grouped rows except last */
+.group-bracket tr:not(:last-child) td {
+  border-bottom-color: rgba(255,255,255,0.03) !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
   <a href="{{ url_for('workouts_list') }}" class="btn btn-outline-secondary btn-sm">
@@ -66,23 +101,49 @@
         </tr>
       </thead>
       <tbody>
+        {% set ns = namespace(current_group=None, num=0) %}
         {% for we in ex_list %}
-        <tr>
-          <td style="color:var(--text-muted);">{{ loop.index }}</td>
-          <td>
-            <a href="{{ url_for('exercise_detail', ex_id=we.exercise.id) }}" style="color:var(--accent);text-decoration:none;font-weight:600;">
-              {{ we.exercise.name }}
-            </a>
-            {% if we.exercise.muscle_group %}
-            <span class="ms-1" style="font-size:10px;color:var(--text-muted);">{{ we.exercise.muscle_group }}</span>
+          {% set ns.num = ns.num + 1 %}
+
+          {# Start a new group bracket #}
+          {% if we.group_id and we.group_id != ns.current_group %}
+            {% if ns.current_group %}
+              </tbody></table></div>
             {% endif %}
-          </td>
-          <td>{{ we.sets }}</td>
-          <td>{{ we.reps }}</td>
-          <td>{{ we.rest_seconds }}s</td>
-          <td style="color:var(--text-muted);">{{ we.notes or '—' }}</td>
-        </tr>
+            {% set ns.current_group = we.group_id %}
+            <tr><td colspan="6" style="padding:0;border:none;">
+              <span class="group-type-label {{ we.group_type or 'superset' }}">{{ (we.group_type or 'superset') | upper }}</span>
+              <div class="group-bracket {{ we.group_type or 'superset' }}">
+                <table class="table table-dark table-hover mb-0" style="font-size:0.87rem;">
+                  <tbody>
+          {% elif not we.group_id and ns.current_group %}
+            </tbody></table></div>
+            </td></tr>
+            {% set ns.current_group = None %}
+          {% endif %}
+
+          <tr>
+            <td style="color:var(--text-muted);">{{ ns.num }}</td>
+            <td>
+              <a href="{{ url_for('exercise_detail', ex_id=we.exercise.id) }}" style="color:var(--accent);text-decoration:none;font-weight:600;">
+                {{ we.exercise.name }}
+              </a>
+              {% if we.exercise.muscle_group %}
+              <span class="ms-1" style="font-size:10px;color:var(--text-muted);">{{ we.exercise.muscle_group }}</span>
+              {% endif %}
+            </td>
+            <td>{{ we.sets }}</td>
+            <td>{{ we.reps }}</td>
+            <td>{{ we.rest_seconds }}s</td>
+            <td style="color:var(--text-muted);">{{ we.notes or '—' }}</td>
+          </tr>
         {% endfor %}
+
+        {# Close any open group #}
+        {% if ns.current_group %}
+          </tbody></table></div>
+          </td></tr>
+        {% endif %}
       </tbody>
     </table>
   </div>

@@ -1,5 +1,5 @@
 import os
-import warnings
+import logging
 from datetime import datetime, timedelta, timezone
 from calendar import month_name
 from functools import wraps
@@ -7,6 +7,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
@@ -14,9 +16,14 @@ load_dotenv()
 
 app = Flask(__name__)
 
-_secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
-if _secret_key == 'dev-secret-change-in-production':
-    warnings.warn('SECRET_KEY is not set — using insecure dev key. Set SECRET_KEY in environment!', stacklevel=1)
+# SECRET_KEY — REQUIRED in production
+_secret_key = os.environ.get('SECRET_KEY')
+if not _secret_key:
+    if os.environ.get('FLASK_ENV') == 'development':
+        _secret_key = 'dev-only-insecure-key-not-for-production'
+        app.logger.warning('SECRET_KEY not set — using insecure dev key.')
+    else:
+        raise ValueError('SECRET_KEY environment variable is required. Generate one with: python -c "import secrets; print(secrets.token_hex(32))"')
 app.config['SECRET_KEY'] = _secret_key
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///fitforlife.db')
@@ -28,14 +35,29 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 280,
 }
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'
-app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+
+# Secure session cookies — Secure=True in production, Strict SameSite always
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Rate limiting
+limiter = Limiter(app=app, key_func=get_remote_address, default_limits=["300 per hour"])
+
+# Audit logger
+audit_logger = logging.getLogger("ffl_portal_audit")
+audit_logger.setLevel(logging.INFO)
+_audit_handler = logging.StreamHandler()
+_audit_handler.setFormatter(logging.Formatter("%(asctime)s AUDIT %(message)s"))
+audit_logger.addHandler(_audit_handler)
+
+# Account lockout tracking (in-memory — resets on restart, which is acceptable)
+_failed_logins = {}  # {email: {'count': int, 'locked_until': datetime}}
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
@@ -225,6 +247,27 @@ def staff_required(f):
             abort(403)
         return f(*args, **kwargs)
     return decorated
+
+
+# ─── Security Headers ────────────────────────────────────────────────────────
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    if os.environ.get('FLASK_ENV') != 'development':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        "connect-src 'self'"
+    )
+    return response
 
 
 # ─── Template Context Processors ─────────────────────────────────────────────
@@ -431,17 +474,42 @@ def index():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
+
+        # Account lockout check
+        lockout = _failed_logins.get(email, {})
+        locked_until = lockout.get('locked_until')
+        if locked_until and datetime.now(timezone.utc) < locked_until:
+            remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
+            flash(f'Account temporarily locked. Try again in {remaining} minutes.', 'danger')
+            audit_logger.warning("LOGIN_LOCKED email=%s ip=%s", email, request.remote_addr)
+            return render_template('login.html')
+
         user = User.query.filter_by(email=email).first()
         if user and user.is_active and user.check_password(password):
+            # Reset failed attempts on success
+            _failed_logins.pop(email, None)
             login_user(user)
+            audit_logger.info("LOGIN_SUCCESS user_id=%s email=%s ip=%s", user.id, email, request.remote_addr)
             return redirect(url_for('dashboard'))
-        flash('Invalid email or password.', 'danger')
+
+        # Track failed attempts
+        if email not in _failed_logins:
+            _failed_logins[email] = {'count': 0, 'locked_until': None}
+        _failed_logins[email]['count'] += 1
+        if _failed_logins[email]['count'] >= 5:
+            _failed_logins[email]['locked_until'] = datetime.now(timezone.utc) + timedelta(minutes=15)
+            flash('Too many failed attempts. Account locked for 15 minutes.', 'danger')
+            audit_logger.warning("LOGIN_LOCKOUT email=%s ip=%s attempts=%s", email, request.remote_addr, _failed_logins[email]['count'])
+        else:
+            flash('Invalid email or password.', 'danger')
+            audit_logger.warning("LOGIN_FAILED email=%s ip=%s attempt=%s", email, request.remote_addr, _failed_logins[email]['count'])
     return render_template('login.html')
 
 
@@ -749,6 +817,8 @@ def api_sessions():
             seen_group_slots[key] = len(events)
             group_name = s.training_group.name if s.training_group else 'Group'
             trainer_name = s.trainer.name if s.trainer else 'Trainer'
+            # Only expose notes to staff, not other clients
+            _notes = (s.notes or '') if (current_user.role != 'client' or is_mine) else ''
             events.append({
                 'id': s.id,
                 'title': f'{trainer_name} + {group_name}',
@@ -762,7 +832,7 @@ def api_sessions():
                     'trainer_id': s.trainer_id,
                     'client': group_name,
                     'status': s.status,
-                    'notes': s.notes or '',
+                    'notes': _notes,
                     'session_id': s.id,
                     'group_id': s.group_id,
                     'group_name': group_name,
@@ -772,6 +842,8 @@ def api_sessions():
         else:
             _trainer = s.trainer.name if s.trainer else 'Trainer'
             _client = s.client.name if s.client else 'Client'
+            # Only expose notes to staff, not other clients
+            _notes = (s.notes or '') if (current_user.role != 'client' or is_mine) else ''
             events.append({
                 'id': s.id,
                 'title': f'{_trainer} + {_client}',
@@ -785,7 +857,7 @@ def api_sessions():
                     'trainer_id': s.trainer_id,
                     'client': _client,
                     'status': s.status,
-                    'notes': s.notes or '',
+                    'notes': _notes,
                     'session_id': s.id,
                     'group_id': s.group_id,
                     'group_name': None,
@@ -797,7 +869,6 @@ def api_sessions():
 
 @app.route('/api/check-conflict', methods=['POST'])
 @login_required
-@csrf.exempt
 def api_check_conflict():
     data = request.json
     trainer_id = int(data['trainer_id'])
@@ -1075,7 +1146,6 @@ def update_session_status(session_id):
 
 @app.route('/sessions/complete-week', methods=['POST'])
 @staff_required
-@csrf.exempt
 def complete_week():
     """Mark all scheduled sessions in a given Mon-Sun week as completed."""
     data = request.get_json() or {}
@@ -1487,9 +1557,19 @@ def admin_new_package():
         flash('Select at least one client.', 'danger')
         return redirect(url_for('admin_packages'))
 
-    month = int(request.form['month'])
-    year = int(request.form['year'])
-    sessions_purchased = int(request.form['sessions_purchased'])
+    try:
+        month = int(request.form['month'])
+        year = int(request.form['year'])
+        sessions_purchased = int(request.form['sessions_purchased'])
+    except (ValueError, KeyError):
+        flash('Invalid form data.', 'danger')
+        return redirect(url_for('admin_packages'))
+    if not (1 <= month <= 12) or not (2020 <= year <= 2100):
+        flash('Invalid month or year.', 'danger')
+        return redirect(url_for('admin_packages'))
+    if not (1 <= sessions_purchased <= 100):
+        flash('Sessions purchased must be between 1 and 100.', 'danger')
+        return redirect(url_for('admin_packages'))
     notes = request.form.get('notes', '').strip()
     raw_plan = request.form.get('plan_id', '').strip()
     plan_id = int(raw_plan) if raw_plan else None
@@ -1802,7 +1882,6 @@ def api_get_conversation(user_id):
 
 @app.route('/api/messages/send', methods=['POST'])
 @login_required
-@csrf.exempt
 def api_send_message():
     data = request.get_json()
     recipient_id = data.get('recipient_id')
@@ -1920,6 +1999,8 @@ class WorkoutExercise(db.Model):
     reps = db.Column(db.String(20), default='10')
     rest_seconds = db.Column(db.Integer, default=60)
     notes = db.Column(db.String(200))
+    group_id = db.Column(db.Integer, nullable=True)
+    group_type = db.Column(db.String(20), nullable=True)
     exercise = db.relationship('Exercise')
 
 
@@ -2160,9 +2241,13 @@ def workout_new():
         reps_list = request.form.getlist('reps[]')
         rest_list = request.form.getlist('rest[]')
         notes_list = request.form.getlist('notes_ex[]')
+        group_ids = request.form.getlist('group_id[]')
+        group_types = request.form.getlist('group_type[]')
         for i, eid in enumerate(ex_ids):
             if not eid:
                 continue
+            gid = group_ids[i] if i < len(group_ids) and group_ids[i] else None
+            gtype = group_types[i] if i < len(group_types) and group_types[i] else None
             we = WorkoutExercise(
                 workout_id=workout.id,
                 exercise_id=int(eid),
@@ -2171,6 +2256,8 @@ def workout_new():
                 reps=reps_list[i] if i < len(reps_list) and reps_list[i] else '10',
                 rest_seconds=int(rest_list[i]) if i < len(rest_list) and rest_list[i] else 60,
                 notes=notes_list[i] if i < len(notes_list) and notes_list[i] else None,
+                group_id=int(gid) if gid else None,
+                group_type=gtype if gtype else None,
             )
             db.session.add(we)
         db.session.commit()
@@ -2210,9 +2297,13 @@ def workout_edit(workout_id):
         reps_list = request.form.getlist('reps[]')
         rest_list = request.form.getlist('rest[]')
         notes_list = request.form.getlist('notes_ex[]')
+        group_ids = request.form.getlist('group_id[]')
+        group_types = request.form.getlist('group_type[]')
         for i, eid in enumerate(ex_ids):
             if not eid:
                 continue
+            gid = group_ids[i] if i < len(group_ids) and group_ids[i] else None
+            gtype = group_types[i] if i < len(group_types) and group_types[i] else None
             we = WorkoutExercise(
                 workout_id=workout.id,
                 exercise_id=int(eid),
@@ -2221,6 +2312,8 @@ def workout_edit(workout_id):
                 reps=reps_list[i] if i < len(reps_list) and reps_list[i] else '10',
                 rest_seconds=int(rest_list[i]) if i < len(rest_list) and rest_list[i] else 60,
                 notes=notes_list[i] if i < len(notes_list) and notes_list[i] else None,
+                group_id=int(gid) if gid else None,
+                group_type=gtype if gtype else None,
             )
             db.session.add(we)
         db.session.commit()
@@ -2343,7 +2436,6 @@ def program_phase_builder(program_id):
 
 @app.route('/api/workouts/inline', methods=['POST'])
 @staff_required
-@csrf.exempt
 def api_workout_inline():
     """Create a workout inline from the phase builder. Returns {ok, workout:{id,name}}."""
     data = request.get_json()
@@ -2376,7 +2468,6 @@ def api_workout_inline():
 
 @app.route('/programs/<int:program_id>/day', methods=['POST'])
 @staff_required
-@csrf.exempt
 def program_set_day(program_id):
     prog = Program.query.get_or_404(program_id)
     if current_user.role != 'admin' and prog.trainer_id != current_user.id:
@@ -2402,7 +2493,6 @@ def program_set_day(program_id):
 
 @app.route('/programs/<int:program_id>/phase/<int:phase_id>/day', methods=['POST'])
 @staff_required
-@csrf.exempt
 def phase_set_day(program_id, phase_id):
     prog = Program.query.get_or_404(program_id)
     if current_user.role != 'admin' and prog.trainer_id != current_user.id:
@@ -2909,7 +2999,6 @@ def staff_progress(client_id):
 
 @app.route('/checkin', methods=['POST'])
 @login_required
-@csrf.exempt
 def workout_checkin():
     if current_user.role != 'client':
         return jsonify({'ok': False, 'error': 'Clients only'}), 403
@@ -3030,6 +3119,8 @@ def init_db():
         for col, ddl in [
             ('plan_id',  'ALTER TABLE session_packages ADD COLUMN plan_id INTEGER REFERENCES membership_plans(id)'),
             ('is_crew',  'ALTER TABLE session_packages ADD COLUMN is_crew BOOLEAN NOT NULL DEFAULT FALSE'),
+            ('group_id', 'ALTER TABLE workout_exercises ADD COLUMN group_id INTEGER'),
+            ('group_type', 'ALTER TABLE workout_exercises ADD COLUMN group_type VARCHAR(20)'),
         ]:
             try:
                 conn.execute(db.text(ddl))
@@ -3043,28 +3134,33 @@ def init_db():
         ])
         db.session.commit()
         print('Locations seeded.')
+    # Admin seeding — uses INITIAL_ADMIN_PASSWORD env var (no hardcoded passwords)
+    initial_pw = os.environ.get('INITIAL_ADMIN_PASSWORD')
     admin = User.query.filter_by(email='nick@fitforlife.com').first()
     if not admin:
-        admin = User(name='Nick Wells', email='nick@fitforlife.com', role='admin')
-        admin.set_password('Wells2026')
-        db.session.add(admin)
-        db.session.commit()
-        print('Admin created: nick@fitforlife.com / Wells2026')
+        if not initial_pw:
+            print('WARNING: Set INITIAL_ADMIN_PASSWORD env var to create admin accounts on first run.')
+        else:
+            admin = User(name='Nick Wells', email='nick@fitforlife.com', role='admin')
+            admin.set_password(initial_pw)
+            db.session.add(admin)
+            db.session.commit()
+            print('Admin created: nick@fitforlife.com (password from INITIAL_ADMIN_PASSWORD env var)')
     elif admin.role != 'admin':
         admin.role = 'admin'
         db.session.commit()
-    for full_name, email, password in [
-        ('Carrie Cox',   'carrie@fitforlife.com', 'Cox2026'),
-        ('Marie Berry',  'marie@fitforlife.com',  'Berry2026'),
+    for full_name, email in [
+        ('Carrie Cox',   'carrie@fitforlife.com'),
+        ('Marie Berry',  'marie@fitforlife.com'),
     ]:
         u = User.query.filter_by(email=email).first()
-        if not u:
+        if not u and initial_pw:
             u = User(name=full_name, email=email, role='admin')
-            u.set_password(password)
+            u.set_password(initial_pw)
             db.session.add(u)
             db.session.commit()
-            print(f'Admin created: {email}')
-        elif u.role != 'admin':
+            print(f'Admin created: {email} (change password after first login)')
+        elif u and u.role != 'admin':
             u.role = 'admin'
             db.session.commit()
     # Client accounts are managed exclusively through the admin UI (/admin/users/new).
@@ -3125,4 +3221,4 @@ with app.app_context():
     init_db()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=os.environ.get('FLASK_ENV') == 'development', port=5001)

@@ -8,19 +8,30 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.35rem;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  cursor: default;
+  transition: border-color 0.12s, background 0.12s;
+  position: relative;
+}
+.exercise-row.selected {
+  border-color: var(--accent);
+  background: rgba(30,157,241,0.06);
+}
+.exercise-row.drag-over {
+  border-color: var(--accent);
+  border-style: dashed;
 }
 .exercise-row .ex-name-label {
   font-weight: 600;
   font-size: 0.87rem;
-  min-width: 150px;
+  min-width: 120px;
   flex: 1;
-  padding-top: 0.3rem;
+  padding-top: 0.2rem;
 }
 .exercise-row input[type="number"],
 .exercise-row input[type="text"] {
@@ -28,12 +39,120 @@
   font-size: 0.82rem;
   padding: 0.3rem 0.5rem;
 }
-.exercise-row .notes-field { width: 160px; }
+.exercise-row .notes-field { width: 140px; }
 .field-label {
   font-size: 10px;
   color: var(--text-muted);
   margin-bottom: 2px;
   text-align: center;
+}
+
+/* ── Drag handle ───────────────────────────────────────────────────────── */
+.drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  font-size: 14px;
+  padding: 0.2rem;
+  flex-shrink: 0;
+  user-select: none;
+  transition: color 0.12s;
+}
+.drag-handle:hover { color: var(--text-soft); }
+.drag-handle:active { cursor: grabbing; }
+
+/* ── Checkbox ──────────────────────────────────────────────────────────── */
+.ex-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Group wrapper (superset / circuit) ────────────────────────────────── */
+.exercise-group {
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  position: relative;
+}
+.exercise-group.superset { border-left-color: #a78bfa; }
+.exercise-group.circuit  { border-left-color: #f59e0b; }
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.group-label.superset {
+  background: rgba(167,139,250,0.12);
+  color: #a78bfa;
+}
+.group-label.circuit {
+  background: rgba(245,158,11,0.12);
+  color: #fbbf24;
+}
+.group-ungroup-btn {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.group-ungroup-btn:hover { color: var(--text); border-color: var(--border-mid); }
+
+/* ── Group action bar ──────────────────────────────────────────────────── */
+#groupActions {
+  display: none;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+#groupActions.visible { display: flex; }
+.group-action-btn {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.group-action-btn.superset {
+  background: rgba(167,139,250,0.1);
+  border-color: rgba(167,139,250,0.3);
+  color: #a78bfa;
+}
+.group-action-btn.superset:hover { background: rgba(167,139,250,0.2); }
+.group-action-btn.circuit {
+  background: rgba(245,158,11,0.1);
+  border-color: rgba(245,158,11,0.3);
+  color: #fbbf24;
+}
+.group-action-btn.circuit:hover { background: rgba(245,158,11,0.2); }
+#selectedCount {
+  font-size: 11px;
+  color: var(--text-soft);
+  font-weight: 600;
 }
 
 /* ── Filter pills ───────────────────────────────────────────────────────── */
@@ -150,6 +269,10 @@
   width: 100%;
 }
 #ex-search-input:focus { border-color: var(--accent); }
+
+/* Exercises inside a group get tighter spacing */
+.exercise-group .exercise-row { margin-bottom: 0.25rem; }
+.exercise-group .exercise-row:last-child { margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -183,32 +306,66 @@
 
   <!-- Selected exercise list -->
   <div class="ffl-card mb-3">
-    <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
-      Workout Exercises <span id="exCount" style="color:var(--text-faint);font-weight:400;"></span>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div class="fw-600" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+        Workout Exercises <span id="exCount" style="color:var(--text-faint);font-weight:400;"></span>
+      </div>
     </div>
+
+    <!-- Group action bar (appears when exercises are checked) -->
+    <div id="groupActions">
+      <span id="selectedCount">0 selected</span>
+      <button type="button" class="group-action-btn superset" onclick="groupSelected('superset')">Superset</button>
+      <button type="button" class="group-action-btn circuit" onclick="groupSelected('circuit')">Circuit</button>
+    </div>
+
     <div id="exerciseList">
       {% if workout %}
-      {% for we in workout.exercises.all() %}
-      <div class="exercise-row" data-index="{{ loop.index0 }}" data-ex-id="{{ we.exercise.id }}">
-        <input type="hidden" name="exercise_id[]" value="{{ we.exercise.id }}">
-        <div class="ex-name-label">{{ we.exercise.name }}</div>
-        <div><div class="field-label">Sets</div>
-          <input type="number" name="sets[]" value="{{ we.sets }}" min="1" max="99" class="form-control form-control-sm">
-        </div>
-        <div><div class="field-label">Reps</div>
-          <input type="text" name="reps[]" value="{{ we.reps }}" class="form-control form-control-sm" placeholder="10">
-        </div>
-        <div><div class="field-label">Rest (s)</div>
-          <input type="number" name="rest[]" value="{{ we.rest_seconds }}" min="0" max="600" class="form-control form-control-sm">
-        </div>
-        <div class="flex-grow-1"><div class="field-label">Notes</div>
-          <input type="text" name="notes_ex[]" value="{{ we.notes or '' }}" class="form-control form-control-sm notes-field" placeholder="optional">
-        </div>
-        <button type="button" class="btn btn-outline-danger btn-sm" style="padding:0.25rem 0.5rem;" onclick="removeExercise(this)">
-          <i class="bi bi-x"></i>
-        </button>
-      </div>
-      {% endfor %}
+        {# Build groups from existing data #}
+        {% set ns = namespace(current_group=None) %}
+        {% for we in workout.exercises.all() %}
+          {% if we.group_id and we.group_id != ns.current_group %}
+            {% if ns.current_group %}
+              </div></div>
+            {% endif %}
+            {% set ns.current_group = we.group_id %}
+            <div class="exercise-group {{ we.group_type or 'superset' }}" data-group-id="{{ we.group_id }}" data-group-type="{{ we.group_type or 'superset' }}">
+              <div class="group-header">
+                <span class="group-label {{ we.group_type or 'superset' }}">{{ (we.group_type or 'superset') | upper }}</span>
+                <button type="button" class="group-ungroup-btn" onclick="ungroupExercises(this)">Ungroup</button>
+              </div>
+              <div class="group-exercises">
+          {% elif not we.group_id and ns.current_group %}
+            </div></div>
+            {% set ns.current_group = None %}
+          {% endif %}
+          <div class="exercise-row" data-ex-id="{{ we.exercise.id }}" draggable="true">
+            <i class="bi bi-grip-vertical drag-handle"></i>
+            <input type="checkbox" class="ex-check" onchange="syncGroupActions()">
+            <input type="hidden" name="exercise_id[]" value="{{ we.exercise.id }}">
+            <input type="hidden" name="group_id[]" value="{{ we.group_id or '' }}">
+            <input type="hidden" name="group_type[]" value="{{ we.group_type or '' }}">
+            <div class="ex-name-label">{{ we.exercise.name }}</div>
+            <div><div class="field-label">Sets</div>
+              <input type="number" name="sets[]" value="{{ we.sets }}" min="1" max="99" class="form-control form-control-sm">
+            </div>
+            <div><div class="field-label">Reps</div>
+              <input type="text" name="reps[]" value="{{ we.reps }}" class="form-control form-control-sm" placeholder="10">
+            </div>
+            <div><div class="field-label">Rest (s)</div>
+              <input type="number" name="rest[]" value="{{ we.rest_seconds }}" min="0" max="600" class="form-control form-control-sm">
+            </div>
+            <div class="flex-grow-1"><div class="field-label">Notes</div>
+              <input type="text" name="notes_ex[]" value="{{ we.notes or '' }}" class="form-control form-control-sm notes-field" placeholder="optional">
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm" style="padding:0.25rem 0.5rem;" onclick="removeExercise(this)">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+        {% endfor %}
+        {% if ns.current_group %}
+          </div></div>
+        {% endif %}
       {% endif %}
     </div>
     <div id="exListEmpty" style="color:var(--text-faint);font-size:0.83rem;padding:0.5rem 0;{% if workout and workout.exercises.count() %}display:none;{% endif %}">
@@ -275,8 +432,7 @@ const ALL_EXERCISES = [
     muscle: {{ (ex.muscle_group or '') | tojson }},
     category: {{ (ex.category or '') | tojson }},
     pattern: {{ (ex.category or '') | tojson }},
-    equip: {{ (ex.equipment or '') | tojson }},
-    muscle: {{ (ex.muscle_group or '') | tojson }}
+    equip: {{ (ex.equipment or '') | tojson }}
   }{{ ',' if not loop.last }}
   {% endfor %}
 ];
@@ -286,12 +442,218 @@ const exLibrary    = document.getElementById('exLibrary');
 const exListEmpty  = document.getElementById('exListEmpty');
 const exCount      = document.getElementById('exCount');
 const searchInput  = document.getElementById('ex-search-input');
+const groupActions = document.getElementById('groupActions');
+const selectedCountEl = document.getElementById('selectedCount');
 
 let activePattern = '';
 let activeEquip   = '';
 let activeMuscle  = '';
+let nextGroupId   = 1;
 
-/* ── Track which exercises are already in the workout ─────────────────── */
+/* Initialize nextGroupId from existing groups */
+exerciseList.querySelectorAll('.exercise-group').forEach(g => {
+  const gid = parseInt(g.dataset.groupId) || 0;
+  if (gid >= nextGroupId) nextGroupId = gid + 1;
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DRAG AND DROP REORDERING
+   ══════════════════════════════════════════════════════════════════════════ */
+let dragEl = null;
+
+function initDragOnRow(row) {
+  row.setAttribute('draggable', 'true');
+
+  row.addEventListener('dragstart', (e) => {
+    dragEl = row;
+    row.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  });
+
+  row.addEventListener('dragend', () => {
+    row.style.opacity = '1';
+    exerciseList.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragEl = null;
+  });
+
+  row.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    row.classList.add('drag-over');
+  });
+
+  row.addEventListener('dragleave', () => {
+    row.classList.remove('drag-over');
+  });
+
+  row.addEventListener('drop', (e) => {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    if (!dragEl || dragEl === row) return;
+
+    /* Determine the container and position */
+    const dragParent = dragEl.parentElement;
+    const dropParent = row.parentElement;
+
+    /* If dropping onto a row, insert before or after based on position */
+    const rect = row.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const insertBefore = e.clientY < midY;
+
+    /* Remove from old position */
+    dragEl.remove();
+
+    /* Insert at new position */
+    if (insertBefore) {
+      dropParent.insertBefore(dragEl, row);
+    } else {
+      dropParent.insertBefore(dragEl, row.nextSibling);
+    }
+
+    /* If dragged between a group and the main list, update group_id/group_type */
+    updateGroupInputs();
+  });
+}
+
+/* Also allow dropping on group wrappers and the main list */
+exerciseList.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+});
+
+exerciseList.addEventListener('drop', (e) => {
+  if (e.target === exerciseList && dragEl) {
+    e.preventDefault();
+    dragEl.remove();
+    exerciseList.appendChild(dragEl);
+    updateGroupInputs();
+  }
+});
+
+/* Initialize drag on existing rows */
+exerciseList.querySelectorAll('.exercise-row').forEach(initDragOnRow);
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHECKBOX SELECTION + GROUP ACTIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+function getCheckedRows() {
+  return [...exerciseList.querySelectorAll('.ex-check:checked')].map(cb => cb.closest('.exercise-row'));
+}
+
+function syncGroupActions() {
+  const checked = getCheckedRows();
+  const count = checked.length;
+  if (count >= 2) {
+    groupActions.classList.add('visible');
+    selectedCountEl.textContent = count + ' selected';
+  } else {
+    groupActions.classList.remove('visible');
+  }
+  /* Toggle visual highlight */
+  exerciseList.querySelectorAll('.exercise-row').forEach(row => {
+    const cb = row.querySelector('.ex-check');
+    row.classList.toggle('selected', cb && cb.checked);
+  });
+}
+
+function groupSelected(type) {
+  const rows = getCheckedRows();
+  if (rows.length < 2) return;
+
+  /* If any selected rows are already in a group, pull them out first */
+  rows.forEach(row => {
+    const parent = row.parentElement;
+    if (parent.classList && parent.classList.contains('group-exercises')) {
+      const groupEl = parent.parentElement;
+      groupEl.parentElement.insertBefore(row, groupEl);
+      cleanEmptyGroups();
+    }
+  });
+
+  const gid = nextGroupId++;
+
+  /* Create group wrapper */
+  const groupDiv = document.createElement('div');
+  groupDiv.className = `exercise-group ${type}`;
+  groupDiv.dataset.groupId = gid;
+  groupDiv.dataset.groupType = type;
+
+  const header = document.createElement('div');
+  header.className = 'group-header';
+  header.innerHTML = `
+    <span class="group-label ${type}">${type.toUpperCase()}</span>
+    <button type="button" class="group-ungroup-btn" onclick="ungroupExercises(this)">Ungroup</button>
+  `;
+
+  const exContainer = document.createElement('div');
+  exContainer.className = 'group-exercises';
+
+  groupDiv.appendChild(header);
+  groupDiv.appendChild(exContainer);
+
+  /* Insert group wrapper where the first selected row was */
+  rows[0].parentElement.insertBefore(groupDiv, rows[0]);
+
+  /* Move rows into the group */
+  rows.forEach(row => {
+    exContainer.appendChild(row);
+    row.querySelector('.ex-check').checked = false;
+    row.classList.remove('selected');
+  });
+
+  updateGroupInputs();
+  syncGroupActions();
+}
+
+function ungroupExercises(btn) {
+  const groupDiv = btn.closest('.exercise-group');
+  const rows = [...groupDiv.querySelectorAll('.exercise-row')];
+
+  /* Move rows back to main list, inserting where group was */
+  rows.forEach(row => {
+    groupDiv.parentElement.insertBefore(row, groupDiv);
+  });
+
+  groupDiv.remove();
+  updateGroupInputs();
+}
+
+function cleanEmptyGroups() {
+  exerciseList.querySelectorAll('.exercise-group').forEach(g => {
+    if (g.querySelectorAll('.exercise-row').length === 0) {
+      g.remove();
+    } else if (g.querySelectorAll('.exercise-row').length === 1) {
+      /* Ungroup single-exercise groups */
+      const row = g.querySelector('.exercise-row');
+      g.parentElement.insertBefore(row, g);
+      g.remove();
+    }
+  });
+  updateGroupInputs();
+}
+
+/* Update hidden group_id and group_type inputs for all rows */
+function updateGroupInputs() {
+  exerciseList.querySelectorAll('.exercise-row').forEach(row => {
+    const groupDiv = row.closest('.exercise-group');
+    const gidInput = row.querySelector('input[name="group_id[]"]');
+    const gtypeInput = row.querySelector('input[name="group_type[]"]');
+    if (groupDiv) {
+      gidInput.value = groupDiv.dataset.groupId;
+      gtypeInput.value = groupDiv.dataset.groupType;
+    } else {
+      gidInput.value = '';
+      gtypeInput.value = '';
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CORE EXERCISE LIST FUNCTIONS
+   ══════════════════════════════════════════════════════════════════════════ */
+
 function getAddedIds() {
   return new Set(
     [...exerciseList.querySelectorAll('input[name="exercise_id[]"]')]
@@ -299,27 +661,31 @@ function getAddedIds() {
   );
 }
 
-/* ── Update the empty-state label and count ────────────────────────────── */
 function syncListMeta() {
   const rows = exerciseList.querySelectorAll('.exercise-row');
   exListEmpty.style.display = rows.length ? 'none' : 'block';
   exCount.textContent = rows.length ? `(${rows.length})` : '';
 }
 
-/* ── Remove an exercise row ────────────────────────────────────────────── */
 function removeExercise(btn) {
-  btn.closest('.exercise-row').remove();
+  const row = btn.closest('.exercise-row');
+  row.remove();
+  cleanEmptyGroups();
   syncListMeta();
-  renderLibrary(); // refresh card states
+  renderLibrary();
 }
 
-/* ── Add an exercise row ───────────────────────────────────────────────── */
 function addExercise(ex) {
   const row = document.createElement('div');
   row.className = 'exercise-row';
   row.dataset.exId = ex.id;
+  row.setAttribute('draggable', 'true');
   row.innerHTML = `
+    <i class="bi bi-grip-vertical drag-handle"></i>
+    <input type="checkbox" class="ex-check" onchange="syncGroupActions()">
     <input type="hidden" name="exercise_id[]" value="${ex.id}">
+    <input type="hidden" name="group_id[]" value="">
+    <input type="hidden" name="group_type[]" value="">
     <div class="ex-name-label">${ex.name}</div>
     <div><div class="field-label">Sets</div>
       <input type="number" name="sets[]" value="3" min="1" max="99" class="form-control form-control-sm">
@@ -338,13 +704,17 @@ function addExercise(ex) {
     </button>
   `;
   exerciseList.appendChild(row);
+  initDragOnRow(row);
   syncListMeta();
-  renderLibrary(); // refresh check marks
+  renderLibrary();
 }
 
-/* ── Build and render the library grid ─────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   EXERCISE LIBRARY
+   ══════════════════════════════════════════════════════════════════════════ */
+
 function renderLibrary() {
-  const q       = searchInput.value.toLowerCase().trim();
+  const q = searchInput.value.toLowerCase().trim();
   const addedIds = getAddedIds();
 
   const filtered = ALL_EXERCISES.filter(ex => {
@@ -383,9 +753,8 @@ function renderLibrary() {
       const exId = parseInt(card.dataset.id);
       const added = getAddedIds().has(exId);
       if (added) {
-        // clicking again removes it
         const row = exerciseList.querySelector(`[data-ex-id="${exId}"]`);
-        if (row) { row.remove(); syncListMeta(); renderLibrary(); }
+        if (row) { row.remove(); cleanEmptyGroups(); syncListMeta(); renderLibrary(); }
       } else {
         const ex = ALL_EXERCISES.find(e => e.id === exId);
         if (ex) addExercise(ex);
@@ -399,21 +768,24 @@ document.querySelectorAll('.fp').forEach(pill => {
   pill.addEventListener('click', () => {
     const filterType = pill.dataset.filter;
     const val = pill.dataset.value;
-
-    // deactivate siblings, activate this
     document.querySelectorAll(`.fp[data-filter="${filterType}"]`).forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
-
     if (filterType === 'muscle')  activeMuscle  = val;
     else if (filterType === 'pattern') activePattern = val;
     else                          activeEquip   = val;
-
     renderLibrary();
   });
 });
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
 searchInput.addEventListener('input', renderLibrary);
+
+/* ── Form submission: flatten group structure into ordered hidden inputs ── */
+document.getElementById('workoutForm').addEventListener('submit', () => {
+  /* The hidden inputs are already in DOM order (groups included),
+     which matches the visual order. Nothing extra needed. */
+  updateGroupInputs();
+});
 
 /* ── Init ───────────────────────────────────────────────────────────────── */
 syncListMeta();
