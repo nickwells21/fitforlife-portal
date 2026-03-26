@@ -404,11 +404,13 @@
 {% if not view_only %}
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
-// Workout Flow Controller — one exercise at a time, all sets visible as rows
+// Workout Flow Controller — movements (single or grouped superset/circuit)
 // ══════════════════════════════════════════════════════════════════════════════
 const WF = (() => {
   const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const exercises = [
+
+  // Raw exercise data from Jinja
+  const allExercises = [
     {% for we in workout_exercises %}
     {% set ex = we.exercise %}
     {% set ov = override_map.get(ex.id) %}
@@ -423,14 +425,32 @@ const WF = (() => {
       isTimed: {{ 'true' if ex.is_timed else 'false' }},
       youtubeId: {{ yt_id | tojson if yt_id else 'null' }},
       cues: {{ (ex.instructions or '') | tojson }},
+      groupId: {{ we.group_id | tojson if we.group_id else 'null' }},
+      groupType: {{ (we.group_type or 'superset') | tojson if we.group_id else 'null' }},
     },
     {% endfor %}
   ];
 
-  let exIdx = 0;
+  // Build movements: group exercises by group_id, singles stay alone
+  // Each movement = { exercises: [...], groupType: null|'superset'|'circuit' }
+  const movements = [];
+  const groupMap = {};
+  allExercises.forEach(ex => {
+    if (ex.groupId) {
+      if (!groupMap[ex.groupId]) {
+        groupMap[ex.groupId] = { exercises: [], groupType: ex.groupType };
+        movements.push(groupMap[ex.groupId]);
+      }
+      groupMap[ex.groupId].exercises.push(ex);
+    } else {
+      movements.push({ exercises: [ex], groupType: null });
+    }
+  });
+
+  let movIdx = 0;
   let warmupDone = 0;
   const warmupTotal = 4;
-  const logData = {}; // {exerciseId: {sets, reps (comma-sep), weight (max), dur_min, dur_sec, time_min, time_sec}}
+  const logData = {};
 
   function show(id) {
     ['screen-checkin','screen-warmup','screen-workout','screen-complete'].forEach(s =>
@@ -468,131 +488,165 @@ const WF = (() => {
 
   function startWorkout() {
     if (warmupDone < warmupTotal) return;
-    exIdx = 0;
-    renderExercise();
+    movIdx = 0;
+    renderMovement();
     show('screen-workout');
   }
 
-  function renderExercise() {
-    const ex = exercises[exIdx];
-    const pct = Math.round(exIdx / exercises.length * 100);
+  // ── Render one movement (single exercise OR grouped superset/circuit) ──
+  function renderMovement() {
+    const mov = movements[movIdx];
+    const isGroup = mov.exercises.length > 1;
+    const pct = Math.round(movIdx / movements.length * 100);
 
-    // Header
-    document.getElementById('wf-ex-counter').textContent = `Movement ${LETTERS[exIdx] || exIdx+1}`;
-    document.getElementById('wf-ex-of').textContent = `${exIdx+1} of ${exercises.length}`;
+    // Header badges
+    document.getElementById('wf-ex-counter').textContent = `Movement ${LETTERS[movIdx] || movIdx+1}`;
+    document.getElementById('wf-ex-of').textContent = `${movIdx+1} of ${movements.length}`;
     document.getElementById('wf-progress').style.width = pct + '%';
-    document.getElementById('wf-ex-name').textContent = ex.name;
 
-    // Prescription pill
-    const rxArea = document.getElementById('wf-prescription');
-    let rxText = `${ex.sets} × ${ex.reps}`;
-    if (ex.weightNote) rxText += ` @ ${ex.weightNote}`;
-    rxArea.innerHTML = `<span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.8rem;font-weight:600;color:#a78bfa;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);border-radius:999px;padding:0.2rem 0.7rem;"><i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>${rxText}</span>`;
-
-    // Video
-    const videoArea = document.getElementById('wf-video-area');
-    if (ex.youtubeId) {
-      videoArea.innerHTML = `<div class="ex-video-wrap"><iframe src="https://www.youtube.com/embed/${ex.youtubeId}?rel=0&modestbranding=1" title="${ex.name}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+    // Title — group label or single exercise name
+    const nameEl = document.getElementById('wf-ex-name');
+    if (isGroup) {
+      const groupColor = mov.groupType === 'circuit' ? '#fbbf24' : '#a78bfa';
+      const groupBg = mov.groupType === 'circuit' ? 'rgba(245,158,11,0.12)' : 'rgba(167,139,250,0.12)';
+      nameEl.innerHTML = `<span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;padding:3px 10px;border-radius:4px;background:${groupBg};color:${groupColor};display:inline-block;margin-bottom:0.5rem;">${(mov.groupType || 'superset').toUpperCase()}</span><br>` +
+        mov.exercises.map(e => e.name).join(' + ');
     } else {
-      videoArea.innerHTML = `<div class="ex-video-placeholder"><i class="bi bi-play-circle"></i></div>`;
+      nameEl.textContent = mov.exercises[0].name;
     }
 
-    // Cues
-    const cuesArea = document.getElementById('wf-cues-area');
-    if (ex.cues) {
-      const cueItems = ex.cues.split(' | ').map(c =>
-        `<div class="wf-cue"><i class="bi bi-check-circle-fill wf-cue-icon"></i><span class="wf-cue-text">${c}</span></div>`
-      ).join('');
-      cuesArea.innerHTML = `<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:0.35rem;">Form Cues</div>${cueItems}`;
-    } else { cuesArea.innerHTML = ''; }
+    // Build the full content area for all exercises in this movement
+    let videoHtml = '';
+    let rxHtml = '';
+    let cuesHtml = '';
+    let setsHtml = '';
 
-    // Set rows — one row per programmed set
-    const setsArea = document.getElementById('wf-sets-area');
-    let html = '';
+    mov.exercises.forEach((ex, ei) => {
+      const exLabel = isGroup ? `<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-top:${ei > 0 ? '1.5rem' : '0'};margin-bottom:0.5rem;padding-bottom:0.35rem;border-bottom:1px solid var(--border);">${LETTERS[movIdx]}${ei+1}. ${ex.name}</div>` : '';
 
-    if (ex.isHold) {
-      html += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
-      html += `<div class="wf-set-row-time">
-        <div class="wf-set-num">1</div>
-        <input type="number" class="wf-set-input" id="sr-dur-min" min="0" max="60" placeholder="0">
-        <input type="number" class="wf-set-input" id="sr-dur-sec" min="0" max="59" placeholder="0">
-      </div>`;
-      html += `<div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:0.35rem;">⏱️ How long did you hold it?</div>`;
-    } else if (ex.isTimed) {
-      html += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
-      html += `<div class="wf-set-row-time">
-        <div class="wf-set-num">1</div>
-        <input type="number" class="wf-set-input" id="sr-time-min" min="0" max="120" placeholder="0">
-        <input type="number" class="wf-set-input" id="sr-time-sec" min="0" max="59" placeholder="0">
-      </div>`;
-      html += `<div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:0.35rem;">⚡ What was your time?</div>`;
-    } else {
-      html += `<div class="wf-set-header"><span>SET</span><span style="text-align:center;">REPS</span><span style="text-align:center;">WEIGHT (LBS)</span></div>`;
-      for (let s = 0; s < ex.sets; s++) {
-        html += `<div class="wf-set-row">
-          <div class="wf-set-num">${s + 1}</div>
-          <input type="text" class="wf-set-input sr-reps" placeholder="${ex.reps}" data-set="${s}">
-          <input type="number" class="wf-set-input sr-weight" placeholder="0" min="0" step="2.5" data-set="${s}">
-        </div>`;
+      // Video
+      if (ex.youtubeId) {
+        videoHtml += `${exLabel}<div class="ex-video-wrap" style="margin-bottom:0.75rem;"><iframe src="https://www.youtube.com/embed/${ex.youtubeId}?rel=0&modestbranding=1" title="${ex.name}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      } else if (isGroup) {
+        videoHtml += exLabel;
       }
-    }
-    setsArea.innerHTML = html;
+
+      // Prescription
+      let rxText = `${ex.sets} × ${ex.reps}`;
+      if (ex.weightNote) rxText += ` @ ${ex.weightNote}`;
+      rxHtml += `<div style="text-align:center;margin-bottom:0.5rem;">` +
+        (isGroup ? `<span style="font-size:0.7rem;color:var(--text-muted);margin-right:0.35rem;">${ex.name}:</span>` : '') +
+        `<span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.8rem;font-weight:600;color:#a78bfa;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);border-radius:999px;padding:0.2rem 0.7rem;"><i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>${rxText}</span></div>`;
+
+      // Cues
+      if (ex.cues) {
+        const label = isGroup ? `Form Cues — ${ex.name}` : 'Form Cues';
+        const items = ex.cues.split(' | ').map(c =>
+          `<div class="wf-cue"><i class="bi bi-check-circle-fill wf-cue-icon"></i><span class="wf-cue-text">${c}</span></div>`
+        ).join('');
+        cuesHtml += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:0.35rem;">${label}</div>${items}</div>`;
+      }
+
+      // Set rows
+      const prefix = isGroup ? `ex${ex.id}_` : '';
+      if (isGroup) {
+        setsHtml += `<div style="font-size:0.75rem;font-weight:700;color:var(--text-soft);margin-top:${ei > 0 ? '1rem' : '0'};margin-bottom:0.35rem;">${ex.name}</div>`;
+      }
+      if (ex.isHold) {
+        setsHtml += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
+        setsHtml += `<div class="wf-set-row-time">
+          <div class="wf-set-num">1</div>
+          <input type="number" class="wf-set-input" id="${prefix}sr-dur-min" min="0" max="60" placeholder="0">
+          <input type="number" class="wf-set-input" id="${prefix}sr-dur-sec" min="0" max="59" placeholder="0">
+        </div>`;
+      } else if (ex.isTimed) {
+        setsHtml += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
+        setsHtml += `<div class="wf-set-row-time">
+          <div class="wf-set-num">1</div>
+          <input type="number" class="wf-set-input" id="${prefix}sr-time-min" min="0" max="120" placeholder="0">
+          <input type="number" class="wf-set-input" id="${prefix}sr-time-sec" min="0" max="59" placeholder="0">
+        </div>`;
+      } else {
+        setsHtml += `<div class="wf-set-header"><span>SET</span><span style="text-align:center;">REPS</span><span style="text-align:center;">WEIGHT (LBS)</span></div>`;
+        for (let s = 0; s < ex.sets; s++) {
+          setsHtml += `<div class="wf-set-row">
+            <div class="wf-set-num">${s + 1}</div>
+            <input type="text" class="wf-set-input sr-reps" placeholder="${ex.reps}" data-set="${s}" data-exid="${ex.id}">
+            <input type="number" class="wf-set-input sr-weight" placeholder="0" min="0" step="2.5" data-set="${s}" data-exid="${ex.id}">
+          </div>`;
+        }
+      }
+    });
+
+    document.getElementById('wf-video-area').innerHTML = videoHtml;
+    document.getElementById('wf-prescription').innerHTML = rxHtml;
+    document.getElementById('wf-cues-area').innerHTML = cuesHtml;
+    document.getElementById('wf-sets-area').innerHTML = setsHtml;
 
     // Button label
     const label = document.getElementById('wf-complete-label');
-    label.textContent = exIdx >= exercises.length - 1 ? 'Finish Workout' : 'Complete Exercise';
+    if (isGroup) {
+      label.textContent = movIdx >= movements.length - 1 ? 'Finish Workout' : `Complete ${(mov.groupType || 'Superset').charAt(0).toUpperCase() + (mov.groupType || 'superset').slice(1)}`;
+    } else {
+      label.textContent = movIdx >= movements.length - 1 ? 'Finish Workout' : 'Complete Exercise';
+    }
 
     // Reset RPE
     document.getElementById('wf-rpe').value = 7;
     document.getElementById('wf-rpe-val').textContent = '7';
   }
 
+  // ── Collect data for all exercises in the current movement ──
   function completeExercise() {
-    const ex = exercises[exIdx];
+    const mov = movements[movIdx];
+    const isGroup = mov.exercises.length > 1;
 
-    // Collect data from set rows
-    if (ex.isHold) {
-      logData[ex.id] = {
-        dur_min: gv('sr-dur-min'),
-        dur_sec: gv('sr-dur-sec'),
-      };
-    } else if (ex.isTimed) {
-      logData[ex.id] = {
-        time_min: gv('sr-time-min'),
-        time_sec: gv('sr-time-sec'),
-      };
-    } else {
-      // Collect per-set reps and weights
-      const repsInputs = document.querySelectorAll('.sr-reps');
-      const weightInputs = document.querySelectorAll('.sr-weight');
-      const repsList = [];
-      let maxWeight = 0;
-      let filledSets = 0;
+    mov.exercises.forEach(ex => {
+      const prefix = isGroup ? `ex${ex.id}_` : '';
 
-      repsInputs.forEach((inp, i) => {
-        const r = inp.value.trim();
-        const w = parseFloat(weightInputs[i].value) || 0;
-        if (r || w) {
-          repsList.push(r || ex.reps);
-          if (w > maxWeight) maxWeight = w;
-          filledSets++;
-        }
-      });
+      if (ex.isHold) {
+        logData[ex.id] = {
+          dur_min: gv(`${prefix}sr-dur-min`),
+          dur_sec: gv(`${prefix}sr-dur-sec`),
+        };
+      } else if (ex.isTimed) {
+        logData[ex.id] = {
+          time_min: gv(`${prefix}sr-time-min`),
+          time_sec: gv(`${prefix}sr-time-sec`),
+        };
+      } else {
+        // Collect per-set reps and weights for this specific exercise
+        const repsInputs = document.querySelectorAll(`.sr-reps[data-exid="${ex.id}"]`);
+        const weightInputs = document.querySelectorAll(`.sr-weight[data-exid="${ex.id}"]`);
+        const repsList = [];
+        let maxWeight = 0;
+        let filledSets = 0;
 
-      logData[ex.id] = {
-        sets: String(filledSets || ex.sets),
-        reps: repsList.join(',') || ex.reps,
-        weight: String(maxWeight),
-      };
-    }
+        repsInputs.forEach((inp, i) => {
+          const r = inp.value.trim();
+          const w = parseFloat(weightInputs[i]?.value) || 0;
+          if (r || w) {
+            repsList.push(r || ex.reps);
+            if (w > maxWeight) maxWeight = w;
+            filledSets++;
+          }
+        });
 
-    // Advance to next exercise or finish
-    exIdx++;
-    if (exIdx >= exercises.length) {
+        logData[ex.id] = {
+          sets: String(filledSets || ex.sets),
+          reps: repsList.join(',') || ex.reps,
+          weight: String(maxWeight),
+        };
+      }
+    });
+
+    // Advance
+    movIdx++;
+    if (movIdx >= movements.length) {
       showComplete();
       return;
     }
-    renderExercise();
+    renderMovement();
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
@@ -602,9 +656,9 @@ const WF = (() => {
   }
 
   function showComplete() {
-    const totalSets = exercises.reduce((a, e) => a + e.sets, 0);
+    const totalSets = allExercises.reduce((a, e) => a + e.sets, 0);
     let totalVol = 0;
-    exercises.forEach(e => {
+    allExercises.forEach(e => {
       const d = logData[e.id];
       if (d && d.weight && d.reps) {
         const w = parseFloat(d.weight) || 0;
@@ -614,7 +668,7 @@ const WF = (() => {
       }
     });
 
-    document.getElementById('wf-sum-exercises').textContent = exercises.length;
+    document.getElementById('wf-sum-exercises').textContent = allExercises.length;
     document.getElementById('wf-sum-sets').textContent = totalSets;
     document.getElementById('wf-sum-volume').textContent = totalVol > 0 ? totalVol.toLocaleString() + ' lbs' : '—';
     document.getElementById('wf-progress').style.width = '100%';
@@ -628,7 +682,7 @@ const WF = (() => {
 
     const container = document.getElementById('formFields');
     container.innerHTML = '';
-    exercises.forEach(ex => {
+    allExercises.forEach(ex => {
       const d = logData[ex.id] || {};
       if (ex.isHold) {
         addField(container, `dur_min_${ex.id}`, d.dur_min || '');
