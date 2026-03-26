@@ -3604,6 +3604,14 @@ def my_program():
     total_phases = 0
     today_overrides = {}  # {exercise_id: ProgressionOverride}
 
+    # Week navigation — clients can browse past weeks and up to 2 weeks ahead
+    view_week = request.args.get('week', type=int)  # ?week=N to browse
+    total_weeks = 0
+    actual_week = None  # The "real" current week based on today's date
+    is_viewing_current_week = True
+    day_checkins = {}  # {day_num: bool} — checkin status for each day of viewed week
+    max_viewable_week = 0  # Furthest week the client can see (actual + 2)
+
     if assignment:
         days_since_start = (today - assignment.start_date).days
         phases = assignment.program.phases.all()
@@ -3611,69 +3619,124 @@ def my_program():
         if phases:
             # Phase-based program
             total_phases = len(phases)
+            total_weeks = sum(ph.weeks for ph in phases)
             running_days = 0
+            auto_phase = None
+            auto_week_in_phase = None
+            auto_day_in_week = None
             for ph in phases:
                 phase_days_total = ph.weeks * 7
                 if days_since_start < running_days + phase_days_total:
                     days_in_phase = days_since_start - running_days
-                    week_in_phase = (days_in_phase // 7) + 1
-                    day_in_week = (days_in_phase % 7) + 1
-                    current_phase = ph
+                    auto_week_in_phase = (days_in_phase // 7) + 1
+                    auto_day_in_week = (days_in_phase % 7) + 1
+                    auto_phase = ph
                     break
                 running_days += phase_days_total
-            if current_phase is None:
-                # Past all phases
+            if auto_phase is None:
                 program_complete = True
+                auto_phase = phases[-1]
+                auto_week_in_phase = phases[-1].weeks
+                auto_day_in_week = 7
+
+            # Calculate actual global week
+            actual_global = 0
+            for ph in phases:
+                if ph.id == auto_phase.id:
+                    actual_global += auto_week_in_phase
+                    break
+                actual_global += ph.weeks
+            actual_week = actual_global
+
+            # Determine which week to VIEW (user-requested or auto)
+            # Clients can only see up to 2 weeks ahead of current
+            max_viewable_week = min(actual_week + 2, total_weeks)
+            if view_week is not None:
+                view_week = max(1, min(view_week, max_viewable_week))
+            else:
+                view_week = actual_week
+            is_viewing_current_week = (view_week == actual_week)
+
+            # Resolve view_week → phase + week_in_phase
+            running_weeks = 0
+            for ph in phases:
+                if view_week <= running_weeks + ph.weeks:
+                    current_phase = ph
+                    week_in_phase = view_week - running_weeks
+                    break
+                running_weeks += ph.weeks
+            if current_phase is None:
                 current_phase = phases[-1]
                 week_in_phase = phases[-1].weeks
-                day_in_week = 7
-            # current_week = global week number for compatibility
-            current_week = week_in_phase
-            current_day = day_in_week
-            # Load phase days for the current phase (same every week)
+
+            current_week = view_week
+            current_day = auto_day_in_week if is_viewing_current_week else None
+            day_in_week = current_day
+
+            # Load phase days for the viewed phase
             phase_day_rows = current_phase.days.all()
             week_days = {phd.day_num: phd for phd in phase_day_rows}
-            today_program_day = week_days.get(day_in_week)
-            if today_program_day and today_program_day.workout_id and not program_complete:
-                # Load progression overrides for today's exercises this week
-                exercise_ids = [we.exercise_id for we in today_program_day.workout.exercises.all()]
-                for eid in exercise_ids:
-                    ov = ProgressionOverride.query.filter_by(
-                        phase_id=current_phase.id,
-                        exercise_id=eid,
-                        week_num=week_in_phase,
-                    ).first()
-                    if ov:
-                        today_overrides[eid] = ov
-            if today_program_day:
-                checkin_done = WorkoutCheckin.query.filter_by(
-                    client_id=current_user.id,
-                    assignment_id=assignment.id,
-                    week=current_week,
-                    day=current_day,
-                ).first() is not None
+
+            # Today's workout (only if viewing current week)
+            if is_viewing_current_week and not program_complete:
+                today_program_day = week_days.get(auto_day_in_week)
+                if today_program_day and today_program_day.workout_id:
+                    exercise_ids = [we.exercise_id for we in today_program_day.workout.exercises.all()]
+                    for eid in exercise_ids:
+                        ov = ProgressionOverride.query.filter_by(
+                            phase_id=current_phase.id,
+                            exercise_id=eid,
+                            week_num=week_in_phase,
+                        ).first()
+                        if ov:
+                            today_overrides[eid] = ov
+
+            # Checkin status for each day of the viewed week
+            checkins = WorkoutCheckin.query.filter_by(
+                client_id=current_user.id, assignment_id=assignment.id,
+                week=view_week,
+            ).all()
+            day_checkins = {c.day: True for c in checkins}
+            if is_viewing_current_week and today_program_day:
+                checkin_done = day_checkins.get(auto_day_in_week, False)
+
         else:
             # Legacy flat-week program
-            total_program_days = assignment.program.weeks * 7
+            total_weeks = assignment.program.weeks
+            total_program_days = total_weeks * 7
             if days_since_start >= total_program_days:
                 program_complete = True
-                current_week = assignment.program.weeks
-                current_day = 7
+                actual_week = total_weeks
+                auto_day = 7
             else:
-                current_week = (days_since_start // 7) + 1
-                current_day = (days_since_start % 7) + 1
+                actual_week = (days_since_start // 7) + 1
+                auto_day = (days_since_start % 7) + 1
+
+            max_viewable_week = min(actual_week + 2, total_weeks)
+            if view_week is not None:
+                view_week = max(1, min(view_week, max_viewable_week))
+            else:
+                view_week = actual_week
+            is_viewing_current_week = (view_week == actual_week)
+
+            current_week = view_week
+            current_day = auto_day if is_viewing_current_week else None
+
             week_day_rows = ProgramDay.query.filter_by(
-                program_id=assignment.program_id, week=current_week
+                program_id=assignment.program_id, week=view_week
             ).all()
             week_days = {pd.day: pd for pd in week_day_rows}
-            today_program_day = week_days.get(current_day)
-            if today_program_day:
-                checkin_done = WorkoutCheckin.query.filter_by(
-                    client_id=current_user.id,
-                    assignment_id=assignment.id,
-                    week=current_week,
-                    day=current_day,
-                ).first() is not None
+
+            if is_viewing_current_week:
+                today_program_day = week_days.get(auto_day)
+
+            checkins = WorkoutCheckin.query.filter_by(
+                client_id=current_user.id, assignment_id=assignment.id,
+                week=view_week,
+            ).all()
+            day_checkins = {c.day: True for c in checkins}
+            if is_viewing_current_week and today_program_day:
+                checkin_done = day_checkins.get(auto_day, False)
 
     return render_template('my_program.html',
         assignment=assignment,
@@ -3684,12 +3747,19 @@ def my_program():
         today=today,
         program_complete=program_complete,
         week_days=week_days,
+        day_checkins=day_checkins,
         # Phase-based extras
         current_phase=current_phase,
         week_in_phase=week_in_phase,
         day_in_week=day_in_week,
         total_phases=total_phases,
         today_overrides=today_overrides,
+        # Week navigation
+        view_week=view_week,
+        total_weeks=total_weeks,
+        actual_week=actual_week,
+        max_viewable_week=max_viewable_week,
+        is_viewing_current_week=is_viewing_current_week,
     )
 
 

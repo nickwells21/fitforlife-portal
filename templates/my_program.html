@@ -58,6 +58,20 @@
   color: var(--accent);
   margin-top: 0.35rem;
 }
+/* Week Navigator */
+.week-nav { display:flex; align-items:center; justify-content:center; gap:0.75rem; margin-bottom:1rem; }
+.week-nav-btn { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-soft); width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; text-decoration:none; }
+.week-nav-btn:hover { background:var(--bg-hover); color:var(--text); border-color:var(--border-mid); }
+.week-nav-btn.disabled { opacity:0.25; pointer-events:none; }
+.week-nav-label { text-align:center; min-width:140px; }
+.week-nav-title { font-size:0.95rem; font-weight:700; color:var(--text); }
+.week-nav-sub { font-size:0.7rem; color:var(--text-muted); }
+.week-nav-current { font-size:0.65rem; color:var(--accent); cursor:pointer; text-decoration:none; }
+.week-nav-current:hover { text-decoration:underline; }
+/* Day checkin indicator */
+.day-check { width:20px; flex-shrink:0; text-align:center; }
+.day-check-done { color:#4ade80; font-size:14px; }
+.day-check-empty { color:var(--text-faint); font-size:12px; }
 </style>
 {% endblock %}
 
@@ -169,25 +183,54 @@
 </div>
 {% endif %}
 
+<!-- Week Navigator -->
+{% if total_weeks and total_weeks > 1 %}
+<div class="week-nav">
+  {% if view_week > 1 %}
+  <a href="{{ url_for('my_program', week=view_week - 1) }}" class="week-nav-btn"><i class="bi bi-chevron-left"></i></a>
+  {% else %}
+  <span class="week-nav-btn disabled"><i class="bi bi-chevron-left"></i></span>
+  {% endif %}
+
+  <div class="week-nav-label">
+    <div class="week-nav-title">Week {{ view_week }} of {{ total_weeks }}</div>
+    {% if current_phase %}
+    <div class="week-nav-sub">Phase {{ current_phase.phase_num }}{% if current_phase.name %}: {{ current_phase.name }}{% endif %} · Week {{ week_in_phase }}/{{ current_phase.weeks }}</div>
+    {% endif %}
+    {% if not is_viewing_current_week and actual_week %}
+    <a href="{{ url_for('my_program') }}" class="week-nav-current">Back to current week</a>
+    {% elif is_viewing_current_week %}
+    <div class="week-nav-sub" style="color:var(--accent);">Current Week</div>
+    {% endif %}
+  </div>
+
+  {% if view_week < max_viewable_week %}
+  <a href="{{ url_for('my_program', week=view_week + 1) }}" class="week-nav-btn"><i class="bi bi-chevron-right"></i></a>
+  {% else %}
+  <span class="week-nav-btn disabled" title="You can only view up to 2 weeks ahead"><i class="bi bi-chevron-right"></i></span>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- Weekly schedule (phase repeating schedule or legacy) -->
 <div class="ffl-card">
   {% if current_phase %}
   <div class="fw-600 mb-1" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
-    Phase {{ current_phase.phase_num }} Schedule
+    {% if is_viewing_current_week %}This Week's{% else %}Week {{ view_week }}{% endif %} Schedule
   </div>
   <div style="font-size:0.75rem;color:var(--text-faint);margin-bottom:0.75rem;">
-    Same schedule every week of this phase
+    Phase {{ current_phase.phase_num }}{% if current_phase.name %}: {{ current_phase.name }}{% endif %} · Week {{ week_in_phase }} of {{ current_phase.weeks }}
   </div>
   {% else %}
   <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
-    Week {{ current_week }} Schedule
+    Week {{ view_week }} Schedule
   </div>
   {% endif %}
 
   {% set day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
   {% for d in range(1, 8) %}
   {% set pd = week_days.get(d) %}
-  <div class="day-row {{ 'today-row' if d == current_day else '' }}">
+  <div class="day-row {{ 'today-row' if is_viewing_current_week and d == current_day else '' }}">
     <div class="day-num">{{ d }}</div>
     <div style="min-width:36px;color:var(--text-muted);">{{ day_names[d-1] }}</div>
     <div style="flex:1;">
@@ -202,6 +245,14 @@
         {% endif %}
       {% else %}
       <span style="color:var(--text-faint);">Rest</span>
+      {% endif %}
+    </div>
+    <!-- Checkin status -->
+    <div class="day-check">
+      {% if day_checkins.get(d) %}
+      <i class="bi bi-check-circle-fill day-check-done"></i>
+      {% elif pd and pd.workout_id %}
+      <i class="bi bi-circle day-check-empty"></i>
       {% endif %}
     </div>
     {% if pd and pd.workout_id %}
