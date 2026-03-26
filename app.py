@@ -840,7 +840,8 @@ def api_sessions():
 
     if current_user.role == 'trainer':
         query = query.filter(Session.trainer_id == current_user.id)
-    # clients: no filter — they see all sessions; is_mine flag marks their own
+    elif current_user.role == 'client':
+        query = query.filter(Session.client_id == current_user.id)
 
     sessions = query.all()
     events = []
@@ -910,7 +911,7 @@ def api_sessions():
 
 
 @app.route('/api/check-conflict', methods=['POST'])
-@login_required
+@staff_required
 def api_check_conflict():
     data = request.json
     trainer_id = int(data['trainer_id'])
@@ -1513,6 +1514,7 @@ def admin_assign_trainer(user_id):
 
 @app.route('/admin/users/new', methods=['GET', 'POST'])
 @admin_required
+@limiter.limit("10 per minute")
 def admin_new_user():
     trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
     if request.method == 'POST':
@@ -1657,7 +1659,8 @@ def admin_delete_package(pkg_id):
         flash('Package deleted.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Could not delete package: {e}', 'danger')
+        audit_logger.error(f'Package delete failed: {e}')
+        flash('Could not delete package. Please try again.', 'danger')
     return redirect(url_for('admin_packages'))
 
 
@@ -1927,6 +1930,7 @@ def api_get_conversation(user_id):
 
 @app.route('/api/messages/send', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def api_send_message():
     data = request.get_json()
     recipient_id = data.get('recipient_id')
@@ -4048,6 +4052,7 @@ def get_or_create_stripe_price(plan):
 
 @app.route('/admin/billing/subscribe', methods=['POST'])
 @admin_required
+@limiter.limit("10 per minute")
 def admin_start_subscription():
     """Create a Stripe subscription for a client on a given plan."""
     client_id = int(request.form['client_id'])
@@ -4220,15 +4225,13 @@ def stripe_webhook():
     payload = request.get_data(as_text=True)
     sig = request.headers.get('Stripe-Signature', '')
 
-    if STRIPE_WEBHOOK_SECRET:
-        try:
-            event = _stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-        except (ValueError, _stripe.error.SignatureVerificationError):
-            return 'Invalid signature', 400
-    else:
-        event = _stripe.Event.construct_from(
-            _stripe.util.json.loads(payload), _stripe.api_key
-        )
+    if not STRIPE_WEBHOOK_SECRET:
+        audit_logger.warning('Stripe webhook received but STRIPE_WEBHOOK_SECRET not configured — rejecting')
+        return 'Webhook secret not configured', 503
+    try:
+        event = _stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, _stripe.error.SignatureVerificationError):
+        return 'Invalid signature', 400
 
     etype = event['type']
     obj = event['data']['object']

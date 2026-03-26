@@ -487,12 +487,20 @@ document.addEventListener('DOMContentLoaded', () => {
       // Location badge
       const locColors = { 'West Mobile': '#7c3aed', 'Midtown': '#06b6d4' };
       const locColor = locColors[p.location] || '#1e9df1';
-      document.getElementById('modalLocation').innerHTML =
-        `<span style="background:${locColor}20; color:${locColor}; border:1px solid ${locColor}30; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${p.location}</span>`;
+      const locSpan = document.createElement('span');
+      locSpan.style.cssText = `background:${locColor}20; color:${locColor}; border:1px solid ${locColor}30; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;`;
+      locSpan.textContent = p.location;
+      const locEl = document.getElementById('modalLocation');
+      locEl.innerHTML = '';
+      locEl.appendChild(locSpan);
 
       // Status chip
-      document.getElementById('modalStatus').innerHTML =
-        `<span class="status-chip ${p.status}">${p.status}</span>`;
+      const statusSpan = document.createElement('span');
+      statusSpan.className = `status-chip ${p.status.replace(/[^a-z_-]/gi, '')}`;
+      statusSpan.textContent = p.status;
+      const statusEl = document.getElementById('modalStatus');
+      statusEl.innerHTML = '';
+      statusEl.appendChild(statusSpan);
 
       // Time
       const fmt = d => d?.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) || '';
