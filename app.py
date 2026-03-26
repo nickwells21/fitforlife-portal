@@ -3486,6 +3486,17 @@ def client_workout_log(workout_id):
     if request.method == 'POST':
         from datetime import date as date_type
         log_date = date_type.today()
+
+        # ── Duplicate prevention: check if this workout was already logged today ──
+        already_logged = ExerciseLog.query.filter(
+            ExerciseLog.client_id == current_user.id,
+            ExerciseLog.log_date == log_date,
+            ExerciseLog.exercise_id.in_([we.exercise_id for we in workout_exercises]),
+        ).first()
+        if already_logged:
+            flash('This workout was already logged today.', 'info')
+            return redirect(url_for('achievements'))
+
         saved = 0
         exercise_data_list = []
         for we in workout_exercises:
@@ -3535,6 +3546,23 @@ def client_workout_log(workout_id):
 
         # Record checkin + fire the engagement engine
         if saved > 0:
+            # Create a WorkoutCheckin if we have a phase/week context
+            if phase_id and week_num:
+                assignment = ProgramAssignment.query.filter_by(client_id=current_user.id).order_by(
+                    ProgramAssignment.start_date.desc()).first()
+                if assignment:
+                    phase = ProgramPhase.query.get(phase_id)
+                    if phase:
+                        day_num = log_date.isoweekday()  # 1=Mon ... 7=Sun
+                        existing_checkin = WorkoutCheckin.query.filter_by(
+                            client_id=current_user.id, assignment_id=assignment.id,
+                            week=week_num, day=day_num,
+                        ).first()
+                        if not existing_checkin:
+                            db.session.add(WorkoutCheckin(
+                                client_id=current_user.id, assignment_id=assignment.id,
+                                week=week_num, day=day_num,
+                            ))
             process_workout_log(current_user.id, workout_id, exercise_data_list, log_date)
         db.session.commit()
         flash(f'Workout logged! {saved} exercise{"s" if saved != 1 else ""} recorded.', 'success')
