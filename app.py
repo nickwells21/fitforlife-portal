@@ -293,12 +293,12 @@ STATUS_COLORS = {
     'cancelled': '#9ca3af',
 }
 
-# 2026 FFL Program Year — update dates to match your actual schedule
+# 2026 FFL Annual Calendar — matches the official FFL calendar
 PROGRAM_QUARTERS = [
-    {'name': 'Q1', 'label': 'Jan – Mar', 'start': datetime(2026, 1, 6), 'end': datetime(2026, 3, 29)},
-    {'name': 'Q2', 'label': 'Apr – Jun', 'start': datetime(2026, 4, 6), 'end': datetime(2026, 6, 28)},
-    {'name': 'Q3', 'label': 'Jul – Sep', 'start': datetime(2026, 7, 6), 'end': datetime(2026, 9, 27)},
-    {'name': 'Q4', 'label': 'Oct – Dec', 'start': datetime(2026, 10, 5), 'end': datetime(2026, 12, 20)},
+    {'name': 'Q1', 'title': 'Raise the Standard', 'subtitle': 'FFL Base',    'weeks': 12, 'color': '#1e9df1', 'label': '12 Weeks', 'start': datetime(2026, 2, 2),  'end': datetime(2026, 4, 24), 'assessment': datetime(2026, 4, 20)},
+    {'name': 'Q2', 'title': 'Strength+',          'subtitle': 'FFL Build',   'weeks': 12, 'color': '#22c55e', 'label': '12 Weeks', 'start': datetime(2026, 5, 4),  'end': datetime(2026, 7, 24), 'assessment': datetime(2026, 7, 20)},
+    {'name': 'Q3', 'title': 'Joint Integrity',    'subtitle': 'FFL Restore', 'weeks': 9,  'color': '#f59e0b', 'label': '9 Weeks',  'start': datetime(2026, 8, 3),  'end': datetime(2026, 9, 28), 'assessment': datetime(2026, 9, 28)},
+    {'name': 'Q4', 'title': 'Performance & Sustainability', 'subtitle': 'FFL Peak', 'weeks': 9, 'color': '#ef4444', 'label': '9 Weeks', 'start': datetime(2026, 10, 12), 'end': datetime(2026, 12, 11), 'assessment': datetime(2026, 12, 7)},
 ]
 
 
@@ -311,26 +311,38 @@ def get_program_quarter_progress(now_dt=None):
             total_secs = (q['end'] - q['start']).total_seconds()
             elapsed_secs = (now_dt - q['start']).total_seconds()
             pct = min(100, max(0, int(elapsed_secs / total_secs * 100)))
+            weeks_elapsed = min(q['weeks'], int(elapsed_secs / (7 * 86400)) + 1)
             return {
                 'index': i,
                 'name': q['name'],
+                'title': q.get('title', ''),
+                'subtitle': q.get('subtitle', ''),
+                'color': q.get('color', '#1e9df1'),
+                'weeks': q.get('weeks', 12),
+                'weeks_elapsed': weeks_elapsed,
                 'label': q['label'],
                 'pct': pct,
                 'start': q['start'],
                 'end': q['end'],
+                'assessment': q.get('assessment'),
                 'quarters': PROGRAM_QUARTERS,
                 'active': True,
             }
     # Between quarters or before/after program year
-    # Find the next upcoming quarter
     next_q = next((q for q in PROGRAM_QUARTERS if q['start'] > now_dt), None)
     return {
         'index': None,
         'name': None,
-        'label': 'Program Break' if not next_q else f'Next: {next_q["name"]}',
+        'title': '',
+        'subtitle': '',
+        'color': '#1e9df1',
+        'weeks': 0,
+        'weeks_elapsed': 0,
+        'label': 'Program Break' if not next_q else f'Next: {next_q["title"]}',
         'pct': 0,
         'start': None,
         'end': next_q['start'] if next_q else None,
+        'assessment': None,
         'quarters': PROGRAM_QUARTERS,
         'active': False,
     }

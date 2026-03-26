@@ -659,13 +659,10 @@
 .streak-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
 .streak-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
-/* Quarter Progress */
+/* Quarter Progress — FFL Annual Calendar */
 .quarter-progress-card { padding: 1.25rem !important; }
 .qp-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; gap:0.5rem; }
 .qp-pct-badge {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid rgba(30,157,241,0.25);
   padding: 0.25rem 0.75rem;
   border-radius: 100px;
   font-size: 13px;
@@ -673,21 +670,30 @@
   flex-shrink: 0;
 }
 .qp-timeline { display:grid; grid-template-columns: repeat(4, 1fr); gap:0.5rem; }
-.qp-quarter { text-align:center; }
-.qp-q-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:4px; }
-.qp-q-bar { height:6px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:4px; }
-.qp-q-fill { height:100%; background:rgba(255,255,255,0.15); border-radius:100px; transition: width 1s ease; }
-.qp-done .qp-q-label { color:var(--green); }
-.qp-done .qp-q-fill { background:var(--green); width:100%; }
-.qp-active .qp-q-label { color:var(--accent); }
-.qp-active .qp-q-fill { background: linear-gradient(90deg, #1e9df1, #0a7abf); }
-.qp-q-date { font-size:9px; color:var(--text-faint); white-space:nowrap; }
-.qp-main-bar-wrap { background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; }
+.qp-quarter { text-align:center; padding:0.75rem 0.25rem; background:var(--bg-surface); border-radius:var(--radius-sm); border-top:3px solid transparent; transition: all 0.2s; }
+.qp-q-name { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:2px; }
+.qp-q-title { font-size:13px; font-weight:800; color:var(--text); letter-spacing:-0.01em; line-height:1.2; }
+.qp-q-subtitle { font-size:9px; font-weight:600; letter-spacing:0.06em; margin-top:2px; }
+.qp-q-weeks { font-size:9px; color:var(--text-muted); margin-top:4px; }
+.qp-q-bar { height:5px; background:rgba(255,255,255,0.06); border-radius:100px; overflow:hidden; margin-top:6px; }
+.qp-q-fill { height:100%; border-radius:100px; transition: width 1s ease; }
+.qp-done .qp-q-fill { width:100%; }
+.qp-done .qp-q-title { opacity:0.5; }
+.qp-active { background:var(--bg-elevated); }
+.qp-q-date { font-size:8px; color:var(--text-faint); white-space:nowrap; margin-top:3px; }
+
+/* Week-by-week progression dots */
+.qp-dots { display:flex; gap:4px; justify-content:center; margin-top:8px; flex-wrap:wrap; }
+.qp-dot { width:10px; height:10px; border-radius:50%; transition:all 0.2s; }
+.qp-dot-done { /* filled — color set inline */ }
+.qp-dot-empty { border:2px solid; opacity:0.4; background:transparent; }
+
+/* Main progress bar */
+.qp-main-bar-wrap { background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; margin-top:1rem; }
 .qp-main-bar { height:10px; background:rgba(255,255,255,0.06); border-radius:100px; overflow:hidden; }
 .qp-main-fill {
   height:100%;
   width: var(--qp-pct, 0%);
-  background: linear-gradient(90deg, #1e9df1, #0a7abf, #69c0f5);
   border-radius:100px;
   transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -700,9 +706,12 @@
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
   border-radius: 100px;
 }
+.qp-dates { display:flex; justify-content:space-between; margin-top:4px; font-size:11px; color:var(--text-muted); }
+.qp-assessment { text-align:center; margin-top:6px; font-size:11px; font-weight:600; }
 @media (max-width: 480px) {
   .qp-timeline { grid-template-columns: repeat(2, 1fr); gap: 0.375rem; }
-  .qp-q-date { font-size: 8px; }
+  .qp-q-title { font-size: 11px; }
+  .qp-q-date { font-size: 7px; }
 }
 
 /* ── Mobile ────────────────────────────────────────────────────────────────── */
@@ -1242,52 +1251,69 @@
 
 </div>
 
-<!-- ─── 2026 Program Year Progress ───────────────────────────────────────── -->
+<!-- ─── 2026 FFL Annual Calendar ──────────────────────────────────────────── -->
 <div class="ffl-card quarter-progress-card mt-3" style="margin-bottom:1rem;">
   <div class="qp-header">
     <div>
-      <div class="card-title" style="margin-bottom:2px;">2026 Program Year</div>
+      <div class="card-title" style="margin-bottom:2px;">2026 FFL Annual Calendar</div>
       <div style="font-size:12px; color:var(--text-muted);">
         {% if quarter_progress.active %}
-          {{ quarter_progress.name }} · {{ quarter_progress.label }} · {{ quarter_progress.pct }}% complete
+          <span style="color:{{ quarter_progress.color }}; font-weight:700;">{{ quarter_progress.name }}</span> ·
+          {{ quarter_progress.title }} · Week {{ quarter_progress.weeks_elapsed }}/{{ quarter_progress.weeks }}
         {% else %}
           {{ quarter_progress.label }}
         {% endif %}
       </div>
     </div>
     {% if quarter_progress.active %}
-    <div class="qp-pct-badge">{{ quarter_progress.pct }}%</div>
+    <div class="qp-pct-badge" style="background:{{ quarter_progress.color }}20; color:{{ quarter_progress.color }}; border:1px solid {{ quarter_progress.color }}40;">{{ quarter_progress.pct }}%</div>
     {% endif %}
   </div>
 
-  <!-- Quarter timeline -->
+  <!-- Quarter cards -->
   <div class="qp-timeline">
     {% for q in quarter_progress.quarters %}
     {% set qi = loop.index0 %}
-    <div class="qp-quarter {% if quarter_progress.index == qi %}qp-active{% elif quarter_progress.index is not none and qi < quarter_progress.index %}qp-done{% endif %}">
-      <div class="qp-q-label">{{ q.name }}</div>
+    {% set is_active = quarter_progress.index == qi %}
+    {% set is_done = quarter_progress.index is not none and qi < quarter_progress.index %}
+    <div class="qp-quarter {% if is_active %}qp-active{% elif is_done %}qp-done{% endif %}"
+         style="border-top-color: {{ q.color }};">
+      <div class="qp-q-name" style="color: {{ q.color }};">{{ q.name }} — {{ q.weeks }} Weeks</div>
+      <div class="qp-q-title">{{ q.title }}</div>
+      <div class="qp-q-subtitle" style="color: {{ q.color }};">{{ q.subtitle }}</div>
+      <div class="qp-q-weeks">{{ q.start.strftime('%b %d') }} – {{ q.end.strftime('%b %d') }}</div>
       <div class="qp-q-bar">
-        <div class="qp-q-fill"
-          style="width: {% if quarter_progress.index == qi %}{{ quarter_progress.pct }}%{% elif quarter_progress.index is not none and qi < quarter_progress.index %}100%{% else %}0%{% endif %}">
+        <div class="qp-q-fill" style="background:{{ q.color }};
+          width:{% if is_active %}{{ quarter_progress.pct }}%{% elif is_done %}100%{% else %}0%{% endif %};">
         </div>
       </div>
-      <div class="qp-q-date">{{ q.label }}</div>
+      <!-- Progression dots -->
+      <div class="qp-dots">
+        {% for w in range(q.weeks) %}
+          {% if is_done or (is_active and w < quarter_progress.weeks_elapsed) %}
+          <div class="qp-dot qp-dot-done" style="background:{{ q.color }};"></div>
+          {% else %}
+          <div class="qp-dot qp-dot-empty" style="border-color:{{ q.color }};"></div>
+          {% endif %}
+        {% endfor %}
+      </div>
     </div>
     {% endfor %}
   </div>
 
   {% if quarter_progress.active %}
-  <!-- Current quarter progress bar -->
-  <div style="margin-top:1rem;">
-    <div class="qp-main-bar-wrap">
-      <div class="qp-main-bar">
-        <div class="qp-main-fill" style="--qp-pct: {{ quarter_progress.pct }}%;"></div>
-      </div>
+  <!-- Current quarter main progress bar -->
+  <div class="qp-main-bar-wrap">
+    <div class="qp-main-bar">
+      <div class="qp-main-fill" style="--qp-pct: {{ quarter_progress.pct }}%; background: linear-gradient(90deg, {{ quarter_progress.color }}, {{ quarter_progress.color }}cc);"></div>
     </div>
-    <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:11px; color:var(--text-muted);">
-      <span>{{ quarter_progress.start.strftime('%b %d') }}</span>
-      <span>{{ quarter_progress.end.strftime('%b %d') }}</span>
-    </div>
+  </div>
+  <div class="qp-dates">
+    <span>{{ quarter_progress.start.strftime('%b %d') }}</span>
+    {% if quarter_progress.assessment %}
+    <span class="qp-assessment" style="color:{{ quarter_progress.color }};">Assessment: {{ quarter_progress.assessment.strftime('%b %d') }}</span>
+    {% endif %}
+    <span>{{ quarter_progress.end.strftime('%b %d') }}</span>
   </div>
   {% endif %}
 </div>
