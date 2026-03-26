@@ -1027,43 +1027,63 @@
   </div><!-- end left col -->
 
   <!-- RIGHT: upcoming workout from program -->
-  <div style="border-left:1px solid rgba(255,255,255,0.07); padding-left:1.5rem;">
-    <span class="nsc-label" style="color:rgba(124,58,237,0.8);">Up Next in Your Program</span>
+  <div style="border-left:1px solid rgba(255,255,255,0.07); padding-left:1.5rem; display:flex; align-items:center; justify-content:center;">
 
     {% if next_program_workout %}
     {%- set log_url = url_for('client_workout_log', workout_id=next_program_workout.id,
                                phase_id=next_workout_phase_id, week=next_workout_week) %}
-    <a href="{{ log_url }}"
-       style="display:block; font-size:1.05rem; font-weight:700; color:var(--text); text-decoration:none; margin-bottom:0.75rem; line-height:1.2; transition:color 0.15s;"
-       onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='var(--text)'">
-      {{ next_program_workout.name }}
-      <i class="bi bi-arrow-right-circle" style="font-size:0.85rem; margin-left:4px; opacity:0.5;"></i>
-    </a>
 
-    <div style="display:flex; flex-direction:column; gap:0.3rem;">
-      {% for ex in next_program_exercises[:8] %}
-      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-soft);">
-        <span style="width:5px; height:5px; border-radius:50%; background:rgba(124,58,237,0.6); flex-shrink:0;"></span>
-        {{ ex.name }}
+    <div style="text-align:center; width:100%; background:var(--bg-surface); border:1px solid rgba(124,58,237,0.25); border-radius:var(--radius-lg); padding:1.5rem 1.25rem;">
+
+      <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:rgba(124,58,237,0.7); margin-bottom:0.75rem;">
+        <i class="bi bi-lightning-charge-fill" style="font-size:8px;"></i> Up Next in Your Program
       </div>
-      {% endfor %}
-      {% if next_program_exercises|length > 8 %}
-      <div style="font-size:0.75rem; color:var(--text-faint); margin-top:0.2rem;">
-        +{{ next_program_exercises|length - 8 }} more
+
+      <div style="font-size:1.25rem; font-weight:800; color:var(--text); margin-bottom:0.75rem; line-height:1.2;">
+        {{ next_program_workout.name }}
       </div>
-      {% endif %}
+
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
+        {{ next_program_exercises|length }} exercise{{ 's' if next_program_exercises|length != 1 else '' }}
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.25rem; align-items:center; margin-bottom:1.25rem;">
+        {% for ex in next_program_exercises[:6] %}
+        <div style="font-size:0.78rem; color:var(--text-soft); display:flex; align-items:center; gap:0.4rem;">
+          <span style="width:5px; height:5px; border-radius:50%; background:rgba(124,58,237,0.5); flex-shrink:0;"></span>
+          {{ ex.name }}
+        </div>
+        {% endfor %}
+        {% if next_program_exercises|length > 6 %}
+        <div style="font-size:0.7rem; color:var(--text-faint); margin-top:0.15rem;">
+          +{{ next_program_exercises|length - 6 }} more
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- BIG Log Workout CTA -->
+      <a href="{{ log_url }}"
+         style="display:flex; align-items:center; justify-content:center; gap:0.6rem;
+                width:100%; padding:0.9rem 1.5rem; border-radius:var(--radius-md);
+                font-size:1.05rem; font-weight:800; color:#fff; text-decoration:none;
+                background:linear-gradient(135deg, #7c3aed, #a78bfa); border:none;
+                transition:all 0.2s; box-shadow:0 4px 16px rgba(124,58,237,0.3);"
+         onmouseover="this.style.boxShadow='0 6px 24px rgba(124,58,237,0.45)'; this.style.transform='translateY(-1px)';"
+         onmouseout="this.style.boxShadow='0 4px 16px rgba(124,58,237,0.3)'; this.style.transform='none';">
+        <i class="bi bi-play-fill" style="font-size:1.2rem;"></i>
+        Log This Workout
+      </a>
     </div>
 
-    <a href="{{ log_url }}"
-       style="display:inline-flex; align-items:center; gap:0.4rem; margin-top:1rem; font-size:0.78rem; font-weight:700; color:#a78bfa; text-decoration:none; background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.25); padding:0.35rem 0.85rem; border-radius:999px; transition:background 0.15s;"
-       onmouseover="this.style.background='rgba(124,58,237,0.2)'" onmouseout="this.style.background='rgba(124,58,237,0.1)'">
-      <i class="bi bi-pencil-square"></i> Log this workout
-    </a>
-
     {% else %}
-    <div style="color:var(--text-faint); font-size:0.85rem; margin-top:0.5rem;">
-      <i class="bi bi-hourglass" style="display:block; font-size:1.5rem; opacity:0.25; margin-bottom:0.5rem;"></i>
-      Coming soon — your trainer is building your program.
+    <div style="text-align:center; width:100%; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem 1.25rem;">
+      <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); margin-bottom:0.75rem;">
+        Up Next in Your Program
+      </div>
+      <i class="bi bi-hourglass" style="display:block; font-size:2rem; opacity:0.2; margin-bottom:0.5rem;"></i>
+      <div style="font-size:0.85rem; color:var(--text-faint);">
+        Coming soon — your trainer is building your program.
+      </div>
     </div>
     {% endif %}
   </div>
