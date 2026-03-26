@@ -264,6 +264,34 @@
       {% endif %}
 
       <!-- Log inputs -->
+      {% if ex.is_hold %}
+      <!-- Hold exercise (plank, wall sit, dead hang) — duration input -->
+      <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
+        <div class="log-field-wrap">
+          <label>Minutes</label>
+          <input type="number" name="dur_min_{{ ex.id }}" min="0" max="60" placeholder="0">
+        </div>
+        <div class="log-field-wrap">
+          <label>Seconds</label>
+          <input type="number" name="dur_sec_{{ ex.id }}" min="0" max="59" placeholder="0">
+        </div>
+      </div>
+      <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⏱️ How long did you hold it?</div>
+      {% elif ex.is_timed %}
+      <!-- Timed exercise (mile run, 400m) — time input -->
+      <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
+        <div class="log-field-wrap">
+          <label>Minutes</label>
+          <input type="number" name="time_min_{{ ex.id }}" min="0" max="120" placeholder="0">
+        </div>
+        <div class="log-field-wrap">
+          <label>Seconds</label>
+          <input type="number" name="time_sec_{{ ex.id }}" min="0" max="59" placeholder="0">
+        </div>
+      </div>
+      <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⚡ What was your time?</div>
+      {% else %}
+      <!-- Standard strength exercise -->
       <div class="log-fields">
         <div class="log-field-wrap">
           <label>Sets</label>
@@ -281,6 +309,7 @@
                  placeholder="0">
         </div>
       </div>
+      {% endif %}
 
       <!-- Tags -->
       {% if ex.muscle_group or ex.category or ex.equipment %}

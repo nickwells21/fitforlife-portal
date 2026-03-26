@@ -198,13 +198,18 @@ class Notification(db.Model):
     __tablename__ = 'notifications'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(120), nullable=True)
     message = db.Column(db.String(400), nullable=False)
     notif_type = db.Column(db.String(50), default='session_completed')
+    # notif_type: see CURSOR_AGENT_SPEC.md §3 for full list
+    icon = db.Column(db.String(50), nullable=True)  # bootstrap icon class
+    level = db.Column(db.String(20), nullable=True)  # bronze, silver, gold, platinum
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=True)
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     user = db.relationship('User', foreign_keys=[user_id])
+    __table_args__ = (db.Index('ix_notif_user_unread', 'user_id', 'is_read', 'created_at'),)
 
 
 class Message(db.Model):
@@ -1123,20 +1128,16 @@ def update_session_status(session_id):
             if new_status == 'completed' and old_status != 'completed' and s.client_id:
                 date_str = s.scheduled_at.strftime('%b %-d')
                 trainer_name = s.trainer.name if s.trainer else 'your trainer'
-                db.session.add(Notification(
-                    user_id=s.client_id,
-                    message=f'Session completed {date_str} with {trainer_name}. Great work! 💪',
-                    notif_type='session_completed',
-                    session_id=s.id
-                ))
+                create_notification(s.client_id, 'session_completed',
+                    f'Session completed {date_str} with {trainer_name}. Great work! 💪',
+                    session_id=s.id)
                 streak = get_session_streak(s.client_id)
                 if streak in milestone_msgs:
-                    db.session.add(Notification(
-                        user_id=s.client_id,
-                        message=milestone_msgs[streak],
-                        notif_type='streak_milestone',
-                        session_id=s.id
-                    ))
+                    create_notification(s.client_id, 'streak_milestone',
+                        milestone_msgs[streak], session_id=s.id)
+                # V2: streak + badge hooks
+                update_streak(s.client_id, 'workout')
+                check_badges(s.client_id, {'action': 'session_completed', 'hour': datetime.now(timezone.utc).hour})
 
         db.session.commit()
         flash(f'Session marked as {new_status}.', 'success')
@@ -1173,21 +1174,24 @@ def complete_week():
 
     sessions = query.all()
     count = 0
+    affected_clients = set()
     for s in sessions:
         s.status = 'completed'
-        # Create notification for individual (non-group) sessions
         if s.client_id:
+            affected_clients.add(s.client_id)
             try:
                 date_str = s.scheduled_at.strftime('%b %-d')
-                db.session.add(Notification(
-                    user_id=s.client_id,
-                    message=f'Session completed {date_str} with {s.trainer.name}. Great work! 💪',
-                    notif_type='session_completed',
-                    session_id=s.id,
-                ))
+                create_notification(s.client_id, 'session_completed',
+                    f'Session completed {date_str} with {s.trainer.name}. Great work! 💪',
+                    session_id=s.id)
             except Exception:
                 pass
         count += 1
+
+    # V2: streak + badge hooks for all affected clients
+    for cid in affected_clients:
+        update_streak(cid, 'workout')
+        check_badges(cid, {'action': 'session_completed', 'hour': datetime.now(timezone.utc).hour})
 
     db.session.commit()
     return jsonify({'ok': True, 'count': count})
@@ -1972,6 +1976,8 @@ class Exercise(db.Model):
     equipment = db.Column(db.String(80))
     instructions = db.Column(db.Text)
     youtube_url = db.Column(db.String(300))
+    is_timed = db.Column(db.Boolean, default=False)    # True for runs, rows, bike sprints (lower time = better)
+    is_hold = db.Column(db.Boolean, default=False)     # True for planks, wall sits, dead hangs (longer = better)
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -2109,6 +2115,10 @@ class ExerciseLog(db.Model):
     sets_completed = db.Column(db.Integer)
     reps_completed = db.Column(db.String(20))
     weight_lbs = db.Column(db.Float)
+    duration_seconds = db.Column(db.Float)        # For holds: plank, wall sit, dead hang
+    time_seconds = db.Column(db.Float)            # For timed: mile run, 400m, rowing
+    distance = db.Column(db.Float)                # For distance-based activities
+    distance_unit = db.Column(db.String(10))      # 'meters', 'miles', 'yards'
     notes = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     exercise = db.relationship('Exercise')
@@ -2124,6 +2134,720 @@ class WorkoutCheckin(db.Model):
     completed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     __table_args__ = (db.UniqueConstraint('client_id', 'assignment_id', 'week', 'day', name='uq_checkin'),)
     assignment = db.relationship('ProgramAssignment')
+
+
+# ─── Gamification Models ─────────────────────────────────────────────────────
+
+class PersonalRecord(db.Model):
+    """Tracks every PR a client hits across all categories."""
+    __tablename__ = 'personal_records'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=True)
+    pr_type = db.Column(db.String(30), nullable=False)
+    # pr_type values:
+    #   Rep maxes: '1rm','3rm','5rm','8rm','10rm'
+    #   Volume:    'volume_session' (best single-session), 'volume_exercise_milestone' (cumulative), 'volume_workout' (total workout)
+    #   Time:      'longest_hold' (higher=better), 'fastest_time' (lower=better)
+    #   Other:     'max_reps' (most unbroken reps)
+    value = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(20), nullable=False)  # lbs, seconds, minutes, meters, miles, reps, lbs_volume
+    previous_value = db.Column(db.Float, nullable=True)
+    muscle_group = db.Column(db.String(80), nullable=True)  # for volume_muscle PRs
+    achieved_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys='PersonalRecord.user_id')
+    exercise = db.relationship('Exercise')
+
+
+class BadgeDefinition(db.Model):
+    """Static badge definitions — seeded on init."""
+    __tablename__ = 'badge_definitions'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(60), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(300), nullable=False)
+    icon = db.Column(db.String(50), nullable=False)  # bootstrap icon class
+    category = db.Column(db.String(40), nullable=False)  # workout, pr, streak, consistency, special
+    level = db.Column(db.String(20), default='bronze')  # bronze, silver, gold, platinum
+    threshold = db.Column(db.Integer, nullable=True)  # numeric threshold if applicable
+    repeatable = db.Column(db.Boolean, default=False)
+
+
+class UserBadge(db.Model):
+    """Badges earned by users."""
+    __tablename__ = 'user_badges'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey('badge_definitions.id'), nullable=False)
+    earned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys='UserBadge.user_id')
+    badge = db.relationship('BadgeDefinition')
+
+
+class Streak(db.Model):
+    """Tracks streaks per user per type."""
+    __tablename__ = 'streaks'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    streak_type = db.Column(db.String(30), nullable=False)  # workout, logging, weekly_target, checkin
+    current_count = db.Column(db.Integer, default=0)
+    longest_count = db.Column(db.Integer, default=0)
+    last_activity_date = db.Column(db.Date, nullable=True)
+    freeze_used_this_week = db.Column(db.Boolean, default=False)
+    user = db.relationship('User', foreign_keys='Streak.user_id')
+    __table_args__ = (db.UniqueConstraint('user_id', 'streak_type', name='uq_user_streak'),)
+
+
+class RepMilestone(db.Model):
+    """Tracks cumulative rep milestones hit per exercise."""
+    __tablename__ = 'rep_milestones'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    milestone = db.Column(db.Integer, nullable=False)  # 100, 200, 300, 400, 500, 600
+    reached_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys='RepMilestone.user_id')
+    exercise = db.relationship('Exercise')
+    __table_args__ = (db.UniqueConstraint('user_id', 'exercise_id', 'milestone', name='uq_rep_milestone'),)
+
+
+class DailyLog(db.Model):
+    """Daily quick-logs: water, sleep, meal, weigh-in."""
+    __tablename__ = 'daily_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    log_date = db.Column(db.Date, nullable=False)
+    log_type = db.Column(db.String(30), nullable=False)  # water, sleep, meal, weighin
+    value = db.Column(db.Float)          # water=oz, sleep=hours, weighin=lbs, meal=null
+    quality = db.Column(db.Integer)      # 1-5 for sleep quality
+    notes = db.Column(db.String(300))
+    photo_url = db.Column(db.String(500))  # for meal photos
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys=[user_id])
+    __table_args__ = (db.UniqueConstraint('user_id', 'log_date', 'log_type', name='uq_daily_log'),)
+
+
+class ExerciseVolumeTotal(db.Model):
+    """Running cumulative volume per user per exercise. Updated incrementally on every log."""
+    __tablename__ = 'exercise_volume_totals'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
+    total_volume_lbs = db.Column(db.Float, default=0.0)
+    total_reps = db.Column(db.Integer, default=0)
+    session_count = db.Column(db.Integer, default=0)
+    best_session_volume = db.Column(db.Float, default=0.0)
+    last_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys=[user_id])
+    exercise = db.relationship('Exercise')
+    __table_args__ = (db.UniqueConstraint('user_id', 'exercise_id', name='uq_user_exercise_volume'),)
+
+
+class WorkoutVolumeRecord(db.Model):
+    """Tracks best total volume for a named workout (all exercises combined)."""
+    __tablename__ = 'workout_volume_records'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=False)
+    best_volume_lbs = db.Column(db.Float, default=0.0)
+    achieved_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    user = db.relationship('User', foreign_keys=[user_id])
+    workout = db.relationship('Workout')
+    __table_args__ = (db.UniqueConstraint('user_id', 'workout_id', name='uq_user_workout_volume'),)
+
+
+# ─── Badge Definitions Seed Data ─────────────────────────────────────────────
+
+BADGE_SEED = [
+    # ── Workout Count ────────────────────────────────────────────────────────
+    {'key': 'first_timer',      'name': 'First Timer',      'description': 'Log your first workout',              'icon': 'bi-lightning-charge-fill', 'category': 'workout',     'level': 'bronze',   'threshold': 1},
+    {'key': 'ten_club',         'name': '10 Club',           'description': 'Complete 10 workouts',                'icon': 'bi-fire',                 'category': 'workout',     'level': 'bronze',   'threshold': 10},
+    {'key': 'quarter_century',  'name': 'Quarter Century',   'description': 'Complete 25 workouts',                'icon': 'bi-fire',                 'category': 'workout',     'level': 'silver',   'threshold': 25},
+    {'key': 'half_century',     'name': 'Half Century',      'description': 'Complete 50 workouts',                'icon': 'bi-fire',                 'category': 'workout',     'level': 'gold',     'threshold': 50},
+    {'key': 'century_club',     'name': 'Century Club',      'description': 'Complete 100 workouts',               'icon': 'bi-trophy-fill',          'category': 'workout',     'level': 'platinum', 'threshold': 100},
+    # ── Weekly Frequency ─────────────────────────────────────────────────────
+    {'key': 'hat_trick',        'name': 'Hat Trick',         'description': '3 workouts in one week',              'icon': 'bi-3-circle-fill',        'category': 'consistency', 'level': 'bronze',   'threshold': 3,  'repeatable': True},
+    {'key': 'iron_week',        'name': 'Iron Week',         'description': '5 workouts in one week',              'icon': 'bi-5-circle-fill',        'category': 'consistency', 'level': 'silver',   'threshold': 5,  'repeatable': True},
+    # ── PR Collection ────────────────────────────────────────────────────────
+    {'key': 'pr_collector_10',  'name': 'PR Collector',      'description': 'Hit 10 lifetime PRs',                 'icon': 'bi-award-fill',           'category': 'pr',          'level': 'bronze',   'threshold': 10},
+    {'key': 'pr_collector_25',  'name': 'PR Hunter',         'description': 'Hit 25 lifetime PRs',                 'icon': 'bi-award-fill',           'category': 'pr',          'level': 'silver',   'threshold': 25},
+    {'key': 'pr_collector_50',  'name': 'PR Machine',        'description': 'Hit 50 lifetime PRs',                 'icon': 'bi-award-fill',           'category': 'pr',          'level': 'gold',     'threshold': 50},
+    {'key': 'pr_collector_100', 'name': 'PR Legend',          'description': 'Hit 100 lifetime PRs',               'icon': 'bi-award-fill',           'category': 'pr',          'level': 'platinum', 'threshold': 100},
+    {'key': 'double_up',        'name': 'Double Up',         'description': 'Beat 2 PRs in the same week',         'icon': 'bi-chevron-double-up',    'category': 'pr',          'level': 'silver',   'threshold': 2,  'repeatable': True},
+    {'key': 'triple_up',        'name': 'Triple Up',         'description': 'Beat 3 PRs in the same week',         'icon': 'bi-chevron-double-up',    'category': 'pr',          'level': 'gold',     'threshold': 3,  'repeatable': True},
+    # ── Time of Day ──────────────────────────────────────────────────────────
+    {'key': 'early_bird',       'name': 'Early Bird',        'description': 'Log a workout before 7 AM',           'icon': 'bi-sunrise-fill',         'category': 'special',     'level': 'bronze',   'repeatable': True},
+    {'key': 'night_owl',        'name': 'Night Owl',         'description': 'Log a workout after 8 PM',            'icon': 'bi-moon-stars-fill',      'category': 'special',     'level': 'bronze',   'repeatable': True},
+    # ── Variety ──────────────────────────────────────────────────────────────
+    {'key': 'muscle_map',       'name': 'Muscle Map',        'description': 'Hit every muscle group in one week',  'icon': 'bi-body-text',            'category': 'consistency', 'level': 'gold',     'repeatable': True},
+    {'key': 'variety_pack',     'name': 'Variety Pack',      'description': 'Log 8 different exercises in a month','icon': 'bi-grid-3x3-gap-fill',    'category': 'consistency', 'level': 'silver',   'threshold': 8},
+    # ── Global Volume Milestones ─────────────────────────────────────────────
+    {'key': 'volume_10k',       'name': 'Volume Rising',     'description': 'Lift 10,000 lbs total volume',        'icon': 'bi-bar-chart-fill',       'category': 'volume',      'level': 'bronze',   'threshold': 10000},
+    {'key': 'volume_25k',       'name': 'Volume Builder',    'description': 'Lift 25,000 lbs total volume',        'icon': 'bi-bar-chart-fill',       'category': 'volume',      'level': 'silver',   'threshold': 25000},
+    {'key': 'volume_50k',       'name': 'Volume King',       'description': 'Lift 50,000 lbs total volume',        'icon': 'bi-bar-chart-fill',       'category': 'volume',      'level': 'gold',     'threshold': 50000},
+    {'key': 'volume_100k',      'name': 'Volume Legend',     'description': 'Lift 100,000 lbs total volume',       'icon': 'bi-bar-chart-fill',       'category': 'volume',      'level': 'platinum', 'threshold': 100000},
+    # ── Per-Exercise Volume Milestones ───────────────────────────────────────
+    {'key': 'volume_ex_1k',     'name': 'Mover',             'description': '1,000 lbs on a single exercise',      'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'bronze',   'threshold': 1000,   'repeatable': True},
+    {'key': 'volume_ex_5k',     'name': 'Grinder',           'description': '5,000 lbs on a single exercise',      'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'bronze',   'threshold': 5000,   'repeatable': True},
+    {'key': 'volume_ex_10k',    'name': 'Workhorse',         'description': '10,000 lbs on a single exercise',     'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'silver',   'threshold': 10000,  'repeatable': True},
+    {'key': 'volume_ex_25k',    'name': 'Volume Addict',     'description': '25,000 lbs on a single exercise',     'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'silver',   'threshold': 25000,  'repeatable': True},
+    {'key': 'volume_ex_50k',    'name': 'Iron Mover',        'description': '50,000 lbs on a single exercise',     'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'gold',     'threshold': 50000,  'repeatable': True},
+    {'key': 'volume_ex_100k',   'name': 'Volume Monster',    'description': '100,000 lbs on a single exercise',    'icon': 'bi-graph-up-arrow',       'category': 'volume',      'level': 'platinum', 'threshold': 100000, 'repeatable': True},
+    # ── Time Domain — Holds ──────────────────────────────────────────────────
+    {'key': 'plank_1min',       'name': 'Core Starter',      'description': 'Hold a 1-minute plank',               'icon': 'bi-stopwatch-fill',       'category': 'special',     'level': 'bronze',   'threshold': 60},
+    {'key': 'plank_2min',       'name': 'Core Warrior',      'description': 'Hold a 2-minute plank',               'icon': 'bi-stopwatch-fill',       'category': 'special',     'level': 'silver',   'threshold': 120},
+    {'key': 'the_wall',         'name': 'The Wall',          'description': 'Hold a 3-minute plank',               'icon': 'bi-bricks',               'category': 'special',     'level': 'gold',     'threshold': 180},
+    {'key': 'plank_5min',       'name': 'Plank Legend',      'description': 'Hold a 5-minute plank',               'icon': 'bi-bricks',               'category': 'special',     'level': 'platinum', 'threshold': 300},
+    {'key': 'dead_hang_30s',    'name': 'Hanging On',        'description': '30-second dead hang',                 'icon': 'bi-grip-horizontal',      'category': 'special',     'level': 'bronze',   'threshold': 30},
+    {'key': 'dead_hang_1min',   'name': 'Iron Grip',         'description': '1-minute dead hang',                  'icon': 'bi-grip-horizontal',      'category': 'special',     'level': 'silver',   'threshold': 60},
+    {'key': 'dead_hang_2min',   'name': 'Gorilla Grip',      'description': '2-minute dead hang',                  'icon': 'bi-grip-horizontal',      'category': 'special',     'level': 'gold',     'threshold': 120},
+    # ── Time Domain — Speed ──────────────────────────────────────────────────
+    {'key': 'mile_sub_10',      'name': 'Runner',            'description': 'Sub-10 minute mile',                  'icon': 'bi-speedometer2',         'category': 'special',     'level': 'bronze',   'threshold': 600},
+    {'key': 'mile_sub_8',       'name': 'Speed Demon',       'description': 'Sub-8 minute mile',                   'icon': 'bi-speedometer2',         'category': 'special',     'level': 'silver',   'threshold': 480},
+    {'key': 'mile_sub_7',       'name': 'Road Warrior',      'description': 'Sub-7 minute mile',                   'icon': 'bi-speedometer2',         'category': 'special',     'level': 'gold',     'threshold': 420},
+    {'key': 'mile_sub_6',       'name': 'Lightning',         'description': 'Sub-6 minute mile',                   'icon': 'bi-speedometer2',         'category': 'special',     'level': 'platinum', 'threshold': 360},
+    # ── Exercise Loyalty ─────────────────────────────────────────────────────
+    {'key': 'exercise_10x',     'name': 'Getting Started',   'description': 'Do an exercise 10 times',             'icon': 'bi-repeat',               'category': 'consistency', 'level': 'bronze',   'threshold': 10,  'repeatable': True},
+    {'key': 'exercise_25x',     'name': 'Regular',           'description': 'Do an exercise 25 times',             'icon': 'bi-repeat',               'category': 'consistency', 'level': 'bronze',   'threshold': 25,  'repeatable': True},
+    {'key': 'exercise_50x',     'name': 'Dedicated',         'description': 'Do an exercise 50 times',             'icon': 'bi-repeat',               'category': 'consistency', 'level': 'silver',   'threshold': 50,  'repeatable': True},
+    {'key': 'exercise_100x',    'name': 'Specialist',        'description': 'Do an exercise 100 times',            'icon': 'bi-repeat',               'category': 'consistency', 'level': 'gold',     'threshold': 100, 'repeatable': True},
+    {'key': 'exercise_200x',    'name': 'Master',            'description': 'Do an exercise 200 times',            'icon': 'bi-repeat',               'category': 'consistency', 'level': 'platinum', 'threshold': 200, 'repeatable': True},
+    # ── Rep Milestones (per exercise) ────────────────────────────────────────
+    {'key': 'reps_100',         'name': 'Rep Starter',       'description': '100 total reps of an exercise',       'icon': 'bi-123',                  'category': 'volume',      'level': 'bronze',   'threshold': 100,   'repeatable': True},
+    {'key': 'reps_500',         'name': '500 Club',          'description': '500 total reps of an exercise',       'icon': 'bi-123',                  'category': 'volume',      'level': 'silver',   'threshold': 500,   'repeatable': True},
+    {'key': 'reps_1000',        'name': 'Thousand Repper',   'description': '1,000 total reps of an exercise',     'icon': 'bi-123',                  'category': 'volume',      'level': 'gold',     'threshold': 1000,  'repeatable': True},
+    {'key': 'reps_5000',        'name': '5K Repper',         'description': '5,000 total reps of an exercise',     'icon': 'bi-123',                  'category': 'volume',      'level': 'platinum', 'threshold': 5000,  'repeatable': True},
+    {'key': 'reps_10000',       'name': 'Ten Thousand',      'description': '10,000 total reps of an exercise',    'icon': 'bi-123',                  'category': 'volume',      'level': 'platinum', 'threshold': 10000, 'repeatable': True},
+    # ── Daily Logging ────────────────────────────────────────────────────────
+    {'key': 'hydro_7',          'name': 'Hydro Homie',       'description': 'Log water 7 days in a row',           'icon': 'bi-droplet-fill',         'category': 'streak',      'level': 'bronze',   'threshold': 7},
+    {'key': 'hydro_30',         'name': 'Water Warrior',     'description': 'Log water 30 days in a row',          'icon': 'bi-droplet-fill',         'category': 'streak',      'level': 'silver',   'threshold': 30},
+    {'key': 'sleep_7',          'name': 'Rest Up',           'description': 'Log sleep 7 days in a row',           'icon': 'bi-moon-fill',            'category': 'streak',      'level': 'bronze',   'threshold': 7},
+    {'key': 'sleep_30',         'name': 'Sleep Scholar',     'description': 'Log sleep 30 days in a row',          'icon': 'bi-moon-fill',            'category': 'streak',      'level': 'silver',   'threshold': 30},
+    {'key': 'meal_7',           'name': 'Fuel Up',           'description': 'Log meals 7 days in a row',           'icon': 'bi-egg-fried',            'category': 'streak',      'level': 'bronze',   'threshold': 7},
+    {'key': 'meal_30',          'name': 'Nutrition Pro',     'description': 'Log meals 30 days in a row',          'icon': 'bi-egg-fried',            'category': 'streak',      'level': 'silver',   'threshold': 30},
+    {'key': 'weighin_7',        'name': 'Scale Starter',     'description': 'Weigh in 7 days in a row',            'icon': 'bi-speedometer',          'category': 'streak',      'level': 'bronze',   'threshold': 7},
+    {'key': 'weighin_30',       'name': 'Weight Watcher',    'description': 'Weigh in 30 days in a row',           'icon': 'bi-speedometer',          'category': 'streak',      'level': 'silver',   'threshold': 30},
+    {'key': 'daily_all',        'name': 'Full Logger',       'description': 'Log water + sleep + meal + weigh-in in one day', 'icon': 'bi-check2-all', 'category': 'consistency', 'level': 'gold', 'repeatable': True},
+    {'key': 'daily_all_7',      'name': 'Data Machine',      'description': 'Full log every category 7 days straight', 'icon': 'bi-database-fill-check', 'category': 'streak', 'level': 'platinum', 'threshold': 7},
+    # ── Streak Badges ────────────────────────────────────────────────────────
+    {'key': 'streak_3',         'name': 'Getting Going',     'description': '3-day streak',                        'icon': 'bi-fire',                 'category': 'streak',      'level': 'bronze',   'threshold': 3},
+    {'key': 'streak_7',         'name': 'Week Warrior',      'description': '7-day streak',                        'icon': 'bi-fire',                 'category': 'streak',      'level': 'bronze',   'threshold': 7},
+    {'key': 'streak_14',        'name': 'Two Weeks Strong',  'description': '14-day streak',                       'icon': 'bi-fire',                 'category': 'streak',      'level': 'silver',   'threshold': 14},
+    {'key': 'streak_30',        'name': 'Month of Iron',     'description': '30-day streak',                       'icon': 'bi-fire',                 'category': 'streak',      'level': 'silver',   'threshold': 30},
+    {'key': 'streak_60',        'name': 'Two Month Titan',   'description': '60-day streak',                       'icon': 'bi-fire',                 'category': 'streak',      'level': 'gold',     'threshold': 60},
+    {'key': 'streak_90',        'name': 'Quarter Beast',     'description': '90-day streak',                       'icon': 'bi-fire',                 'category': 'streak',      'level': 'gold',     'threshold': 90},
+    {'key': 'streak_180',       'name': 'Half Year Hero',    'description': '180-day streak',                      'icon': 'bi-fire',                 'category': 'streak',      'level': 'platinum', 'threshold': 180},
+    {'key': 'streak_365',       'name': 'Year of Iron',      'description': '365-day streak',                      'icon': 'bi-fire',                 'category': 'streak',      'level': 'platinum', 'threshold': 365},
+    {'key': 'consistent',       'name': 'Consistent',        'description': 'Hit weekly goal 8 weeks in a row',    'icon': 'bi-check2-all',           'category': 'streak',      'level': 'gold',     'threshold': 8},
+    {'key': 'unbreakable',      'name': 'Unbreakable',       'description': '30-day logging streak',               'icon': 'bi-shield-fill-check',    'category': 'streak',      'level': 'platinum', 'threshold': 30},
+    # ── Special ──────────────────────────────────────────────────────────────
+    {'key': 'comeback_kid',     'name': 'Comeback Kid',      'description': 'Return after 7+ days off',            'icon': 'bi-arrow-counterclockwise','category': 'special',   'level': 'silver'},
+]
+
+
+# ─── V2 Engagement Engine ────────────────────────────────────────────────────
+
+# Notification emoji map
+NOTIF_EMOJI = {
+    'session_completed': '💪', 'streak_milestone': '🔥', 'pr_rep_max': '🏆',
+    'pr_volume_exercise': '📊', 'pr_volume_workout': '💥', 'pr_volume_milestone': '📈',
+    'pr_longest_hold': '⏱️', 'pr_fastest_time': '⚡', 'pr_max_reps': '💯',
+    'badge_earned': '🏅', 'streak_started': '🔥', 'streak_broken': '💔',
+    'comeback_nudge': '👋', 'workout_completed': '✅', 'exercise_first': '🆕',
+    'exercise_count_milestone': '🎯', 'exercise_rep_milestone': '🔢',
+    'weekly_target_hit': '🎉', 'consistency_badge': '⭐',
+    'daily_log_water': '💧', 'daily_log_sleep': '😴', 'daily_log_meal': '🍽️',
+    'daily_log_weighin': '⚖️', 'early_bird': '🌅', 'night_owl': '🌙',
+    'week_started': '📅', 'month_summary': '📋',
+}
+
+RARITY_MAP = {'bronze': 'common', 'silver': 'rare', 'gold': 'epic', 'platinum': 'legendary'}
+
+# Volume milestones (per exercise, cumulative)
+VOLUME_MILESTONES = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000]
+REP_MILESTONES = [100, 500, 1_000, 5_000, 10_000]
+EXERCISE_COUNT_MILESTONES = [1, 10, 25, 50, 100, 150, 200]
+STREAK_MILESTONES = [3, 7, 14, 21, 30, 45, 60, 90, 120, 150, 180, 270, 365]
+
+
+def get_notif_emoji(notif_type):
+    return NOTIF_EMOJI.get(notif_type, 'ℹ️')
+
+
+def create_notification(user_id, notif_type, message, title=None, icon=None, level=None, session_id=None):
+    """Central notification creation — ALL notifications flow through here."""
+    notif = Notification(
+        user_id=user_id, title=title, message=message,
+        notif_type=notif_type, icon=icon, level=level, session_id=session_id,
+    )
+    db.session.add(notif)
+    return notif
+
+
+def calculate_set_volume(sets, reps_str, weight):
+    """Calculate volume from sets × reps × weight. Handles comma-separated reps ('8,8,6')."""
+    if not weight or not reps_str:
+        return 0.0, 0
+    reps_list = [int(r.strip()) for r in str(reps_str).split(',') if r.strip().isdigit()]
+    if not reps_list:
+        return 0.0, 0
+    if len(reps_list) == 1 and sets:
+        total_reps = reps_list[0] * sets
+    else:
+        total_reps = sum(reps_list)
+    return weight * total_reps, total_reps
+
+
+def format_duration(seconds):
+    """Format seconds into readable time (e.g., '2:45')."""
+    if seconds is None:
+        return '0:00'
+    m, s = divmod(int(seconds), 60)
+    return f'{m}:{s:02d}'
+
+
+def format_number(n):
+    """Format large numbers: 10000 → '10,000'."""
+    return f'{n:,.0f}'
+
+
+def get_best_active_streak(user_id):
+    """Return the longest active streak across all types for a user."""
+    streaks = Streak.query.filter_by(user_id=user_id).all()
+    if not streaks:
+        return 0
+    return max((s.current_count for s in streaks), default=0)
+
+
+def get_today_log_status(user_id):
+    """Return dict of which daily log types were done today."""
+    from datetime import date as _date
+    today = _date.today()
+    logs = DailyLog.query.filter_by(user_id=user_id, log_date=today).all()
+    done = {log.log_type for log in logs}
+    return {'water': 'water' in done, 'sleep': 'sleep' in done,
+            'meal': 'meal' in done, 'weighin': 'weighin' in done}
+
+
+def update_streak(user_id, streak_type):
+    """Update a streak, handling freeze logic and milestones."""
+    from datetime import date as _date
+    today = _date.today()
+    streak = Streak.query.filter_by(user_id=user_id, streak_type=streak_type).first()
+    if not streak:
+        streak = Streak(user_id=user_id, streak_type=streak_type, current_count=0, longest_count=0)
+        db.session.add(streak)
+        db.session.flush()
+
+    if streak.last_activity_date == today:
+        return streak  # Already logged today
+
+    # Reset freeze on Monday
+    if today.weekday() == 0 and streak.last_activity_date and streak.last_activity_date < today:
+        streak.freeze_used_this_week = False
+
+    if streak.last_activity_date == today - timedelta(days=1):
+        # Consecutive day
+        streak.current_count += 1
+    elif (streak.last_activity_date == today - timedelta(days=2)
+          and not streak.freeze_used_this_week
+          and streak.current_count > 0):
+        # Missed 1 day — use freeze
+        streak.current_count += 1
+        streak.freeze_used_this_week = True
+    else:
+        # Streak broken or brand new
+        if streak.current_count > 0 and streak.last_activity_date:
+            days_off = (today - streak.last_activity_date).days
+            if days_off >= 2:
+                create_notification(user_id, 'streak_broken',
+                    f'💔 Your {streak.current_count}-day {streak_type} streak ended. But you can start a new one today!')
+        streak.current_count = 1
+
+    streak.last_activity_date = today
+    if streak.current_count > streak.longest_count:
+        streak.longest_count = streak.current_count
+
+    # Check milestones
+    if streak.current_count in STREAK_MILESTONES:
+        tier = ('just getting started!' if streak.current_count <= 7
+                else "on fire!" if streak.current_count <= 30
+                else 'absolutely unstoppable!' if streak.current_count <= 90
+                else 'LEGENDARY.')
+        create_notification(user_id, 'streak_milestone',
+            f"🔥 {streak.current_count}-day {streak_type} streak! You're {tier}")
+
+    return streak
+
+
+def check_badges(user_id, context):
+    """Check badge thresholds after an action. Returns list of newly awarded badge names."""
+    awarded = []
+    action = context.get('action', '')
+
+    # ── Workout count badges ──
+    if action in ('workout_logged', 'session_completed'):
+        total_workouts = WorkoutCheckin.query.filter_by(client_id=user_id).count()
+        for badge_key, threshold in [('first_timer', 1), ('ten_club', 10), ('quarter_century', 25),
+                                      ('half_century', 50), ('century_club', 100)]:
+            if total_workouts >= threshold:
+                badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
+                if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
+                    db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                    create_notification(user_id, 'badge_earned',
+                        f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+                    awarded.append(badge_def.name)
+
+    # ── PR collection badges ──
+    if context.get('new_pr_count', 0) > 0:
+        total_prs = PersonalRecord.query.filter_by(user_id=user_id).count()
+        for badge_key, threshold in [('pr_collector_10', 10), ('pr_collector_25', 25),
+                                      ('pr_collector_50', 50), ('pr_collector_100', 100)]:
+            if total_prs >= threshold:
+                badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
+                if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
+                    db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                    create_notification(user_id, 'badge_earned',
+                        f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+                    awarded.append(badge_def.name)
+
+        # Weekly PR badges (double_up, triple_up)
+        week_start = datetime.now(timezone.utc).date() - timedelta(days=datetime.now(timezone.utc).weekday())
+        week_prs = PersonalRecord.query.filter(
+            PersonalRecord.user_id == user_id,
+            PersonalRecord.achieved_at >= datetime(week_start.year, week_start.month, week_start.day, tzinfo=timezone.utc),
+        ).count()
+        for badge_key, threshold in [('double_up', 2), ('triple_up', 3)]:
+            if week_prs >= threshold:
+                badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
+                if badge_def:
+                    db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                    create_notification(user_id, 'badge_earned',
+                        f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+                    awarded.append(badge_def.name)
+
+    # ── Volume badges (global) ──
+    if action in ('workout_logged',):
+        total_volume = db.session.query(db.func.coalesce(db.func.sum(ExerciseVolumeTotal.total_volume_lbs), 0)).filter_by(user_id=user_id).scalar()
+        for badge_key, threshold in [('volume_10k', 10000), ('volume_25k', 25000),
+                                      ('volume_50k', 50000), ('volume_100k', 100000)]:
+            if total_volume >= threshold:
+                badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
+                if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
+                    db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                    create_notification(user_id, 'badge_earned',
+                        f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+                    awarded.append(badge_def.name)
+
+    # ── Streak badges ──
+    if action in ('workout_logged', 'daily_log', 'session_completed'):
+        for stype in ['workout', 'logging']:
+            s = Streak.query.filter_by(user_id=user_id, streak_type=stype).first()
+            if s:
+                for badge_key, threshold in [('streak_3', 3), ('streak_7', 7), ('streak_14', 14),
+                                              ('streak_30', 30), ('streak_60', 60), ('streak_90', 90),
+                                              ('streak_180', 180), ('streak_365', 365)]:
+                    if s.current_count >= threshold:
+                        badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
+                        if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
+                            db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                            create_notification(user_id, 'badge_earned',
+                                f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+                            awarded.append(badge_def.name)
+
+    # ── Time-of-day badges ──
+    if context.get('hour') is not None:
+        hour = context['hour']
+        if hour < 7:
+            badge_def = BadgeDefinition.query.filter_by(key='early_bird').first()
+            if badge_def:
+                db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                create_notification(user_id, 'early_bird', '🌅 Workout before 7 AM — Early Bird energy!')
+                awarded.append('Early Bird')
+        elif hour >= 20:
+            badge_def = BadgeDefinition.query.filter_by(key='night_owl').first()
+            if badge_def:
+                db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                create_notification(user_id, 'night_owl', '🌙 Late night grind — Night Owl mode activated!')
+                awarded.append('Night Owl')
+
+    return awarded
+
+
+def process_daily_log(user_id, log_type, value=None):
+    """Handle notifications and streaks after a daily log entry."""
+    msg_map = {
+        'water':  f'💧 {value:.0f} oz logged. Hydration on point.' if value else '💧 Water logged.',
+        'sleep':  f'😴 {value:.1f} hours logged. Rest is where gains happen.' if value else '😴 Sleep logged.',
+        'meal':   '🍽️ Meal logged. Fueling the machine.',
+        'weighin': f'⚖️ Weigh-in recorded. Consistency builds the picture.',
+    }
+    create_notification(user_id, f'daily_log_{log_type}', msg_map.get(log_type, 'Logged!'))
+    update_streak(user_id, 'logging')
+
+    # Check if all 4 logged today
+    status = get_today_log_status(user_id)
+    if all(status.values()):
+        badge_def = BadgeDefinition.query.filter_by(key='daily_all').first()
+        if badge_def:
+            db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+            create_notification(user_id, 'badge_earned',
+                f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+
+
+def check_comeback(user_id):
+    """Check if user is returning after days away and award comeback_kid if 7+."""
+    from datetime import date as _date
+    today = _date.today()
+    # Find most recent activity across all streaks
+    last = db.session.query(db.func.max(Streak.last_activity_date)).filter_by(user_id=user_id).scalar()
+    if not last:
+        # Check last workout checkin
+        last_checkin = WorkoutCheckin.query.filter_by(client_id=user_id).order_by(WorkoutCheckin.completed_at.desc()).first()
+        if last_checkin:
+            last = last_checkin.completed_at.date()
+    if last:
+        days_off = (today - last).days
+        if days_off >= 7:
+            badge_def = BadgeDefinition.query.filter_by(key='comeback_kid').first()
+            if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
+                db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
+                create_notification(user_id, 'badge_earned',
+                    f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
+            create_notification(user_id, 'comeback_nudge',
+                '👋 Welcome back! Let\'s restart together.')
+        elif days_off >= 2:
+            create_notification(user_id, 'comeback_nudge',
+                f'👋 {days_off} days off — session tomorrow?')
+
+
+def sort_achievements(badge_progress_list):
+    """Sort badges: closest to completion first, then unlocked (newest first), then not started."""
+    def _key(item):
+        if item['unlocked']:
+            ts = item.get('earned_at')
+            return (0, -(ts.timestamp() if ts else 0))
+        elif item['progress'] > 0:
+            pct = item['progress'] / item['total'] if item['total'] else 0
+            return (1, -pct)
+        else:
+            return (2, 0)
+    return sorted(badge_progress_list, key=_key)
+
+
+def process_workout_log(user_id, workout_id, exercise_data_list, log_date):
+    """
+    THE BRAIN — called after a workout form is submitted.
+    exercise_data_list = [
+        {'exercise_id': int, 'sets': int, 'reps': str, 'weight_lbs': float,
+         'duration_seconds': float|None, 'time_seconds': float|None},
+        ...
+    ]
+    Runs ALL PR detection, volume tracking, badge checks, streak updates, and notifications.
+    """
+    now = datetime.now(timezone.utc)
+    new_pr_count = 0
+    total_workout_volume = 0.0
+
+    for entry in exercise_data_list:
+        ex_id = entry['exercise_id']
+        exercise = Exercise.query.get(ex_id)
+        if not exercise:
+            continue
+        ex_name = exercise.name
+        sets = entry.get('sets') or 0
+        reps_str = entry.get('reps') or ''
+        weight = entry.get('weight_lbs') or 0.0
+        dur = entry.get('duration_seconds')
+        timed = entry.get('time_seconds')
+
+        # ── 1. Rep Max PR Detection (1RM, 3RM, 5RM, 8RM, 10RM) ──
+        if weight > 0 and reps_str:
+            reps_list = [int(r.strip()) for r in str(reps_str).split(',') if r.strip().isdigit()]
+            for rep_count in reps_list:
+                for pr_label, max_reps in [('1rm', 1), ('3rm', 3), ('5rm', 5), ('8rm', 8), ('10rm', 10)]:
+                    if rep_count <= max_reps:
+                        prev = PersonalRecord.query.filter_by(
+                            user_id=user_id, exercise_id=ex_id, pr_type=pr_label
+                        ).order_by(PersonalRecord.value.desc()).first()
+                        if not prev or weight > prev.value:
+                            pr = PersonalRecord(
+                                user_id=user_id, exercise_id=ex_id, pr_type=pr_label,
+                                value=weight, unit='lbs',
+                                previous_value=prev.value if prev else None,
+                            )
+                            db.session.add(pr)
+                            new_pr_count += 1
+                            diff_msg = f' Beat your old record by {weight - prev.value:.0f} lbs!' if prev else ' First recorded!'
+                            create_notification(user_id, 'pr_rep_max',
+                                f'🏆 NEW {pr_label.upper()} on {ex_name} — {weight:.0f} lbs!{diff_msg}')
+
+        # ── 2–4. Volume tracking per exercise ──
+        session_vol, session_reps = calculate_set_volume(sets, reps_str, weight)
+        total_workout_volume += session_vol
+
+        if session_vol > 0 or session_reps > 0:
+            vol_total = ExerciseVolumeTotal.query.filter_by(user_id=user_id, exercise_id=ex_id).first()
+            if not vol_total:
+                vol_total = ExerciseVolumeTotal(user_id=user_id, exercise_id=ex_id)
+                db.session.add(vol_total)
+                db.session.flush()
+
+            old_volume = vol_total.total_volume_lbs
+            old_reps = vol_total.total_reps
+            vol_total.total_volume_lbs += session_vol
+            vol_total.total_reps += session_reps
+            vol_total.session_count += 1
+            vol_total.last_updated = now
+
+            # Best session volume per exercise
+            if session_vol > vol_total.best_session_volume:
+                vol_total.best_session_volume = session_vol
+                pr = PersonalRecord(
+                    user_id=user_id, exercise_id=ex_id, pr_type='volume_session',
+                    value=session_vol, unit='lbs_volume',
+                )
+                db.session.add(pr)
+                new_pr_count += 1
+                create_notification(user_id, 'pr_volume_exercise',
+                    f'📊 New volume record on {ex_name} — {format_number(session_vol)} lbs in one session!')
+
+            # Cumulative volume milestones
+            for milestone in VOLUME_MILESTONES:
+                if old_volume < milestone <= vol_total.total_volume_lbs:
+                    pr = PersonalRecord(
+                        user_id=user_id, exercise_id=ex_id, pr_type='volume_exercise_milestone',
+                        value=milestone, unit='lbs_volume',
+                    )
+                    db.session.add(pr)
+                    new_pr_count += 1
+                    qualifier = 'Beast mode.' if milestone >= 50000 else 'Keep grinding!'
+                    create_notification(user_id, 'pr_volume_milestone',
+                        f'📈 {format_number(milestone)} lbs moved on {ex_name}. {qualifier}')
+
+            # Rep milestones
+            for milestone in REP_MILESTONES:
+                if old_reps < milestone <= vol_total.total_reps:
+                    existing = RepMilestone.query.filter_by(
+                        user_id=user_id, exercise_id=ex_id, milestone=milestone).first()
+                    if not existing:
+                        db.session.add(RepMilestone(user_id=user_id, exercise_id=ex_id, milestone=milestone))
+                        qualifier = ('Half a thousand!' if milestone == 500
+                                     else 'Incredible.' if milestone >= 5000 else 'Keep stacking!')
+                        create_notification(user_id, 'exercise_rep_milestone',
+                            f'🔢 {format_number(milestone)} total reps of {ex_name}. {qualifier}')
+
+            # Exercise count milestones
+            count = vol_total.session_count
+            if count in EXERCISE_COUNT_MILESTONES:
+                if count == 1:
+                    create_notification(user_id, 'exercise_first',
+                        f'🆕 First time doing {ex_name}. New movement unlocked!')
+                else:
+                    create_notification(user_id, 'exercise_count_milestone',
+                        f"🎯 {count}{'th' if count > 3 else ['st','nd','rd'][count-1]} time doing {ex_name}. "
+                        + ('That\'s commitment.' if count >= 50 else 'Building the habit!'))
+
+        # ── 6. Longest hold PR ──
+        if exercise.is_hold and dur and dur > 0:
+            prev = PersonalRecord.query.filter_by(
+                user_id=user_id, exercise_id=ex_id, pr_type='longest_hold'
+            ).order_by(PersonalRecord.value.desc()).first()
+            if not prev or dur > prev.value:
+                db.session.add(PersonalRecord(
+                    user_id=user_id, exercise_id=ex_id, pr_type='longest_hold',
+                    value=dur, unit='seconds', previous_value=prev.value if prev else None,
+                ))
+                new_pr_count += 1
+                diff_msg = f" That's {dur - prev.value:.0f} seconds longer than your best!" if prev else ''
+                create_notification(user_id, 'pr_longest_hold',
+                    f'⏱️ New longest {ex_name} — {format_duration(dur)}!{diff_msg}')
+
+        # ── 7. Fastest time PR ──
+        if exercise.is_timed and timed and timed > 0:
+            prev = PersonalRecord.query.filter_by(
+                user_id=user_id, exercise_id=ex_id, pr_type='fastest_time'
+            ).order_by(PersonalRecord.value.asc()).first()
+            if not prev or timed < prev.value:
+                db.session.add(PersonalRecord(
+                    user_id=user_id, exercise_id=ex_id, pr_type='fastest_time',
+                    value=timed, unit='seconds', previous_value=prev.value if prev else None,
+                ))
+                new_pr_count += 1
+                diff_msg = f' You shaved {prev.value - timed:.0f} seconds off!' if prev else ''
+                create_notification(user_id, 'pr_fastest_time',
+                    f'⚡ Fastest {ex_name} — {format_duration(timed)}!{diff_msg}')
+
+        # ── 8. Max unbroken reps ──
+        if reps_str and (not weight or weight == 0):
+            reps_list = [int(r.strip()) for r in str(reps_str).split(',') if r.strip().isdigit()]
+            if reps_list:
+                max_single = max(reps_list)
+                prev = PersonalRecord.query.filter_by(
+                    user_id=user_id, exercise_id=ex_id, pr_type='max_reps'
+                ).order_by(PersonalRecord.value.desc()).first()
+                if not prev or max_single > prev.value:
+                    db.session.add(PersonalRecord(
+                        user_id=user_id, exercise_id=ex_id, pr_type='max_reps',
+                        value=max_single, unit='reps', previous_value=prev.value if prev else None,
+                    ))
+                    new_pr_count += 1
+                    create_notification(user_id, 'pr_max_reps',
+                        f'💯 New max {ex_name} — {max_single} unbroken reps!')
+
+    # ── 5. Total workout volume PR ──
+    if workout_id and total_workout_volume > 0:
+        workout = Workout.query.get(workout_id)
+        workout_name = workout.name if workout else 'Workout'
+        record = WorkoutVolumeRecord.query.filter_by(user_id=user_id, workout_id=workout_id).first()
+        if not record:
+            record = WorkoutVolumeRecord(user_id=user_id, workout_id=workout_id, best_volume_lbs=0)
+            db.session.add(record)
+            db.session.flush()
+        if total_workout_volume > record.best_volume_lbs:
+            record.best_volume_lbs = total_workout_volume
+            record.achieved_at = now
+            create_notification(user_id, 'pr_volume_workout',
+                f'💥 Biggest {workout_name} EVER — {format_number(total_workout_volume)} lbs total volume!')
+
+    # ── 11. Badge checks ──
+    check_badges(user_id, {
+        'action': 'workout_logged',
+        'new_pr_count': new_pr_count,
+        'hour': now.hour,
+    })
+
+    # ── 12. Streak updates ──
+    update_streak(user_id, 'workout')
+    update_streak(user_id, 'logging')
+
+    # ── 13. Time-of-day ── (handled in check_badges via 'hour')
+
+    # ── 14. Week started / weekly target ──
+    from datetime import date as _date
+    week_start = _date.today() - timedelta(days=_date.today().weekday())
+    week_start_dt = datetime(week_start.year, week_start.month, week_start.day, tzinfo=timezone.utc)
+    week_checkins = WorkoutCheckin.query.filter(
+        WorkoutCheckin.client_id == user_id,
+        WorkoutCheckin.completed_at >= week_start_dt,
+    ).count()
+    if week_checkins == 1:
+        create_notification(user_id, 'week_started',
+            '📅 First workout of the week — keep the momentum going!')
+    # Weekly target check (default 3x/week)
+    weekly_target = 3
+    if week_checkins == weekly_target:
+        create_notification(user_id, 'weekly_target_hit',
+            f'🎉 {week_checkins} workouts this week — weekly target crushed!')
+
+    # ── 15. Workout completed summary ──
+    if total_workout_volume > 0:
+        workout = Workout.query.get(workout_id) if workout_id else None
+        wname = workout.name if workout else 'Workout'
+        create_notification(user_id, 'workout_completed',
+            f'✅ {wname} done! {format_number(total_workout_volume)} lbs total volume. 💪')
+
+    db.session.flush()
 
 
 # ─── Training Modules: Routes ─────────────────────────────────────────────────
@@ -2751,12 +3475,26 @@ def client_workout_log(workout_id):
         from datetime import date as date_type
         log_date = date_type.today()
         saved = 0
+        exercise_data_list = []
         for we in workout_exercises:
-            weight_val = request.form.get(f'weight_{we.exercise_id}', '').strip()
-            sets_val   = request.form.get(f'sets_{we.exercise_id}', '').strip()
-            reps_val   = request.form.get(f'reps_{we.exercise_id}', '').strip()
-            notes_val  = request.form.get(f'notes_{we.exercise_id}', '').strip()
-            if not any([weight_val, sets_val, reps_val]):
+            weight_val  = request.form.get(f'weight_{we.exercise_id}', '').strip()
+            sets_val    = request.form.get(f'sets_{we.exercise_id}', '').strip()
+            reps_val    = request.form.get(f'reps_{we.exercise_id}', '').strip()
+            notes_val   = request.form.get(f'notes_{we.exercise_id}', '').strip()
+            dur_min     = request.form.get(f'dur_min_{we.exercise_id}', '').strip()
+            dur_sec     = request.form.get(f'dur_sec_{we.exercise_id}', '').strip()
+            time_min    = request.form.get(f'time_min_{we.exercise_id}', '').strip()
+            time_sec    = request.form.get(f'time_sec_{we.exercise_id}', '').strip()
+
+            # Calculate duration/time in seconds
+            dur_seconds = None
+            if dur_min or dur_sec:
+                dur_seconds = (float(dur_min or 0) * 60) + float(dur_sec or 0)
+            time_seconds = None
+            if time_min or time_sec:
+                time_seconds = (float(time_min or 0) * 60) + float(time_sec or 0)
+
+            if not any([weight_val, sets_val, reps_val, dur_seconds, time_seconds]):
                 continue
             try:
                 weight_f = float(weight_val) if weight_val else None
@@ -2769,12 +3507,26 @@ def client_workout_log(workout_id):
                 sets_completed=int(sets_val) if sets_val.isdigit() else None,
                 reps_completed=reps_val or None,
                 weight_lbs=weight_f,
+                duration_seconds=dur_seconds,
+                time_seconds=time_seconds,
                 notes=notes_val or None,
             ))
+            exercise_data_list.append({
+                'exercise_id': we.exercise_id,
+                'sets': int(sets_val) if sets_val.isdigit() else 0,
+                'reps': reps_val or '',
+                'weight_lbs': weight_f or 0.0,
+                'duration_seconds': dur_seconds,
+                'time_seconds': time_seconds,
+            })
             saved += 1
+
+        # Record checkin + fire the engagement engine
+        if saved > 0:
+            process_workout_log(current_user.id, workout_id, exercise_data_list, log_date)
         db.session.commit()
         flash(f'Workout logged! {saved} exercise{"s" if saved != 1 else ""} recorded.', 'success')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('achievements'))
 
     return render_template('workout_log.html',
         workout=workout,
@@ -3090,6 +3842,225 @@ def compliance_dashboard():
     return render_template('compliance.html', rows=rows)
 
 
+# ─── V2 Engagement Routes ────────────────────────────────────────────────────
+
+@app.route('/daily-log')
+@login_required
+def daily_log_page():
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    from datetime import date as _date
+    today = _date.today()
+    status = get_today_log_status(current_user.id)
+    # Get today's actual values
+    today_logs = DailyLog.query.filter_by(user_id=current_user.id, log_date=today).all()
+    log_values = {log.log_type: log for log in today_logs}
+    return render_template('daily_log.html', status=status, log_values=log_values, today=today)
+
+
+@app.route('/daily-log/water', methods=['POST'])
+@login_required
+def daily_log_water():
+    from datetime import date as _date
+    value = float(request.form.get('value', 0))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='water').first()
+    if existing:
+        existing.value = (existing.value or 0) + value
+    else:
+        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='water', value=value))
+    process_daily_log(current_user.id, 'water', value=(existing.value if existing else value))
+    db.session.commit()
+    flash('Water logged!', 'success')
+    return redirect(url_for('daily_log_page'))
+
+
+@app.route('/daily-log/sleep', methods=['POST'])
+@login_required
+def daily_log_sleep():
+    from datetime import date as _date
+    hours = float(request.form.get('hours', 0))
+    quality = int(request.form.get('quality', 3))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='sleep').first()
+    if existing:
+        existing.value = hours
+        existing.quality = quality
+    else:
+        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='sleep', value=hours, quality=quality))
+    process_daily_log(current_user.id, 'sleep', value=hours)
+    db.session.commit()
+    flash('Sleep logged!', 'success')
+    return redirect(url_for('daily_log_page'))
+
+
+@app.route('/daily-log/meal', methods=['POST'])
+@login_required
+def daily_log_meal():
+    from datetime import date as _date
+    notes = request.form.get('notes', '').strip()
+    db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='meal', notes=notes))
+    process_daily_log(current_user.id, 'meal')
+    db.session.commit()
+    flash('Meal logged!', 'success')
+    return redirect(url_for('daily_log_page'))
+
+
+@app.route('/daily-log/weighin', methods=['POST'])
+@login_required
+def daily_log_weighin():
+    from datetime import date as _date
+    weight = float(request.form.get('weight', 0))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='weighin').first()
+    if existing:
+        existing.value = weight
+    else:
+        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='weighin', value=weight))
+    process_daily_log(current_user.id, 'weighin', value=weight)
+    db.session.commit()
+    flash('Weigh-in recorded!', 'success')
+    return redirect(url_for('daily_log_page'))
+
+
+@app.route('/api/daily-log/today')
+@login_required
+def api_daily_log_today():
+    return jsonify(get_today_log_status(current_user.id))
+
+
+@app.route('/achievements')
+@login_required
+def achievements():
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    # Build badge progress list
+    all_badges = BadgeDefinition.query.all()
+    earned = {ub.badge_id: ub.earned_at for ub in UserBadge.query.filter_by(user_id=current_user.id).all()}
+    total_workouts = WorkoutCheckin.query.filter_by(client_id=current_user.id).count()
+    total_prs = PersonalRecord.query.filter_by(user_id=current_user.id).count()
+    total_volume = db.session.query(
+        db.func.coalesce(db.func.sum(ExerciseVolumeTotal.total_volume_lbs), 0)
+    ).filter_by(user_id=current_user.id).scalar()
+
+    badge_progress = []
+    for b in all_badges:
+        unlocked = b.id in earned
+        progress = 0
+        total = b.threshold or 1
+
+        # Calculate progress based on category
+        if b.category == 'workout' and b.threshold:
+            progress = min(total_workouts, b.threshold)
+        elif b.category == 'pr' and b.threshold and 'collector' in b.key:
+            progress = min(total_prs, b.threshold)
+        elif b.category == 'volume' and b.threshold and b.key.startswith('volume_') and not b.key.startswith('volume_ex'):
+            progress = min(int(total_volume), b.threshold)
+        elif b.category == 'streak' and b.threshold:
+            best = get_best_active_streak(current_user.id)
+            progress = min(best, b.threshold)
+        elif unlocked:
+            progress = total
+
+        badge_progress.append({
+            'badge': b,
+            'progress': progress,
+            'total': total,
+            'unlocked': unlocked,
+            'earned_at': earned.get(b.id),
+            'rarity': RARITY_MAP.get(b.level, 'common'),
+        })
+
+    badge_progress = sort_achievements(badge_progress)
+
+    # Stats
+    stats = {
+        'unlocked': len(earned),
+        'streak': get_best_active_streak(current_user.id),
+        'total_workouts': total_workouts,
+        'completion': int(len(earned) / len(all_badges) * 100) if all_badges else 0,
+    }
+
+    # Notifications (most recent 30)
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(
+        Notification.is_read.asc(), Notification.created_at.desc()
+    ).limit(30).all()
+    unread_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+
+    # Category list for tabs
+    categories = sorted(set(b.category for b in all_badges))
+
+    return render_template('achievements.html',
+        badge_progress=badge_progress,
+        stats=stats,
+        notifications=notifications,
+        unread_count=unread_count,
+        categories=categories,
+        get_notif_emoji=get_notif_emoji,
+        RARITY_MAP=RARITY_MAP,
+    )
+
+
+@app.route('/notifications/mark-all-read', methods=['POST'])
+@login_required
+def mark_all_read():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return '', 204
+
+
+@app.route('/api/notifications/recent')
+@login_required
+def api_notifications_recent():
+    limit = request.args.get('limit', 20, type=int)
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(
+        Notification.created_at.desc()
+    ).limit(limit).all()
+    return jsonify([{
+        'id': n.id, 'type': n.notif_type, 'message': n.message,
+        'emoji': get_notif_emoji(n.notif_type), 'is_read': n.is_read,
+        'created_at': n.created_at.isoformat(),
+    } for n in notifs])
+
+
+@app.route('/leaderboard')
+@login_required
+def leaderboard():
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    # Longest active streaks
+    all_streaks = db.session.query(
+        Streak.user_id, db.func.max(Streak.current_count).label('best')
+    ).group_by(Streak.user_id).order_by(db.text('best DESC')).limit(10).all()
+
+    streak_rows = []
+    for s in all_streaks:
+        u = User.query.get(s.user_id)
+        if u and u.role == 'client':
+            name_parts = u.name.split()
+            display = f'{name_parts[0]} {name_parts[-1][0]}.' if len(name_parts) > 1 else name_parts[0]
+            streak_rows.append({
+                'name': display, 'value': s.best,
+                'is_you': u.id == current_user.id,
+            })
+
+    # Most badges earned
+    badge_counts = db.session.query(
+        UserBadge.user_id, db.func.count(UserBadge.id).label('cnt')
+    ).group_by(UserBadge.user_id).order_by(db.text('cnt DESC')).limit(10).all()
+
+    badge_rows = []
+    for b in badge_counts:
+        u = User.query.get(b.user_id)
+        if u and u.role == 'client':
+            name_parts = u.name.split()
+            display = f'{name_parts[0]} {name_parts[-1][0]}.' if len(name_parts) > 1 else name_parts[0]
+            badge_rows.append({
+                'name': display, 'value': b.cnt,
+                'is_you': u.id == current_user.id,
+            })
+
+    return render_template('leaderboard.html',
+        streak_rows=streak_rows, badge_rows=badge_rows)
+
+
 # ─── Error Handlers ──────────────────────────────────────────────────────────
 
 @app.errorhandler(403)
@@ -3120,6 +4091,17 @@ def init_db():
             ('is_crew',  'ALTER TABLE session_packages ADD COLUMN is_crew BOOLEAN NOT NULL DEFAULT FALSE'),
             ('group_id', 'ALTER TABLE workout_exercises ADD COLUMN group_id INTEGER'),
             ('group_type', 'ALTER TABLE workout_exercises ADD COLUMN group_type VARCHAR(20)'),
+            ('title',    'ALTER TABLE notifications ADD COLUMN title VARCHAR(120)'),
+            ('icon',     'ALTER TABLE notifications ADD COLUMN icon VARCHAR(50)'),
+            ('level',    'ALTER TABLE notifications ADD COLUMN level VARCHAR(20)'),
+            # V2 Engagement: Exercise time-domain fields
+            ('is_timed',         'ALTER TABLE exercises ADD COLUMN is_timed BOOLEAN DEFAULT FALSE'),
+            ('is_hold',          'ALTER TABLE exercises ADD COLUMN is_hold BOOLEAN DEFAULT FALSE'),
+            # V2 Engagement: ExerciseLog time-domain fields
+            ('duration_seconds', 'ALTER TABLE exercise_logs ADD COLUMN duration_seconds FLOAT'),
+            ('time_seconds',     'ALTER TABLE exercise_logs ADD COLUMN time_seconds FLOAT'),
+            ('distance',         'ALTER TABLE exercise_logs ADD COLUMN distance FLOAT'),
+            ('distance_unit',    'ALTER TABLE exercise_logs ADD COLUMN distance_unit VARCHAR(10)'),
         ]:
             try:
                 conn.execute(db.text(ddl))
@@ -3214,6 +4196,29 @@ def init_db():
         db.session.add_all(plans)
         db.session.commit()
         print(f'Membership plans seeded ({len(plans)} plans).')
+
+    # Seed / upsert badge definitions (adds new badges, updates existing ones)
+    _seeded = 0
+    for b in BADGE_SEED:
+        existing = BadgeDefinition.query.filter_by(key=b['key']).first()
+        if not existing:
+            db.session.add(BadgeDefinition(
+                key=b['key'], name=b['name'], description=b['description'],
+                icon=b['icon'], category=b['category'], level=b.get('level', 'bronze'),
+                threshold=b.get('threshold'), repeatable=b.get('repeatable', False),
+            ))
+            _seeded += 1
+        else:
+            existing.name = b['name']
+            existing.description = b['description']
+            existing.icon = b['icon']
+            existing.category = b['category']
+            existing.level = b.get('level', 'bronze')
+            existing.threshold = b.get('threshold')
+            existing.repeatable = b.get('repeatable', False)
+    db.session.commit()
+    if _seeded:
+        print(f'Badge definitions: {_seeded} new badges added ({len(BADGE_SEED)} total).')
 
 
 with app.app_context():

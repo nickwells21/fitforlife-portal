@@ -311,6 +311,21 @@
           <i class="bi bi-graph-up-arrow"></i><span class="nav-label"> Progress</span>
         </a>
       </li>
+      <li>
+        <a href="{{ url_for('achievements') }}" class="nav-link {% if request.endpoint == 'achievements' %}active{% endif %}">
+          <i class="bi bi-trophy"></i><span class="nav-label"> Achievements</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('daily_log_page') }}" class="nav-link {% if request.endpoint == 'daily_log_page' %}active{% endif %}">
+          <i class="bi bi-clipboard-check"></i><span class="nav-label"> Daily Log</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('leaderboard') }}" class="nav-link {% if request.endpoint == 'leaderboard' %}active{% endif %}">
+          <i class="bi bi-people"></i><span class="nav-label"> Leaderboard</span>
+        </a>
+      </li>
       {% endif %}
 
       {% if current_user.role in ('admin', 'trainer') %}

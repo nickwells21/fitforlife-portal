@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block head %}
+<style>
+.dl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; max-width: 700px; }
+@media (max-width: 640px) { .dl-grid { grid-template-columns: 1fr; } }
+.dl-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; }
+.dl-card-done { border-color: var(--green); background: var(--green-dim); }
+.dl-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.dl-card-title { font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+.dl-card-check { color: var(--green); font-size: 1.1rem; }
+.dl-input-row { display: flex; gap: 0.5rem; align-items: end; }
+.dl-input-row input { background: var(--bg-surface); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); color: var(--text); padding: 0.5rem; font-size: 0.9rem; width: 100%; text-align: center; }
+.dl-input-row input:focus { border-color: var(--accent); outline: none; }
+.dl-quick-btns { display: flex; gap: 0.35rem; margin-top: 0.5rem; }
+.dl-quick-btn { background: var(--accent-dim); border: 1px solid rgba(30,157,241,0.2); color: var(--accent); border-radius: 999px; padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.dl-quick-btn:hover { background: var(--accent); color: #fff; }
+.dl-stars { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
+.dl-star { font-size: 1.5rem; cursor: pointer; opacity: 0.3; transition: opacity 0.15s; }
+.dl-star.active { opacity: 1; }
+.dl-submit { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; margin-top: 0.75rem; width: 100%; }
+.dl-submit:hover { background: var(--accent-light); }
+.dl-value { font-size: 0.8rem; color: var(--text-soft); margin-top: 0.35rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="bi bi-clipboard-check" style="color:var(--accent);"></i> Daily Check-In</h1>
+  <p class="page-subtitle">{{ today.strftime('%B %d, %Y') }} — Log everything in under 30 seconds</p>
+</div>
+
+<div class="dl-grid">
+  <!-- Water -->
+  <div class="dl-card {% if status.water %}dl-card-done{% endif %}">
+    <div class="dl-card-header">
+      <div class="dl-card-title">💧 Water</div>
+      {% if status.water %}<i class="bi bi-check-circle-fill dl-card-check"></i>{% endif %}
+    </div>
+    {% if log_values.get('water') %}
+    <div class="dl-value">Today: {{ log_values['water'].value | int }} oz</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('daily_log_water') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="dl-input-row">
+        <input type="number" name="value" id="water-val" placeholder="oz" min="0" step="1" required>
+      </div>
+      <div class="dl-quick-btns">
+        <button type="button" class="dl-quick-btn" onclick="document.getElementById('water-val').value=8">+ 8 oz</button>
+        <button type="button" class="dl-quick-btn" onclick="document.getElementById('water-val').value=16">+ 16 oz</button>
+        <button type="button" class="dl-quick-btn" onclick="document.getElementById('water-val').value=32">+ 32 oz</button>
+      </div>
+      <button type="submit" class="dl-submit">Log Water</button>
+    </form>
+  </div>
+
+  <!-- Sleep -->
+  <div class="dl-card {% if status.sleep %}dl-card-done{% endif %}">
+    <div class="dl-card-header">
+      <div class="dl-card-title">😴 Sleep</div>
+      {% if status.sleep %}<i class="bi bi-check-circle-fill dl-card-check"></i>{% endif %}
+    </div>
+    {% if log_values.get('sleep') %}
+    <div class="dl-value">Last night: {{ log_values['sleep'].value }} hrs{% if log_values['sleep'].quality %} · Quality: {{ '⭐' * log_values['sleep'].quality }}{% endif %}</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('daily_log_sleep') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="dl-input-row">
+        <input type="number" name="hours" placeholder="Hours" min="0" max="24" step="0.5" required>
+      </div>
+      <div class="dl-stars" id="sleep-stars">
+        <input type="hidden" name="quality" id="sleep-quality" value="3">
+        {% for i in range(1, 6) %}
+        <span class="dl-star {% if i <= 3 %}active{% endif %}" data-val="{{ i }}" onclick="setSleepQuality({{ i }})">⭐</span>
+        {% endfor %}
+      </div>
+      <button type="submit" class="dl-submit">Log Sleep</button>
+    </form>
+  </div>
+
+  <!-- Meal -->
+  <div class="dl-card {% if status.meal %}dl-card-done{% endif %}">
+    <div class="dl-card-header">
+      <div class="dl-card-title">🍽️ Meal</div>
+      {% if status.meal %}<i class="bi bi-check-circle-fill dl-card-check"></i>{% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('daily_log_meal') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="dl-input-row">
+        <input type="text" name="notes" placeholder="What did you eat? (optional)">
+      </div>
+      <button type="submit" class="dl-submit">Log Meal</button>
+    </form>
+  </div>
+
+  <!-- Weigh-In -->
+  <div class="dl-card {% if status.weighin %}dl-card-done{% endif %}">
+    <div class="dl-card-header">
+      <div class="dl-card-title">⚖️ Weigh-In</div>
+      {% if status.weighin %}<i class="bi bi-check-circle-fill dl-card-check"></i>{% endif %}
+    </div>
+    {% if log_values.get('weighin') %}
+    <div class="dl-value">Today: {{ log_values['weighin'].value }} lbs</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('daily_log_weighin') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="dl-input-row">
+        <input type="number" name="weight" placeholder="lbs" min="50" max="600" step="0.1" required>
+      </div>
+      <button type="submit" class="dl-submit">Log Weight</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setSleepQuality(val) {
+  document.getElementById('sleep-quality').value = val;
+  document.querySelectorAll('.dl-star').forEach(s => {
+    s.classList.toggle('active', parseInt(s.dataset.val) <= val);
+  });
+}
+</script>
+{% endblock %}

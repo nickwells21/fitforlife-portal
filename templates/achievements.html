@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block head %}
+<style>
+/* Achievement Dashboard Layout */
+.ach-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+@media (max-width: 900px) { .ach-grid { grid-template-columns: 1fr; } }
+
+/* Stats Row */
+.ach-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+@media (max-width: 640px) { .ach-stats { grid-template-columns: repeat(2, 1fr); } }
+.ach-stat { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; text-align: center; }
+.ach-stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+.ach-stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 0.25rem; }
+.ach-stat-blue .ach-stat-value { color: var(--accent); }
+.ach-stat-amber .ach-stat-value { color: var(--amber); }
+.ach-stat-green .ach-stat-value { color: var(--green); }
+.ach-stat-purple .ach-stat-value { color: #a855f7; }
+
+/* Category Tabs */
+.ach-tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
+.ach-tab { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.75rem; font-weight: 600; color: var(--text-soft); cursor: pointer; transition: all 0.15s; text-transform: capitalize; }
+.ach-tab:hover { background: var(--bg-hover); color: var(--text); }
+.ach-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* Achievement Cards Grid */
+.ach-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+@media (max-width: 640px) { .ach-cards { grid-template-columns: 1fr; } }
+
+/* Achievement Card */
+.ach-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; border-left: 3px solid var(--text-muted); transition: all 0.15s; }
+.ach-card:hover { border-color: var(--border-mid); }
+.ach-card.unlocked { opacity: 1; }
+.ach-card.locked { opacity: 0.55; }
+.ach-card.rarity-common { border-left-color: var(--text-muted); }
+.ach-card.rarity-rare { border-left-color: var(--accent); }
+.ach-card.rarity-epic { border-left-color: #a855f7; }
+.ach-card.rarity-legendary { border-left-color: var(--amber); }
+
+.ach-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
+.ach-card-icon { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; }
+.ach-card-icon.bg-common { background: rgba(255,255,255,0.2); }
+.ach-card-icon.bg-rare { background: var(--accent); }
+.ach-card-icon.bg-epic { background: #a855f7; }
+.ach-card-icon.bg-legendary { background: var(--amber); }
+
+.ach-rarity-pill { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); }
+
+.ach-card-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.ach-card-desc { font-size: 0.75rem; color: var(--text-soft); margin-top: 0.15rem; }
+
+/* Progress Bar */
+.ach-progress-info { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; }
+.ach-progress-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; margin-top: 0.25rem; overflow: hidden; }
+.ach-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s; }
+.ach-card.rarity-common .ach-progress-fill { background: var(--text-muted); }
+.ach-card.rarity-rare .ach-progress-fill { background: var(--accent); }
+.ach-card.rarity-epic .ach-progress-fill { background: #a855f7; }
+.ach-card.rarity-legendary .ach-progress-fill { background: var(--amber); }
+
+.ach-card-category { display: flex; align-items: center; gap: 0.35rem; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.5rem; text-transform: capitalize; }
+
+/* Notification Feed */
+.notif-feed { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.notif-feed-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--border); }
+.notif-feed-header .card-title { font-size: 0.9rem; font-weight: 700; }
+.notif-feed-list { max-height: 600px; overflow-y: auto; }
+.notif-feed-item { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+.notif-feed-item:last-child { border-bottom: none; }
+.notif-feed-item.notif-unread { background: var(--accent-dim); border-left: 3px solid var(--accent); }
+.notif-feed-emoji { font-size: 1.2rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
+.notif-feed-body { flex: 1; min-width: 0; }
+.notif-feed-msg { font-size: 0.8rem; color: var(--text); line-height: 1.35; }
+.notif-feed-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
+.notif-feed-dismiss { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; flex-shrink: 0; }
+.notif-feed-dismiss:hover { color: var(--text); }
+.notif-feed-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
+.btn-mark-all { background: none; border: none; color: var(--accent); font-size: 0.7rem; cursor: pointer; font-weight: 600; }
+.btn-mark-all:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="bi bi-trophy" style="color:var(--accent);"></i> Your Achievements</h1>
+  <p class="page-subtitle">Track your progress and unlock amazing rewards</p>
+</div>
+
+<!-- Stats Row -->
+<div class="ach-stats">
+  <div class="ach-stat ach-stat-blue">
+    <div class="ach-stat-value">{{ stats.unlocked }}</div>
+    <div class="ach-stat-label">Badges Unlocked</div>
+  </div>
+  <div class="ach-stat ach-stat-amber">
+    <div class="ach-stat-value">{{ stats.streak }}</div>
+    <div class="ach-stat-label">Day Streak</div>
+  </div>
+  <div class="ach-stat ach-stat-green">
+    <div class="ach-stat-value">{{ stats.total_workouts }}</div>
+    <div class="ach-stat-label">Total Workouts</div>
+  </div>
+  <div class="ach-stat ach-stat-purple">
+    <div class="ach-stat-value">{{ stats.completion }}%</div>
+    <div class="ach-stat-label">Completion</div>
+  </div>
+</div>
+
+<div class="ach-grid">
+  <!-- Left: Achievement Cards -->
+  <div>
+    <div class="ach-tabs">
+      <button class="ach-tab active" data-cat="all">All</button>
+      {% for cat in categories %}
+      <button class="ach-tab" data-cat="{{ cat }}">{{ cat }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="ach-cards" id="achCards">
+      {% for item in badge_progress %}
+      {% set b = item.badge %}
+      {% set pct = (item.progress / item.total * 100) | int if item.total else 0 %}
+      <div class="ach-card rarity-{{ item.rarity }} {% if item.unlocked %}unlocked{% elif item.progress == 0 %}locked{% endif %}" data-category="{{ b.category }}">
+        <div class="ach-card-header">
+          <div class="ach-card-icon bg-{{ item.rarity }}">
+            <i class="bi {{ b.icon }}"></i>
+          </div>
+          <span class="ach-rarity-pill">{{ b.level | upper }}</span>
+        </div>
+        <div class="ach-card-title">{{ b.name }}</div>
+        <div class="ach-card-desc">{{ b.description }}</div>
+        <div class="ach-progress-info">
+          <span>Progress</span>
+          <span>{{ item.progress }}/{{ item.total }}</span>
+        </div>
+        <div class="ach-progress-bar">
+          <div class="ach-progress-fill" style="width: {{ pct }}%;"></div>
+        </div>
+        <div class="ach-card-category">
+          <i class="bi bi-tag"></i> {{ b.category }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right: Notification Feed -->
+  <div>
+    <div class="notif-feed">
+      <div class="notif-feed-header">
+        <div>
+          <i class="bi bi-bell-fill" style="color: var(--accent);"></i>
+          <span class="card-title"> Notifications</span>
+          {% if unread_count > 0 %}
+          <span class="notif-badge">{{ unread_count }}</span>
+          {% endif %}
+        </div>
+        {% if unread_count > 0 %}
+        <button class="btn-mark-all" onclick="markAllRead()">Mark all read</button>
+        {% endif %}
+      </div>
+      <div class="notif-feed-list">
+        {% if notifications %}
+          {% for n in notifications %}
+          <div class="notif-feed-item {% if not n.is_read %}notif-unread{% endif %}" id="notif-{{ n.id }}">
+            <span class="notif-feed-emoji">{{ get_notif_emoji(n.notif_type) }}</span>
+            <div class="notif-feed-body">
+              <div class="notif-feed-msg">{{ n.message }}</div>
+              <div class="notif-feed-time">{{ n.created_at.strftime('%b %d, %I:%M %p') }}</div>
+            </div>
+            <button class="notif-feed-dismiss" onclick="dismissNotif({{ n.id }}, this)">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="notif-feed-empty">
+            <i class="bi bi-bell" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+            <p>No notifications yet. Complete a workout to get started!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Category tab filtering
+document.querySelectorAll('.ach-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ach-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const cat = tab.dataset.cat;
+    document.querySelectorAll('.ach-card').forEach(card => {
+      card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+    });
+  });
+});
+
+// Notification dismiss
+function dismissNotif(id, btn) {
+  fetch('/notifications/dismiss/' + id, {
+    method: 'POST',
+    headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}
+  }).then(r => { if (r.ok) btn.closest('.notif-feed-item').remove(); });
+}
+
+// Mark all read
+function markAllRead() {
+  fetch('/notifications/mark-all-read', {
+    method: 'POST',
+    headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}
+  }).then(r => {
+    if (r.ok) {
+      document.querySelectorAll('.notif-unread').forEach(el => el.classList.remove('notif-unread'));
+      const badge = document.querySelector('.notif-badge');
+      if (badge) badge.remove();
+      const btn = document.querySelector('.btn-mark-all');
+      if (btn) btn.remove();
+    }
+  });
+}
+</script>
+{% endblock %}

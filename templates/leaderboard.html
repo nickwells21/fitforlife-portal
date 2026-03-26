@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block head %}
+<style>
+.lb-section { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem; max-width: 600px; }
+.lb-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.lb-table { width: 100%; }
+.lb-row { display: flex; align-items: center; padding: 0.5rem 0.5rem; border-radius: var(--radius-sm); }
+.lb-row:nth-child(even) { background: var(--bg-hover); }
+.lb-row.is-you { background: var(--accent-dim); border: 1px solid rgba(30,157,241,0.2); }
+.lb-rank { width: 2rem; font-weight: 800; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
+.lb-rank-1 { color: var(--amber); }
+.lb-rank-2 { color: var(--text-soft); }
+.lb-rank-3 { color: #cd7f32; }
+.lb-name { flex: 1; font-weight: 600; font-size: 0.85rem; }
+.lb-value { font-weight: 800; font-size: 0.9rem; color: var(--accent); }
+.lb-fires { margin-left: 0.5rem; }
+.lb-empty { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+.lb-disclaimer { font-size: 0.7rem; color: var(--text-muted); margin-top: 1.5rem; max-width: 600px; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="bi bi-people" style="color:var(--accent);"></i> Community Leaderboard</h1>
+  <p class="page-subtitle">Who's staying the most consistent?</p>
+</div>
+
+<!-- Longest Active Streaks -->
+<div class="lb-section">
+  <div class="lb-title">🔥 Longest Active Streaks</div>
+  <div class="lb-table">
+    {% if streak_rows %}
+      {% for row in streak_rows %}
+      <div class="lb-row {% if row.is_you %}is-you{% endif %}">
+        <div class="lb-rank {% if loop.index <= 3 %}lb-rank-{{ loop.index }}{% endif %}">{{ loop.index }}</div>
+        <div class="lb-name">{% if row.is_you %}You{% else %}{{ row.name }}{% endif %}</div>
+        <div class="lb-value">{{ row.value }} days</div>
+        <div class="lb-fires">
+          {% if row.value >= 30 %}🔥🔥🔥
+          {% elif row.value >= 14 %}🔥🔥
+          {% elif row.value >= 3 %}🔥
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="lb-empty">No streaks yet. Be the first!</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Most Badges Earned -->
+<div class="lb-section">
+  <div class="lb-title">🏅 Most Badges Earned</div>
+  <div class="lb-table">
+    {% if badge_rows %}
+      {% for row in badge_rows %}
+      <div class="lb-row {% if row.is_you %}is-you{% endif %}">
+        <div class="lb-rank {% if loop.index <= 3 %}lb-rank-{{ loop.index }}{% endif %}">{{ loop.index }}</div>
+        <div class="lb-name">{% if row.is_you %}You{% else %}{{ row.name }}{% endif %}</div>
+        <div class="lb-value">{{ row.value }}</div>
+        <div class="lb-fires">🏅</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="lb-empty">No badges earned yet. Start logging!</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="lb-disclaimer">
+  <i class="bi bi-shield-check"></i> This leaderboard celebrates <strong>consistency and effort</strong> only. No weight, strength, or body comparisons — ever. You're each your own person.
+</div>
+{% endblock %}
