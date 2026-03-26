@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}{{ workout.name }} — Log Workout — Fit For Life{% endblock %}
+{% block title %}{{ workout.name }} — {% if view_only %}View{% else %}Log{% endif %} Workout — Fit For Life{% endblock %}
 
 {% block head %}
 <style>
-/* ── Exercise card ── */
+/* ── Shared exercise card styles (used by view mode + workout step) ── */
 .ex-log-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -15,217 +15,135 @@
   gap: 1.25rem;
   align-items: start;
 }
-
 @media (max-width: 640px) {
-  .ex-log-card {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  /* On mobile: video/cues first, then inputs below */
+  .ex-log-card { grid-template-columns: 1fr; gap: 1rem; }
   .ex-log-right { order: -1; }
 }
-
-/* ── Left column: name + prescription + inputs ── */
-.ex-log-left {}
-
-.ex-log-name {
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text);
-  margin-bottom: 0.4rem;
-}
-
+.ex-log-name { font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 0.4rem; }
 .ex-prescription {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #a78bfa;
-  background: rgba(124,58,237,0.1);
-  border: 1px solid rgba(124,58,237,0.2);
-  border-radius: 999px;
-  padding: 0.18rem 0.65rem;
-  margin-bottom: 0.875rem;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: 0.78rem; font-weight: 600; color: #a78bfa;
+  background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 999px; padding: 0.18rem 0.65rem; margin-bottom: 0.875rem;
 }
-
-.ex-prescription.default {
-  color: var(--accent);
-  background: var(--accent-dim);
-  border-color: rgba(30,157,241,0.2);
-}
-
-.log-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.log-field-wrap label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
-  display: block;
-}
-
-.log-field-wrap input {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.5rem 0.6rem;
-  width: 100%;
-  transition: border-color 0.15s;
-  font-family: inherit;
-  text-align: center;
-}
-
-.log-field-wrap input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background: rgba(30,157,241,0.04);
-}
-
-.log-field-wrap input::placeholder {
-  color: var(--text-faint);
-  font-weight: 400;
-}
-
-/* ── Right column: video + cues ── */
-.ex-log-right {}
-
-.ex-video-wrap {
-  width: 100%;
-  aspect-ratio: 16/9;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg-surface);
-  margin-bottom: 0.75rem;
-}
-
-.ex-video-wrap iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-}
-
-.ex-video-placeholder {
-  width: 100%;
-  aspect-ratio: 16/9;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.ex-cues-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-
-.ex-cues-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.ex-cues-list li {
-  font-size: 12px;
-  color: var(--text-soft);
-  padding: 0.3rem 0;
-  border-bottom: 1px solid var(--border);
-  line-height: 1.4;
-  display: flex;
-  gap: 0.5rem;
-}
-
+.ex-prescription.default { color: var(--accent); background: var(--accent-dim); border-color: rgba(30,157,241,0.2); }
+.ex-video-wrap { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-surface); margin-bottom: 0.75rem; }
+.ex-video-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+.ex-video-placeholder { width: 100%; aspect-ratio: 16/9; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.5rem; margin-bottom: 0.75rem; }
+.ex-cues-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 0.4rem; }
+.ex-cues-list { list-style: none; padding: 0; margin: 0; }
+.ex-cues-list li { font-size: 12px; color: var(--text-soft); padding: 0.3rem 0; border-bottom: 1px solid var(--border); line-height: 1.4; display: flex; gap: 0.5rem; }
 .ex-cues-list li:last-child { border-bottom: none; }
+.ex-cue-num { font-size: 10px; font-weight: 700; color: var(--accent); flex-shrink: 0; padding-top: 1px; }
+.ex-tag-pill { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.ex-tag-muscle { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.2); }
+.ex-tag-pattern { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(30,157,241,0.2); }
+.ex-tag-equip { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
 
-.ex-cue-num {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--accent);
-  flex-shrink: 0;
-  padding-top: 1px;
+/* ── Immersive workout flow (log mode only) ── */
+.wf-screen {
+  min-height: calc(100vh - 100px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem 0;
 }
+.wf-card {
+  background: var(--bg-elevated); border: 2px solid var(--border-mid);
+  border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 600px;
+}
+@media (min-width: 900px) { .wf-card.wf-wide { max-width: 800px; } }
+.wf-icon-circle {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem; font-size: 1.75rem;
+}
+.wf-title { font-size: 1.75rem; font-weight: 800; text-align: center; color: var(--text); margin-bottom: 0.25rem; }
+.wf-subtitle { font-size: 0.85rem; color: var(--text-soft); text-align: center; margin-bottom: 1.5rem; }
+.wf-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  width: 100%; padding: 0.85rem; border-radius: var(--radius-md);
+  font-size: 1rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s;
+}
+.wf-btn-primary { background: var(--accent); color: #fff; }
+.wf-btn-primary:hover { background: var(--accent-light); }
+.wf-btn-amber { background: var(--amber); color: #000; }
+.wf-btn-amber:hover { opacity: 0.9; }
+.wf-btn-green { background: var(--green); color: #fff; }
+.wf-btn-green:hover { opacity: 0.9; }
+.wf-btn-disabled { opacity: 0.3; pointer-events: none; }
 
-/* ── Tags ── */
-.ex-tags {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-}
-
-.ex-tag-pill {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.ex-tag-muscle {
-  background: rgba(124,58,237,0.1);
-  color: #a78bfa;
-  border: 1px solid rgba(124,58,237,0.2);
-}
-
-.ex-tag-pattern {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid rgba(30,157,241,0.2);
-}
-
-.ex-tag-equip {
-  background: rgba(245,158,11,0.1);
-  color: #fbbf24;
-  border: 1px solid rgba(245,158,11,0.2);
-}
+/* Check-in inputs */
+.wf-input-group { margin-bottom: 1.25rem; }
+.wf-input-label { font-size: 0.85rem; font-weight: 600; color: var(--text-soft); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.wf-input-label .wf-val { color: var(--accent); font-weight: 800; }
+.wf-input { background: var(--bg-surface); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); color: var(--text); font-size: 1.1rem; font-weight: 600; padding: 0.65rem 0.75rem; width: 100%; text-align: center; transition: border-color 0.15s; }
+.wf-input:focus { outline: none; border-color: var(--accent); }
+.wf-slider-wrap { padding: 0.5rem 0; }
+.wf-slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); outline: none; }
+.wf-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid var(--accent); background: var(--bg-elevated); }
+.wf-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid var(--accent); background: var(--bg-elevated); }
 
 /* Warm-up items */
-.warmup-item {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.6rem 0.75rem; border-radius: var(--radius-sm);
-  border: 1px solid var(--border); background: var(--bg-elevated);
-  cursor: pointer; transition: all 0.15s; font-size: 0.85rem; color: var(--text-soft);
+.wf-warmup-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.85rem 1rem; border-radius: var(--radius-sm);
+  background: var(--bg-surface); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.15s; margin-bottom: 0.5rem;
 }
-.warmup-item:hover { background: var(--bg-hover); }
-.warmup-item.done { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
-.warmup-item.done .warmup-check { color: #4ade80; }
-.warmup-item.done span { text-decoration: line-through; color: var(--text-muted); }
-.warmup-check { font-size: 1.1rem; color: var(--text-muted); transition: all 0.15s; }
+.wf-warmup-item:hover { border-color: var(--border-mid); }
+.wf-warmup-item.done { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
+.wf-warmup-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 800; background: var(--amber); color: #000;
+}
+.wf-warmup-item.done .wf-warmup-num { background: var(--green); color: #fff; }
+.wf-warmup-title { font-weight: 600; font-size: 0.88rem; color: var(--text); }
+.wf-warmup-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+
+/* Workout exercise screen */
+.wf-progress-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-bottom: 1.25rem; }
+.wf-progress-fill { height: 100%; background: var(--green); border-radius: 999px; transition: width 0.5s ease; }
+.wf-badge { display: inline-flex; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+.wf-badge-secondary { background: rgba(255,255,255,0.06); color: var(--text-soft); border: 1px solid var(--border); }
+.wf-badge-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.wf-ex-name { font-size: 2rem; font-weight: 800; text-align: center; color: var(--text); margin: 1rem 0; letter-spacing: -0.02em; }
+@media (max-width: 480px) { .wf-ex-name { font-size: 1.5rem; } }
+.wf-stat-row { display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 1.25rem; }
+.wf-stat { text-align: center; }
+.wf-stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+.wf-stat-value { font-size: 1.25rem; font-weight: 800; color: var(--accent); }
+.wf-divider { width: 1px; height: 2.5rem; background: var(--border); }
+.wf-cue { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.6rem 0.75rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.35rem; }
+.wf-cue-icon { color: var(--green); font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+.wf-cue-text { font-size: 0.85rem; color: var(--text-soft); }
+.wf-rpe-row { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+/* Log inputs for active exercise */
+.wf-log-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin: 1rem 0; }
+.wf-log-field label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center; }
+.wf-log-field input { background: var(--bg-surface); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); color: var(--text); font-size: 1rem; font-weight: 700; padding: 0.6rem; width: 100%; text-align: center; }
+.wf-log-field input:focus { outline: none; border-color: var(--accent); }
+
+/* Complete screen */
+.wf-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.wf-summary-row:last-child { border-bottom: none; }
+.wf-summary-label { color: var(--text-muted); font-size: 0.85rem; }
+.wf-summary-value { font-size: 1.25rem; font-weight: 800; color: var(--text); }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if view_only %}
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     VIEW-ONLY MODE — all exercises visible, no inputs, no submit
+     ═══════════════════════════════════════════════════════════════════════════ -->
 <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
-  {% if view_only %}
   <a href="{{ url_for('my_program') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>My Program
   </a>
   <span style="font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:999px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(30,157,241,0.25); font-weight:600;">
     <i class="bi bi-eye me-1"></i>View Only
   </span>
-  {% else %}
-  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Dashboard
-  </a>
-  {% endif %}
   {% if phase_id and week_num %}
   <span style="font-size:0.75rem; color:var(--text-muted);">Week {{ week_num }} prescription</span>
   {% endif %}
@@ -233,317 +151,457 @@
 
 <div class="page-header mb-1">
   <div class="page-title">{{ workout.name }}</div>
-  {% if view_only %}
   <div class="page-subtitle">Preview your exercises, videos, and coaching cues</div>
-  {% else %}
-  <div class="page-subtitle">Log your sets, reps, and weight · Watch the demo video for each movement</div>
-  {% endif %}
 </div>
+<p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">Purple = your trainer's prescription.</p>
 
-{% if not view_only %}
-<!-- ─── Step 1: Pre-Workout Check-In ──────────────────────────────────────── -->
-<div id="step-checkin" class="workout-step">
-  <div class="ffl-card" style="padding:1.5rem; margin-bottom:1rem; border-color:rgba(30,157,241,0.3); background:rgba(30,157,241,0.04);">
-    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:1rem;">
-      <i class="bi bi-clipboard-check me-1"></i> Pre-Workout Check-In
+{% set ns = namespace(current_group=None) %}
+{% for we in workout_exercises %}
+{% set ex = we.exercise %}
+{% set ov = override_map.get(ex.id) %}
+{% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
+
+{% if we.group_id and we.group_id != ns.current_group %}
+  {% if ns.current_group %}</div>{% endif %}
+  {% set ns.current_group = we.group_id %}
+  <div style="border-left:3px solid {% if we.group_type == 'circuit' %}#f59e0b{% else %}#a78bfa{% endif %};border-radius:4px;padding-left:0.625rem;margin-bottom:0.5rem;">
+  <div style="margin-bottom:0.5rem;padding:0.25rem 0;">
+    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:3px;{% if we.group_type == 'circuit' %}background:rgba(245,158,11,0.12);color:#fbbf24;{% else %}background:rgba(167,139,250,0.12);color:#a78bfa;{% endif %}">{{ (we.group_type or 'superset') | upper }}</span>
+  </div>
+{% elif not we.group_id and ns.current_group %}
+  </div>
+  {% set ns.current_group = None %}
+{% endif %}
+
+<div class="ex-log-card">
+  <div class="ex-log-left">
+    <div class="ex-log-name">{{ ex.name }}</div>
+    {% if ov and (ov.sets or ov.reps or ov.weight_note) %}
+    <div class="ex-prescription">
+      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+      {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
     </div>
-    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem;">
-      <div>
-        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">😴 How did you sleep?</label>
-        <input type="number" id="checkin-sleep" class="form-control form-control-sm" placeholder="Hours" min="0" max="24" step="0.5">
-      </div>
-      <div>
-        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">💧 Water today?</label>
-        <input type="number" id="checkin-water" class="form-control form-control-sm" placeholder="oz" min="0" step="1">
-      </div>
-      <div>
-        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">⚖️ Today's weight?</label>
-        <input type="number" id="checkin-weight" class="form-control form-control-sm" placeholder="lbs" min="50" max="600" step="0.1">
+    {% elif we.sets or we.reps %}
+    <div class="ex-prescription default">
+      <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
+      {{ we.sets }}×{{ we.reps }}{% if we.rest_seconds %} · {{ we.rest_seconds }}s rest{% endif %}
+    </div>
+    {% endif %}
+    {% if ex.muscle_group or ex.category or ex.equipment %}
+    <div style="display:flex; gap:0.3rem; flex-wrap:wrap; margin-top:0.75rem;">
+      {% if ex.muscle_group %}<span class="ex-tag-pill ex-tag-muscle">{{ ex.muscle_group }}</span>{% endif %}
+      {% if ex.category %}<span class="ex-tag-pill ex-tag-pattern">{{ ex.category }}</span>{% endif %}
+      {% if ex.equipment %}<span class="ex-tag-pill ex-tag-equip">{{ ex.equipment }}</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="ex-log-right">
+    {% if yt_id %}
+    <div class="ex-video-wrap">
+      <iframe src="https://www.youtube.com/embed/{{ yt_id }}?rel=0&modestbranding=1" title="{{ ex.name }} demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    {% else %}
+    <div class="ex-video-placeholder"><i class="bi bi-play-circle"></i></div>
+    {% endif %}
+    {% if ex.instructions %}
+    <div class="ex-cues-label">Coaching Cues</div>
+    <ul class="ex-cues-list">
+      {% for cue in ex.instructions.split(' | ') %}
+      <li><span class="ex-cue-num">{{ loop.index }}</span><span>{{ cue }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% if ns.current_group %}</div>{% endif %}
+
+{% else %}
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     LOG MODE — immersive step-through flow
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Hidden form — populated by JS on completion, submitted at the end -->
+<form method="POST" id="workoutForm" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if phase_id %}<input type="hidden" name="phase_id" value="{{ phase_id }}">{% endif %}
+  {% if week_num %}<input type="hidden" name="week_num" value="{{ week_num }}">{% endif %}
+  <div id="formFields"></div>
+</form>
+
+<!-- ─── Step 1: Daily Check-In ────────────────────────────────────────────── -->
+<div id="screen-checkin" class="wf-screen">
+  <div class="wf-card">
+    <div class="wf-icon-circle" style="background:var(--accent-dim); color:var(--accent);">
+      <i class="bi bi-clipboard-check-fill"></i>
+    </div>
+    <div class="wf-title">Daily Check-In</div>
+    <div class="wf-subtitle">Let's track how you're doing today</div>
+
+    <div class="wf-input-group">
+      <div class="wf-input-label">⚖️ Weight (lbs)</div>
+      <input type="number" class="wf-input" id="ci-weight" placeholder="Enter your weight" min="50" max="600" step="0.1">
+    </div>
+
+    <div class="wf-input-group">
+      <div class="wf-input-label">😴 Sleep Hours: <span class="wf-val" id="ci-sleep-val">7</span>h</div>
+      <div class="wf-slider-wrap">
+        <input type="range" class="wf-slider" id="ci-sleep" min="0" max="12" step="0.5" value="7"
+               oninput="document.getElementById('ci-sleep-val').textContent=this.value">
       </div>
     </div>
-    <button type="button" class="btn btn-outline-secondary btn-sm mt-3" onclick="completeCheckin()" style="width:100%;">
-      <i class="bi bi-arrow-right me-1"></i>Continue to Warm-Up
+
+    <div class="wf-input-group">
+      <div class="wf-input-label">💧 Water (oz): <span class="wf-val" id="ci-water-val">32</span></div>
+      <div class="wf-slider-wrap">
+        <input type="range" class="wf-slider" id="ci-water" min="0" max="128" step="8" value="32"
+               oninput="document.getElementById('ci-water-val').textContent=this.value">
+      </div>
+    </div>
+
+    <button type="button" class="wf-btn wf-btn-primary" onclick="WF.submitCheckin()">
+      Continue to Warm-Up <i class="bi bi-chevron-right"></i>
     </button>
   </div>
 </div>
 
 <!-- ─── Step 2: Warm-Up ───────────────────────────────────────────────────── -->
-<div id="step-warmup" class="workout-step" style="display:none;">
-  <div class="ffl-card" style="padding:1.5rem; margin-bottom:1rem; border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.04);">
-    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--amber); margin-bottom:0.75rem;">
-      <i class="bi bi-activity me-1"></i> General Warm-Up
+<div id="screen-warmup" class="wf-screen" style="display:none;">
+  <div class="wf-card">
+    <div class="wf-icon-circle" style="background:var(--amber-dim); color:var(--amber); font-size:2rem;">
+      <i class="bi bi-stopwatch-fill"></i>
     </div>
-    <div style="font-size:0.82rem; color:var(--text-soft); margin-bottom:1rem;">
-      Complete the warm-up before starting your workout. This builds consistency and prepares your body.
-    </div>
-    <div style="display:flex; flex-direction:column; gap:0.5rem;">
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>5 minutes light cardio (bike, row, or walk)</span>
+    <div class="wf-title">Warm-Up</div>
+    <div class="wf-subtitle">Prepare your body for the workout</div>
+
+    <div id="warmup-list">
+      <div class="wf-warmup-item" onclick="WF.toggleWarmup(this)">
+        <div class="wf-warmup-num">1</div>
+        <div><div class="wf-warmup-title">Light Cardio</div><div class="wf-warmup-desc">5 minutes — bike, row, or walk</div></div>
       </div>
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>Arm circles — 10 forward, 10 backward</span>
+      <div class="wf-warmup-item" onclick="WF.toggleWarmup(this)">
+        <div class="wf-warmup-num">2</div>
+        <div><div class="wf-warmup-title">Dynamic Stretching</div><div class="wf-warmup-desc">Arm circles, leg swings, torso twists</div></div>
       </div>
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>Leg swings — 10 each side</span>
+      <div class="wf-warmup-item" onclick="WF.toggleWarmup(this)">
+        <div class="wf-warmup-num">3</div>
+        <div><div class="wf-warmup-title">Hip & Ankle Mobility</div><div class="wf-warmup-desc">Hip circles, ankle rolls — 10 each direction</div></div>
       </div>
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>Hip circles — 10 each direction</span>
-      </div>
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>Cat-cow stretch — 10 reps</span>
-      </div>
-      <div class="warmup-item" onclick="toggleWarmup(this)">
-        <i class="bi bi-circle warmup-check"></i>
-        <span>Band pull-aparts — 15 reps</span>
+      <div class="wf-warmup-item" onclick="WF.toggleWarmup(this)">
+        <div class="wf-warmup-num">4</div>
+        <div><div class="wf-warmup-title">Activation</div><div class="wf-warmup-desc">Cat-cow, glute bridges, band pull-aparts</div></div>
       </div>
     </div>
-    <button type="button" class="btn btn-outline-secondary btn-sm mt-3" id="warmupDoneBtn" onclick="completeWarmup()" style="width:100%; opacity:0.4;" disabled>
-      <i class="bi bi-check-lg me-1"></i>Warm-Up Complete — Begin Workout
+
+    <button type="button" class="wf-btn wf-btn-amber wf-btn-disabled" id="warmupBtn" onclick="WF.startWorkout()">
+      <i class="bi bi-play-fill"></i> Start Workout
     </button>
   </div>
 </div>
 
-<!-- ─── Step 3: Full Workout ──────────────────────────────────────────────── -->
-<div id="step-workout" class="workout-step" style="display:none;">
-{% endif %}
-
-{% if view_only %}
-<p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
-  Purple = your trainer's prescription.
-</p>
-{% else %}
-<p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
-  Purple = your trainer's prescription. Enter what you actually did.
-</p>
-{% endif %}
-
-<form method="POST" {% if view_only %}onsubmit="return false;"{% endif %}>
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  {% if phase_id %}<input type="hidden" name="phase_id" value="{{ phase_id }}">{% endif %}
-  {% if week_num  %}<input type="hidden" name="week_num"  value="{{ week_num }}">{% endif %}
-
-  {% set ns = namespace(current_group=None) %}
-  {% for we in workout_exercises %}
-  {% set ex = we.exercise %}
-  {% set ov = override_map.get(ex.id) %}
-  {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
-
-  {# Group start label #}
-  {% if we.group_id and we.group_id != ns.current_group %}
-    {% if ns.current_group %}
+<!-- ─── Step 3: Exercise-by-Exercise Workout ──────────────────────────────── -->
+<div id="screen-workout" class="wf-screen" style="display:none;">
+  <div class="wf-card wf-wide">
+    <!-- Badges + progress bar -->
+    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+      <span class="wf-badge wf-badge-secondary" id="wf-ex-counter">Exercise 1 of {{ workout_exercises|length }}</span>
+      <span class="wf-badge wf-badge-outline" id="wf-set-counter">Set 1 of 3</span>
     </div>
-    {% endif %}
-    {% set ns.current_group = we.group_id %}
-    <div style="border-left:3px solid {% if we.group_type == 'circuit' %}#f59e0b{% else %}#a78bfa{% endif %};border-radius:4px;padding-left:0.625rem;margin-bottom:0.5rem;">
-    <div style="margin-bottom:0.5rem;padding:0.25rem 0;">
-      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:3px;{% if we.group_type == 'circuit' %}background:rgba(245,158,11,0.12);color:#fbbf24;{% else %}background:rgba(167,139,250,0.12);color:#a78bfa;{% endif %}">{{ (we.group_type or 'superset') | upper }}</span>
-    </div>
-  {% elif not we.group_id and ns.current_group %}
-    </div>
-    {% set ns.current_group = None %}
-  {% endif %}
+    <div class="wf-progress-bar"><div class="wf-progress-fill" id="wf-progress" style="width:0%;"></div></div>
 
-  <div class="ex-log-card">
+    <!-- Exercise name -->
+    <div class="wf-ex-name" id="wf-ex-name"></div>
 
-    <!-- LEFT: name + prescription + set/rep/weight inputs -->
-    <div class="ex-log-left">
-      <div class="ex-log-name">{{ ex.name }}</div>
-
-      <!-- Prescription pill -->
-      {% if ov and (ov.sets or ov.reps or ov.weight_note) %}
-      <div class="ex-prescription">
-        <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
-        {% if ov.sets %}{{ ov.sets }}×{% endif %}{% if ov.reps %}{{ ov.reps }}{% endif %}{% if ov.weight_note %} @ {{ ov.weight_note }}{% endif %}
-      </div>
-      {% elif we.sets or we.reps %}
-      <div class="ex-prescription default">
-        <i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>
-        {{ we.sets }}×{{ we.reps }}{% if we.rest_seconds %} · {{ we.rest_seconds }}s rest{% endif %}
-      </div>
-      {% endif %}
-
-      <!-- Log inputs (only in logging mode) -->
-      {% if not view_only %}
-      {% if ex.is_hold %}
-      <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
-        <div class="log-field-wrap">
-          <label>Minutes</label>
-          <input type="number" name="dur_min_{{ ex.id }}" min="0" max="60" placeholder="0">
-        </div>
-        <div class="log-field-wrap">
-          <label>Seconds</label>
-          <input type="number" name="dur_sec_{{ ex.id }}" min="0" max="59" placeholder="0">
-        </div>
-      </div>
-      <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⏱️ How long did you hold it?</div>
-      {% elif ex.is_timed %}
-      <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
-        <div class="log-field-wrap">
-          <label>Minutes</label>
-          <input type="number" name="time_min_{{ ex.id }}" min="0" max="120" placeholder="0">
-        </div>
-        <div class="log-field-wrap">
-          <label>Seconds</label>
-          <input type="number" name="time_sec_{{ ex.id }}" min="0" max="59" placeholder="0">
-        </div>
-      </div>
-      <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⚡ What was your time?</div>
-      {% else %}
-      <div class="log-fields">
-        <div class="log-field-wrap">
-          <label>Sets</label>
-          <input type="number" name="sets_{{ ex.id }}" min="0" max="20"
-                 placeholder="{{ ov.sets if ov and ov.sets else we.sets }}">
-        </div>
-        <div class="log-field-wrap">
-          <label>Reps</label>
-          <input type="text" name="reps_{{ ex.id }}"
-                 placeholder="{{ ov.reps if ov and ov.reps else we.reps }}">
-        </div>
-        <div class="log-field-wrap">
-          <label>Weight (lbs)</label>
-          <input type="number" name="weight_{{ ex.id }}" min="0" step="2.5"
-                 placeholder="0">
-        </div>
-      </div>
-      {% endif %}
-      {% endif %}
-
-      <!-- Tags -->
-      {% if ex.muscle_group or ex.category or ex.equipment %}
-      <div class="ex-tags">
-        {% if ex.muscle_group %}
-        <span class="ex-tag-pill ex-tag-muscle">{{ ex.muscle_group }}</span>
-        {% endif %}
-        {% if ex.category %}
-        <span class="ex-tag-pill ex-tag-pattern">{{ ex.category }}</span>
-        {% endif %}
-        {% if ex.equipment %}
-        <span class="ex-tag-pill ex-tag-equip">{{ ex.equipment }}</span>
-        {% endif %}
-      </div>
-      {% endif %}
+    <!-- Sets / Reps stat row -->
+    <div class="wf-stat-row">
+      <div class="wf-stat"><div class="wf-stat-label">Sets</div><div class="wf-stat-value" id="wf-ex-sets"></div></div>
+      <div class="wf-divider"></div>
+      <div class="wf-stat"><div class="wf-stat-label">Reps</div><div class="wf-stat-value" id="wf-ex-reps"></div></div>
     </div>
 
-    <!-- RIGHT: video + cues -->
-    <div class="ex-log-right">
-      {% if yt_id %}
-      <div class="ex-video-wrap">
-        <iframe src="https://www.youtube.com/embed/{{ yt_id }}?rel=0&modestbranding=1"
-                title="{{ ex.name }} demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen></iframe>
-      </div>
-      {% else %}
-      <div class="ex-video-placeholder">
-        <i class="bi bi-play-circle"></i>
-      </div>
-      {% endif %}
+    <!-- Video -->
+    <div id="wf-video-area" style="margin-bottom:1rem;"></div>
 
-      {% if ex.instructions %}
-      <div class="ex-cues-label">Coaching Cues</div>
-      <ul class="ex-cues-list">
-        {% for cue in ex.instructions.split(' | ') %}
-        <li>
-          <span class="ex-cue-num">{{ loop.index }}</span>
-          <span>{{ cue }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% endif %}
+    <!-- Coaching Cues -->
+    <div id="wf-cues-area" style="margin-bottom:1rem;"></div>
+
+    <!-- Log inputs -->
+    <div id="wf-input-area"></div>
+
+    <!-- RPE slider -->
+    <div style="margin:1rem 0;">
+      <div class="wf-input-label">Rate of Perceived Exertion (RPE) <span class="wf-val" id="wf-rpe-val">7</span></div>
+      <div class="wf-slider-wrap">
+        <input type="range" class="wf-slider" id="wf-rpe" min="1" max="10" step="1" value="7"
+               oninput="document.getElementById('wf-rpe-val').textContent=this.value"
+               style="background: linear-gradient(90deg, var(--green) 0%, var(--amber) 50%, var(--red) 100%);">
+      </div>
+      <div class="wf-rpe-row"><span>Easy</span><span>Moderate</span><span>Maximum</span></div>
     </div>
 
-  </div>
-  {% endfor %}
-  {% if ns.current_group %}</div>{% endif %}
-
-  {% if not workout_exercises %}
-  <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
-    This workout has no exercises yet.
-  </div>
-  {% elif not view_only %}
-  <div class="d-flex gap-2 mt-3">
-    <button type="submit" class="btn btn-outline-secondary">
-      <i class="bi bi-check-lg me-1"></i>Save Workout Log
+    <!-- Complete Set button -->
+    <button type="button" class="wf-btn wf-btn-green" onclick="WF.completeSet()">
+      <i class="bi bi-check-lg"></i> <span id="wf-complete-label">Complete Set</span>
     </button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Skip</a>
   </div>
-  {% endif %}
-</form>
+</div>
 
-{% if not view_only %}
-</div><!-- end step-workout -->
+<!-- ─── Step 4: Workout Complete ──────────────────────────────────────────── -->
+<div id="screen-complete" class="wf-screen" style="display:none;">
+  <div class="wf-card">
+    <div class="wf-icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green); font-size:2rem;">
+      <i class="bi bi-check-circle-fill"></i>
+    </div>
+    <div class="wf-title">Workout Complete!</div>
+    <div class="wf-subtitle">Great job today. You crushed it.</div>
+
+    <div style="background:var(--bg-surface); border-radius:var(--radius-md); padding:1rem; margin-bottom:1.25rem;">
+      <div class="wf-summary-row">
+        <span class="wf-summary-label">Exercises Completed</span>
+        <span class="wf-summary-value" id="wf-sum-exercises"></span>
+      </div>
+      <div class="wf-summary-row">
+        <span class="wf-summary-label">Total Sets</span>
+        <span class="wf-summary-value" id="wf-sum-sets"></span>
+      </div>
+      <div class="wf-summary-row">
+        <span class="wf-summary-label">Total Volume</span>
+        <span class="wf-summary-value" id="wf-sum-volume"></span>
+      </div>
+    </div>
+
+    <button type="button" class="wf-btn wf-btn-primary" onclick="WF.submitWorkout()" id="wf-submit-btn">
+      <i class="bi bi-check-circle me-1"></i> Save Workout Log
+    </button>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if not view_only %}
 <script>
-// ── Pre-workout check-in → daily log ──
-function completeCheckin() {
-  const sleep = document.getElementById('checkin-sleep').value;
-  const water = document.getElementById('checkin-water').value;
-  const weight = document.getElementById('checkin-weight').value;
-  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+// ══════════════════════════════════════════════════════════════════════════════
+// Workout Flow Controller — one exercise at a time, set-by-set logging
+// ══════════════════════════════════════════════════════════════════════════════
+const WF = (() => {
+  // Exercise data from Jinja (rendered as JSON)
+  const exercises = [
+    {% for we in workout_exercises %}
+    {% set ex = we.exercise %}
+    {% set ov = override_map.get(ex.id) %}
+    {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
+    {
+      id: {{ ex.id }},
+      name: {{ ex.name | tojson }},
+      sets: {{ ov.sets if ov and ov.sets else we.sets or 3 }},
+      reps: {{ (ov.reps if ov and ov.reps else we.reps or '10') | tojson }},
+      weightNote: {{ (ov.weight_note if ov and ov.weight_note else '') | tojson }},
+      isHold: {{ 'true' if ex.is_hold else 'false' }},
+      isTimed: {{ 'true' if ex.is_timed else 'false' }},
+      youtubeId: {{ yt_id | tojson if yt_id else 'null' }},
+      cues: {{ (ex.instructions or '') | tojson }},
+      muscleGroup: {{ (ex.muscle_group or '') | tojson }},
+    },
+    {% endfor %}
+  ];
 
-  // Fire daily logs silently (don't block the flow)
-  if (sleep) {
-    const fd = new FormData();
-    fd.append('hours', sleep);
-    fd.append('quality', '3');
-    fetch('/daily-log/sleep', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
-  }
-  if (water) {
-    const fd = new FormData();
-    fd.append('value', water);
-    fetch('/daily-log/water', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
-  }
-  if (weight) {
-    const fd = new FormData();
-    fd.append('weight', weight);
-    fetch('/daily-log/weighin', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+  let exIdx = 0;
+  let setIdx = 0;
+  let warmupDone = 0;
+  const warmupTotal = 4;
+  const logData = {}; // {exerciseId: {sets, reps, weight, dur_min, dur_sec, time_min, time_sec}}
+
+  function show(id) {
+    ['screen-checkin','screen-warmup','screen-workout','screen-complete'].forEach(s =>
+      document.getElementById(s).style.display = s === id ? '' : 'none');
+    window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
-  // Show warm-up step
-  document.getElementById('step-checkin').style.display = 'none';
-  document.getElementById('step-warmup').style.display = '';
-  window.scrollTo({top:0, behavior:'smooth'});
-}
-
-// ── Warm-up toggles ──
-let warmupCount = 0;
-const warmupTotal = document.querySelectorAll('.warmup-item').length;
-
-function toggleWarmup(el) {
-  if (el.classList.contains('done')) {
-    el.classList.remove('done');
-    el.querySelector('.warmup-check').className = 'bi bi-circle warmup-check';
-    warmupCount--;
-  } else {
-    el.classList.add('done');
-    el.querySelector('.warmup-check').className = 'bi bi-check-circle-fill warmup-check';
-    warmupCount++;
+  function submitCheckin() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const sleep = document.getElementById('ci-sleep').value;
+    const water = document.getElementById('ci-water').value;
+    const weight = document.getElementById('ci-weight').value;
+    if (sleep && parseFloat(sleep) > 0) {
+      const fd = new FormData(); fd.append('hours', sleep); fd.append('quality', '3');
+      fetch('/daily-log/sleep', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+    }
+    if (water && parseFloat(water) > 0) {
+      const fd = new FormData(); fd.append('value', water);
+      fetch('/daily-log/water', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+    }
+    if (weight && parseFloat(weight) > 0) {
+      const fd = new FormData(); fd.append('weight', weight);
+      fetch('/daily-log/weighin', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+    }
+    show('screen-warmup');
   }
-  const btn = document.getElementById('warmupDoneBtn');
-  if (warmupCount >= warmupTotal) {
-    btn.disabled = false;
-    btn.style.opacity = '1';
-  } else {
-    btn.disabled = true;
-    btn.style.opacity = '0.4';
-  }
-}
 
-function completeWarmup() {
-  document.getElementById('step-warmup').style.display = 'none';
-  document.getElementById('step-workout').style.display = '';
-  window.scrollTo({top:0, behavior:'smooth'});
-}
+  function toggleWarmup(el) {
+    if (el.classList.contains('done')) { el.classList.remove('done'); warmupDone--; }
+    else { el.classList.add('done'); warmupDone++; }
+    const btn = document.getElementById('warmupBtn');
+    if (warmupDone >= warmupTotal) { btn.classList.remove('wf-btn-disabled'); }
+    else { btn.classList.add('wf-btn-disabled'); }
+  }
+
+  function startWorkout() {
+    if (warmupDone < warmupTotal) return;
+    exIdx = 0; setIdx = 0;
+    renderExercise();
+    show('screen-workout');
+  }
+
+  function renderExercise() {
+    const ex = exercises[exIdx];
+    const totalSets = exercises.reduce((a, e) => a + e.sets, 0);
+    const doneSets = exercises.slice(0, exIdx).reduce((a, e) => a + e.sets, 0) + setIdx;
+    const pct = Math.round(doneSets / totalSets * 100);
+
+    document.getElementById('wf-ex-counter').textContent = `Exercise ${exIdx+1} of ${exercises.length}`;
+    document.getElementById('wf-set-counter').textContent = `Set ${setIdx+1} of ${ex.sets}`;
+    document.getElementById('wf-progress').style.width = pct + '%';
+    document.getElementById('wf-ex-name').textContent = ex.name;
+    document.getElementById('wf-ex-sets').textContent = ex.sets;
+    document.getElementById('wf-ex-reps').textContent = ex.reps;
+
+    // Video
+    const videoArea = document.getElementById('wf-video-area');
+    if (ex.youtubeId) {
+      videoArea.innerHTML = `<div class="ex-video-wrap"><iframe src="https://www.youtube.com/embed/${ex.youtubeId}?rel=0&modestbranding=1" title="${ex.name}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+    } else {
+      videoArea.innerHTML = `<div class="ex-video-placeholder"><i class="bi bi-play-circle"></i></div>`;
+    }
+
+    // Cues
+    const cuesArea = document.getElementById('wf-cues-area');
+    if (ex.cues) {
+      const cueItems = ex.cues.split(' | ').map(c =>
+        `<div class="wf-cue"><i class="bi bi-check-circle-fill wf-cue-icon"></i><span class="wf-cue-text">${c}</span></div>`
+      ).join('');
+      cuesArea.innerHTML = `<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:0.35rem;">Form Cues</div>${cueItems}`;
+    } else { cuesArea.innerHTML = ''; }
+
+    // Input fields
+    const inputArea = document.getElementById('wf-input-area');
+    if (ex.isHold) {
+      inputArea.innerHTML = `<div class="wf-log-fields" style="grid-template-columns:1fr 1fr;">
+        <div class="wf-log-field"><label>Minutes</label><input type="number" id="wf-dur-min" min="0" max="60" placeholder="0"></div>
+        <div class="wf-log-field"><label>Seconds</label><input type="number" id="wf-dur-sec" min="0" max="59" placeholder="0"></div>
+      </div><div style="font-size:0.7rem;color:var(--text-muted);text-align:center;">⏱️ How long did you hold it?</div>`;
+    } else if (ex.isTimed) {
+      inputArea.innerHTML = `<div class="wf-log-fields" style="grid-template-columns:1fr 1fr;">
+        <div class="wf-log-field"><label>Minutes</label><input type="number" id="wf-time-min" min="0" max="120" placeholder="0"></div>
+        <div class="wf-log-field"><label>Seconds</label><input type="number" id="wf-time-sec" min="0" max="59" placeholder="0"></div>
+      </div><div style="font-size:0.7rem;color:var(--text-muted);text-align:center;">⚡ What was your time?</div>`;
+    } else {
+      inputArea.innerHTML = `<div class="wf-log-fields">
+        <div class="wf-log-field"><label>Sets</label><input type="number" id="wf-sets" min="0" max="20" placeholder="${ex.sets}" value="${ex.sets}"></div>
+        <div class="wf-log-field"><label>Reps</label><input type="text" id="wf-reps" placeholder="${ex.reps}"></div>
+        <div class="wf-log-field"><label>Weight (lbs)</label><input type="number" id="wf-weight" min="0" step="2.5" placeholder="0"></div>
+      </div>`;
+    }
+
+    // Button label
+    const isLastSet = setIdx >= ex.sets - 1;
+    const isLastEx = exIdx >= exercises.length - 1;
+    const label = document.getElementById('wf-complete-label');
+    if (isLastSet && isLastEx) label.textContent = 'Finish Workout';
+    else if (isLastSet) label.textContent = 'Complete Exercise';
+    else label.textContent = 'Complete Set';
+  }
+
+  function completeSet() {
+    const ex = exercises[exIdx];
+
+    // Save the logged data (only on first set or update each set)
+    if (setIdx === 0) {
+      if (ex.isHold) {
+        logData[ex.id] = { dur_min: gv('wf-dur-min'), dur_sec: gv('wf-dur-sec') };
+      } else if (ex.isTimed) {
+        logData[ex.id] = { time_min: gv('wf-time-min'), time_sec: gv('wf-time-sec') };
+      } else {
+        logData[ex.id] = { sets: gv('wf-sets'), reps: gv('wf-reps'), weight: gv('wf-weight') };
+      }
+    } else {
+      // Update on subsequent sets (use latest values)
+      if (!ex.isHold && !ex.isTimed) {
+        logData[ex.id] = { sets: gv('wf-sets'), reps: gv('wf-reps'), weight: gv('wf-weight') };
+      }
+    }
+
+    setIdx++;
+    if (setIdx >= ex.sets) {
+      // Move to next exercise or complete
+      exIdx++;
+      setIdx = 0;
+      if (exIdx >= exercises.length) {
+        showComplete();
+        return;
+      }
+    }
+    renderExercise();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function gv(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+
+  function showComplete() {
+    const totalSets = exercises.reduce((a, e) => a + e.sets, 0);
+    let totalVol = 0;
+    exercises.forEach(e => {
+      const d = logData[e.id];
+      if (d && d.weight && d.reps) {
+        const w = parseFloat(d.weight) || 0;
+        const repsList = d.reps.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+        const totalReps = repsList.length === 1 ? repsList[0] * (parseInt(d.sets) || e.sets) : repsList.reduce((a,b) => a+b, 0);
+        totalVol += w * totalReps;
+      }
+    });
+
+    document.getElementById('wf-sum-exercises').textContent = exercises.length;
+    document.getElementById('wf-sum-sets').textContent = totalSets;
+    document.getElementById('wf-sum-volume').textContent = totalVol > 0 ? totalVol.toLocaleString() + ' lbs' : '—';
+    show('screen-complete');
+  }
+
+  function submitWorkout() {
+    const btn = document.getElementById('wf-submit-btn');
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+    btn.style.pointerEvents = 'none';
+
+    const container = document.getElementById('formFields');
+    container.innerHTML = '';
+    exercises.forEach(ex => {
+      const d = logData[ex.id] || {};
+      if (ex.isHold) {
+        addField(container, `dur_min_${ex.id}`, d.dur_min || '');
+        addField(container, `dur_sec_${ex.id}`, d.dur_sec || '');
+      } else if (ex.isTimed) {
+        addField(container, `time_min_${ex.id}`, d.time_min || '');
+        addField(container, `time_sec_${ex.id}`, d.time_sec || '');
+      } else {
+        addField(container, `sets_${ex.id}`, d.sets || '');
+        addField(container, `reps_${ex.id}`, d.reps || '');
+        addField(container, `weight_${ex.id}`, d.weight || '');
+      }
+    });
+    document.getElementById('workoutForm').submit();
+  }
+
+  function addField(container, name, value) {
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    container.appendChild(input);
+  }
+
+  return { submitCheckin, toggleWarmup, startWorkout, completeSet, submitWorkout };
+})();
 </script>
 {% endif %}
 {% endblock %}
