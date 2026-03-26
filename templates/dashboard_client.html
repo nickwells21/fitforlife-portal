@@ -803,39 +803,8 @@
   </div>
 </div>
 
-<!-- ─── Stats Row ─────────────────────────────────────────────────────────── -->
+<!-- ─── Stats Row (simplified: streak, month %, total sessions) ────────────── -->
 <div class="stats-row">
-
-  <!-- Sessions This Month — ring -->
-  <div class="stat-card">
-    {% if purchased > 0 %}
-      {% set pct_s  = ((sessions_this_month / purchased) * 100)|int %}
-      {% set rad_s  = 28 %}
-      {% set circ_s = (2 * 3.14159 * rad_s)|int %}
-      {% set dash_s = ((pct_s / 100) * circ_s)|int %}
-      <div class="stat-ring-wrap">
-        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true" style="max-width:100%;">
-          <circle cx="36" cy="36" r="{{ rad_s }}" fill="none"
-            stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
-          <circle id="stats-ring" cx="36" cy="36" r="{{ rad_s }}" fill="none"
-            stroke="{% if pct_s == 100 %}#22c55e{% else %}#1e9df1{% endif %}"
-            stroke-width="7"
-            stroke-dasharray="0 {{ circ_s }}"
-            stroke-dashoffset="{{ circ_s // 4 }}"
-            stroke-linecap="round"
-            data-dash="{{ dash_s }}"
-            data-circ="{{ circ_s }}"/>
-        </svg>
-        <div class="stat-ring-label">
-          <span class="stat-ring-num">{{ sessions_this_month }}</span>
-          <span class="stat-ring-sub">of {{ purchased }}</span>
-        </div>
-      </div>
-    {% else %}
-      <div class="stat-value" style="color:#69c0f5;">{{ sessions_this_month }}</div>
-    {% endif %}
-    <div class="stat-label">This Month</div>
-  </div>
 
   <!-- Streak -->
   <div class="streak-card ffl-card">
@@ -867,39 +836,17 @@
     {% endif %}
   </div>
 
-  <!-- Monthly Progress Ring -->
+  <!-- Month % -->
   <div class="stat-card">
     {% if purchased > 0 %}
-      {% set mp_pct   = ((completed / purchased) * 100)|int %}
-      {% set mp_rad   = 32 %}
-      {% set mp_circ  = (2 * 3.14159 * mp_rad)|round|int %}
-      {% set mp_dash  = ((mp_pct / 100) * mp_circ)|int %}
+      {% set mp_pct = ((completed / purchased) * 100)|int %}
       {% set ring_color = '#22c55e' if mp_pct >= 100 else '#1e9df1' %}
-      <div class="month-ring-wrap">
-        <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true" style="max-width:100%;">
-          <circle cx="40" cy="40" r="{{ mp_rad }}" fill="none"
-            stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
-          <circle cx="40" cy="40" r="{{ mp_rad }}" fill="none"
-            stroke="{{ ring_color }}"
-            stroke-width="8"
-            stroke-dasharray="0 {{ mp_circ }}"
-            stroke-dashoffset="{{ mp_circ // 4 }}"
-            stroke-linecap="round"
-            data-dash="{{ mp_dash }}"
-            data-circ="{{ mp_circ }}"
-            class="month-progress-arc"/>
-        </svg>
-        <div class="month-ring-label">
-          <span class="month-ring-pct" style="color:{{ ring_color }};">{{ mp_pct }}%</span>
-          <span class="month-ring-frac">{{ completed }}/{{ purchased }}</span>
-        </div>
-      </div>
+      <div class="stat-value" style="color:{{ ring_color }};">{{ mp_pct }}%</div>
+      <div class="stat-label">{{ month_name }} · {{ completed }}/{{ purchased }}</div>
     {% else %}
-      <div style="width:80px;height:80px;border-radius:50%;border:8px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;margin-bottom:0.25rem;">
-        <span style="font-size:0.75rem;color:var(--text-faint);">—</span>
-      </div>
+      <div class="stat-value" style="color:var(--text-faint);">—</div>
+      <div class="stat-label">{{ month_name }}</div>
     {% endif %}
-    <div class="stat-label">Month</div>
   </div>
 
   <!-- Total Sessions -->
@@ -911,41 +858,7 @@
 
 </div>
 
-<!-- ─── Notifications ────────────────────────────────────────────────────── -->
-{% if notifications %}
-<div class="notif-panel ffl-card" style="margin-bottom:1rem;">
-  <div class="notif-header">
-    <div style="display:flex; align-items:center; gap:0.5rem;">
-      <i class="bi bi-bell-fill" style="color:var(--accent); font-size:0.875rem;"></i>
-      <span class="card-title" style="margin:0;">Notifications</span>
-      {% if unread_notif_count > 0 %}
-      <span class="notif-badge">{{ unread_notif_count }}</span>
-      {% endif %}
-    </div>
-    <span style="font-size:11px; color:var(--text-muted);">{{ notifications|length }} recent</span>
-  </div>
-  <div class="notif-list">
-    {% for n in notifications %}
-    <div class="notif-item {% if not n.is_read %}notif-unread{% endif %}" data-notif-id="{{ n.id }}">
-      <div class="notif-icon {% if n.notif_type == 'streak_milestone' %}notif-streak{% elif n.notif_type == 'session_completed' %}notif-complete{% endif %}">
-        {% if n.notif_type == 'streak_milestone' %}🔥{% elif n.notif_type == 'session_completed' %}💪{% else %}<i class="bi bi-info-circle"></i>{% endif %}
-      </div>
-      <div class="notif-body">
-        <div class="notif-msg">{{ n.message }}</div>
-        <div class="notif-time">{{ n.created_at.strftime('%b %d') }}</div>
-      </div>
-      {% if not n.is_read %}
-      <button class="notif-dismiss" onclick="dismissNotif({{ n.id }}, this)" title="Mark read">
-        <i class="bi bi-x"></i>
-      </button>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<!-- ─── Next Session ──────────────────────────────────────────────────────── -->
+<!-- ─── Next Session + Log Workout ────────────────────────────────────────── -->
 <div class="next-session-card" style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
 
   <!-- LEFT: session info -->
@@ -1090,61 +1003,39 @@
 
 </div>
 
-<!-- ─── Quick Actions ─────────────────────────────────────────────────────── -->
-<div class="ffl-card mb-3" style="padding:0; overflow:hidden;">
-  <div class="actions-list">
-
-    <a href="{{ url_for('client_calendar') }}" class="action-row">
-      <div class="action-icon" style="background:rgba(30,157,241,0.12); color:#93d4f8;">
-        <i class="bi bi-calendar3"></i>
+<!-- ─── Notifications ────────────────────────────────────────────────────── -->
+{% if notifications %}
+<div class="notif-panel ffl-card" style="margin-bottom:1rem;">
+  <div class="notif-header">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <i class="bi bi-bell-fill" style="color:var(--accent); font-size:0.875rem;"></i>
+      <span class="card-title" style="margin:0;">Notifications</span>
+      {% if unread_notif_count > 0 %}
+      <span class="notif-badge">{{ unread_notif_count }}</span>
+      {% endif %}
+    </div>
+    <span style="font-size:11px; color:var(--text-muted);">{{ notifications|length }} recent</span>
+  </div>
+  <div class="notif-list">
+    {% for n in notifications %}
+    <div class="notif-item {% if not n.is_read %}notif-unread{% endif %}" data-notif-id="{{ n.id }}">
+      <div class="notif-icon {% if n.notif_type == 'streak_milestone' %}notif-streak{% elif n.notif_type == 'session_completed' %}notif-complete{% endif %}">
+        {% if n.notif_type == 'streak_milestone' %}🔥{% elif n.notif_type == 'session_completed' %}💪{% else %}<i class="bi bi-info-circle"></i>{% endif %}
       </div>
-      <div>
-        <div class="action-title">Full Schedule</div>
-        <div class="action-desc">Browse all your sessions</div>
+      <div class="notif-body">
+        <div class="notif-msg">{{ n.message }}</div>
+        <div class="notif-time">{{ n.created_at.strftime('%b %d') }}</div>
       </div>
-      <i class="bi bi-chevron-right action-arrow"></i>
-    </a>
-
-    {% if next_session %}
-    <a href="mailto:{{ next_session.trainer.email }}?subject=Question about my training"
-       class="action-row">
-    {% elif current_user.assigned_trainer %}
-    <a href="mailto:{{ current_user.assigned_trainer.email }}?subject=Question about my training"
-       class="action-row">
-    {% else %}
-    <a href="mailto:nick@fitforlife.com?subject=Question" class="action-row">
-    {% endif %}
-      <div class="action-icon" style="background:rgba(34,197,94,0.1); color:#4ade80;">
-        <i class="bi bi-envelope"></i>
-      </div>
-      <div>
-        <div class="action-title">{% if next_session %}Message {{ next_session.trainer.name.split()[0] }}{% elif current_user.assigned_trainer %}Message {{ current_user.assigned_trainer.name.split()[0] }}{% else %}Contact Us{% endif %}</div>
-        <div class="action-desc">Email your trainer directly</div>
-      </div>
-      <i class="bi bi-chevron-right action-arrow"></i>
-    </a>
-
-    {% if next_session %}
-    <a href="mailto:{{ next_session.trainer.email }}?subject=Session Request&body=Hi {{ next_session.trainer.name.split()[0] }}, I'd like to book a session."
-       class="action-row">
-    {% elif current_user.assigned_trainer %}
-    <a href="mailto:{{ current_user.assigned_trainer.email }}?subject=Session Request&body=Hi {{ current_user.assigned_trainer.name.split()[0] }}, I'd like to book a session."
-       class="action-row">
-    {% else %}
-    <a href="mailto:nick@fitforlife.com?subject=Session Request" class="action-row">
-    {% endif %}
-      <div class="action-icon" style="background:rgba(245,158,11,0.1); color:#fcd34d;">
-        <i class="bi bi-plus-circle"></i>
-      </div>
-      <div>
-        <div class="action-title">Book a Session</div>
-        <div class="action-desc">Request a new session with your trainer</div>
-      </div>
-      <i class="bi bi-chevron-right action-arrow"></i>
-    </a>
-
+      {% if not n.is_read %}
+      <button class="notif-dismiss" onclick="dismissNotif({{ n.id }}, this)" title="Mark read">
+        <i class="bi bi-x"></i>
+      </button>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
 </div>
+{% endif %}
 
 <!-- ─── Upcoming Sessions ─────────────────────────────────────────────────── -->
 {% if upcoming|length > 1 %}
@@ -1177,99 +1068,6 @@
   </div>
 </div>
 {% endif %}
-
-<!-- ─── This Month + At Fit For Life ─────────────────────────────────────── -->
-<div class="row g-3 mb-0">
-
-  <!-- This Month -->
-  <div class="{% if events or promos %}col-md-5{% else %}col-12{% endif %}">
-    <div class="month-card">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
-        <span class="section-label" style="margin-bottom:0;">{{ month_name }}</span>
-        {% if remaining == 0 and purchased > 0 %}
-        <span class="month-badge complete">Complete</span>
-        {% elif remaining > 0 %}
-        <span class="month-badge in-progress">{{ remaining }} left</span>
-        {% endif %}
-      </div>
-
-      {% if purchased > 0 %}
-        {% set pct    = ((completed / purchased) * 100)|int %}
-        {% set radius = 48 %}
-        {% set circ   = (2 * 3.14159 * radius)|int %}
-        {% set dash   = ((pct / 100) * circ)|int %}
-
-        <div style="display:flex; flex-direction:column; align-items:center;">
-          <div class="ring-container">
-            <svg width="130" height="130" viewBox="0 0 120 120" style="max-width:100%;">
-              <circle cx="60" cy="60" r="{{ radius }}" fill="none"
-                stroke="rgba(255,255,255,0.06)" stroke-width="11"/>
-              <circle id="progress-ring" cx="60" cy="60" r="{{ radius }}" fill="none"
-                stroke="{% if pct == 100 %}#22c55e{% else %}#1e9df1{% endif %}"
-                stroke-width="11"
-                stroke-dasharray="0 {{ circ }}"
-                stroke-dashoffset="{{ circ // 4 }}"
-                stroke-linecap="round"
-                data-dash="{{ dash }}"
-                data-circ="{{ circ }}"/>
-            </svg>
-            <div class="ring-label">
-              <span class="ring-num">{{ completed }}</span>
-              <span class="ring-of">of {{ purchased }}</span>
-            </div>
-          </div>
-          <div class="month-motivator">
-            {% if pct == 100 %}All sessions done — incredible month.
-            {% elif pct >= 75 %}Almost there. One more to go.
-            {% elif pct >= 50 %}More than halfway. Keep the momentum.
-            {% elif completed > 0 %}{{ month_name }} is in motion. Stay consistent.
-            {% else %}{{ month_name }} starts now. Let's go.
-            {% endif %}
-          </div>
-        </div>
-
-      {% else %}
-        <div style="text-align:center; padding:1.75rem 0; color:var(--text-muted); font-size:13px; line-height:1.6;">
-          No package set for {{ month_name }}.<br>
-          <span style="font-size:12px; color:var(--text-faint);">Contact Nick to get started.</span>
-        </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- At Fit For Life -->
-  {% if events or promos %}
-  <div class="col-md-7">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
-      <span class="section-label" style="margin-bottom:0;">At Fit For Life</span>
-    </div>
-    <div class="bulletin-feed">
-      {% for event in events[:2] %}
-      <div class="feed-card event">
-        <div class="feed-type"><i class="bi bi-star-fill"></i> Event</div>
-        <div class="feed-title">{{ event.title }}</div>
-        {% if event.description %}<div class="feed-desc">{{ event.description }}</div>{% endif %}
-        <div class="feed-footer">
-          <i class="bi bi-calendar3"></i>
-          {{ event.event_date.strftime('%B %d') }}{% if event.location %} &middot; {{ event.location.name }}{% endif %}
-        </div>
-      </div>
-      {% endfor %}
-      {% for promo in promos[:2] %}
-      <div class="feed-card promo {{ promo.promo_type }}">
-        <div class="feed-type"><i class="bi bi-tag-fill"></i> {{ promo.promo_type | capitalize }}</div>
-        <div class="feed-title">{{ promo.title }}</div>
-        <div class="feed-desc">{{ promo.description }}</div>
-        {% if promo.end_date %}
-        <div class="feed-footer"><i class="bi bi-clock"></i> Ends {{ promo.end_date.strftime('%B %d') }}</div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-</div>
 
 <!-- ─── 2026 FFL Annual Calendar ──────────────────────────────────────────── -->
 <div class="ffl-card quarter-progress-card mt-3" style="margin-bottom:1rem;">
