@@ -11,8 +11,13 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+import stripe as _stripe
 
 load_dotenv()
+
+# Stripe config — set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in environment
+_stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 app = Flask(__name__)
 
@@ -70,6 +75,7 @@ class User(UserMixin, db.Model):
     trainerize_url = db.Column(db.String(300))
     trainer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    stripe_customer_id = db.Column(db.String(100), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     sessions_as_trainer = db.relationship('Session', foreign_keys='Session.trainer_id', backref='trainer', lazy='dynamic')
@@ -153,6 +159,8 @@ class MembershipPlan(db.Model):
     commitment = db.Column(db.String(20), nullable=False)  # 'month-to-month','6-month'
     is_crew = db.Column(db.Boolean, default=False)
     price_cents = db.Column(db.Integer)                    # monthly price in cents
+    stripe_price_id = db.Column(db.String(100), nullable=True)  # Stripe Price object ID
+    stripe_product_id = db.Column(db.String(100), nullable=True)  # Stripe Product object ID
 
 
 class SessionPackage(db.Model):
@@ -166,6 +174,24 @@ class SessionPackage(db.Model):
     is_crew = db.Column(db.Boolean, default=False)
     notes = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    plan = db.relationship('MembershipPlan', foreign_keys=[plan_id])
+
+
+class ClientSubscription(db.Model):
+    """Tracks a client's active Stripe recurring subscription."""
+    __tablename__ = 'client_subscriptions'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey('membership_plans.id'), nullable=False)
+    stripe_subscription_id = db.Column(db.String(100), unique=True, nullable=True)
+    status = db.Column(db.String(30), default='active')  # active, past_due, canceled, paused
+    billing_day = db.Column(db.Integer, default=1)  # Day of month to charge (1-28)
+    current_period_start = db.Column(db.Date, nullable=True)
+    current_period_end = db.Column(db.Date, nullable=True)
+    canceled_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    client = db.relationship('User', foreign_keys=[client_id])
     plan = db.relationship('MembershipPlan', foreign_keys=[plan_id])
 
 
@@ -1557,10 +1583,14 @@ def admin_packages():
     plans = MembershipPlan.query.order_by(
         MembershipPlan.plan_type, MembershipPlan.is_crew, MembershipPlan.commitment, MembershipPlan.sessions_per_month
     ).all()
+    # Active subscriptions keyed by client_id
+    subs = ClientSubscription.query.filter(ClientSubscription.status.in_(['active', 'past_due'])).all()
+    sub_by_client = {s.client_id: s for s in subs}
     return render_template('admin_packages.html',
         packages=packages, clients=clients, plans=plans,
         current_month=now.month, current_year=now.year,
-        month_name=month_name
+        month_name=month_name, sub_by_client=sub_by_client,
+        stripe_enabled=stripe_enabled(),
     )
 
 
@@ -3952,6 +3982,297 @@ def compliance_dashboard():
     return render_template('compliance.html', rows=rows)
 
 
+# ─── Stripe Billing ──────────────────────────────────────────────────────────
+
+def stripe_enabled():
+    return bool(_stripe.api_key)
+
+
+def get_or_create_stripe_customer(user):
+    """Get or create a Stripe Customer for a portal user."""
+    if user.stripe_customer_id:
+        return user.stripe_customer_id
+    if not stripe_enabled():
+        return None
+    customer = _stripe.Customer.create(
+        name=user.name,
+        email=user.email,
+        metadata={'portal_user_id': str(user.id), 'role': user.role},
+    )
+    user.stripe_customer_id = customer.id
+    db.session.commit()
+    return customer.id
+
+
+def get_or_create_stripe_price(plan):
+    """Ensure a MembershipPlan has a Stripe Product + Price. Returns stripe_price_id."""
+    if plan.stripe_price_id:
+        return plan.stripe_price_id
+    if not stripe_enabled() or not plan.price_cents:
+        return None
+    # Create Product
+    if not plan.stripe_product_id:
+        product = _stripe.Product.create(
+            name=plan.name,
+            metadata={'portal_plan_id': str(plan.id), 'plan_type': plan.plan_type},
+        )
+        plan.stripe_product_id = product.id
+    # Create Price (recurring monthly)
+    price = _stripe.Price.create(
+        product=plan.stripe_product_id,
+        unit_amount=plan.price_cents,
+        currency='usd',
+        recurring={'interval': 'month'},
+        metadata={'portal_plan_id': str(plan.id)},
+    )
+    plan.stripe_price_id = price.id
+    db.session.commit()
+    return price.id
+
+
+@app.route('/admin/billing/subscribe', methods=['POST'])
+@admin_required
+def admin_start_subscription():
+    """Create a Stripe subscription for a client on a given plan."""
+    client_id = int(request.form['client_id'])
+    plan_id = int(request.form['plan_id'])
+    billing_day = int(request.form.get('billing_day', 1))
+
+    client = User.query.get_or_404(client_id)
+    plan = MembershipPlan.query.get_or_404(plan_id)
+
+    if not stripe_enabled():
+        flash('Stripe is not configured. Set STRIPE_SECRET_KEY in environment.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    # Ensure Stripe customer + price exist
+    customer_id = get_or_create_stripe_customer(client)
+    price_id = get_or_create_stripe_price(plan)
+    if not customer_id or not price_id:
+        flash('Could not create Stripe customer or price.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    # Check for existing active subscription
+    existing = ClientSubscription.query.filter_by(client_id=client_id, status='active').first()
+    if existing:
+        flash(f'{client.name} already has an active subscription. Change their plan instead.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    try:
+        sub = _stripe.Subscription.create(
+            customer=customer_id,
+            items=[{'price': price_id}],
+            billing_cycle_anchor_config={'day_of_month': billing_day},
+            proration_behavior='create_prorations',
+            payment_behavior='default_incomplete',
+            expand=['latest_invoice.payment_intent'],
+            metadata={'portal_client_id': str(client_id), 'portal_plan_id': str(plan_id)},
+        )
+        # Save subscription record
+        local_sub = ClientSubscription(
+            client_id=client_id, plan_id=plan_id,
+            stripe_subscription_id=sub.id,
+            status=sub.status,
+            billing_day=billing_day,
+        )
+        if sub.current_period_start:
+            from datetime import date as _date
+            local_sub.current_period_start = datetime.fromtimestamp(sub.current_period_start).date()
+            local_sub.current_period_end = datetime.fromtimestamp(sub.current_period_end).date()
+        db.session.add(local_sub)
+        db.session.commit()
+
+        # If subscription needs payment method, send Stripe-hosted invoice link
+        if sub.status == 'incomplete' and sub.latest_invoice:
+            invoice = sub.latest_invoice
+            if hasattr(invoice, 'hosted_invoice_url') and invoice.hosted_invoice_url:
+                flash(f'Subscription created for {client.name}. Invoice sent — they need to add a payment method.', 'success')
+            else:
+                flash(f'Subscription created for {client.name} (status: {sub.status}).', 'success')
+        else:
+            flash(f'Subscription started for {client.name} — ${plan.price_cents/100:.2f}/mo on the {billing_day}{"st" if billing_day==1 else "th"}.', 'success')
+
+    except _stripe.error.StripeError as e:
+        flash(f'Stripe error: {e.user_message or str(e)}', 'danger')
+
+    return redirect(url_for('admin_packages'))
+
+
+@app.route('/admin/billing/change-plan', methods=['POST'])
+@admin_required
+def admin_change_plan():
+    """Swap a client to a different plan — Stripe prorates automatically."""
+    sub_id = int(request.form['subscription_id'])
+    new_plan_id = int(request.form['new_plan_id'])
+
+    local_sub = ClientSubscription.query.get_or_404(sub_id)
+    new_plan = MembershipPlan.query.get_or_404(new_plan_id)
+    client = User.query.get(local_sub.client_id)
+
+    if not stripe_enabled():
+        flash('Stripe not configured.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    new_price_id = get_or_create_stripe_price(new_plan)
+    if not new_price_id:
+        flash('Could not create price for new plan.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    try:
+        stripe_sub = _stripe.Subscription.retrieve(local_sub.stripe_subscription_id)
+        _stripe.Subscription.modify(
+            local_sub.stripe_subscription_id,
+            items=[{
+                'id': stripe_sub['items']['data'][0]['id'],
+                'price': new_price_id,
+            }],
+            proration_behavior='create_prorations',
+            metadata={'portal_plan_id': str(new_plan_id)},
+        )
+        old_plan_name = local_sub.plan.name if local_sub.plan else 'Unknown'
+        local_sub.plan_id = new_plan_id
+        local_sub.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        flash(f'{client.name} moved from {old_plan_name} → {new_plan.name}. Stripe will prorate.', 'success')
+
+    except _stripe.error.StripeError as e:
+        flash(f'Stripe error: {e.user_message or str(e)}', 'danger')
+
+    return redirect(url_for('admin_packages'))
+
+
+@app.route('/admin/billing/cancel', methods=['POST'])
+@admin_required
+def admin_cancel_subscription():
+    """Cancel a subscription at end of current period."""
+    sub_id = int(request.form['subscription_id'])
+    local_sub = ClientSubscription.query.get_or_404(sub_id)
+    client = User.query.get(local_sub.client_id)
+
+    if not stripe_enabled():
+        flash('Stripe not configured.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    try:
+        _stripe.Subscription.modify(
+            local_sub.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        local_sub.status = 'canceled'
+        local_sub.canceled_at = datetime.now(timezone.utc)
+        db.session.commit()
+        flash(f'{client.name}\'s subscription will cancel at end of billing period.', 'success')
+
+    except _stripe.error.StripeError as e:
+        flash(f'Stripe error: {e.user_message or str(e)}', 'danger')
+
+    return redirect(url_for('admin_packages'))
+
+
+@app.route('/admin/billing/reactivate', methods=['POST'])
+@admin_required
+def admin_reactivate_subscription():
+    """Un-cancel a subscription that was set to cancel at period end."""
+    sub_id = int(request.form['subscription_id'])
+    local_sub = ClientSubscription.query.get_or_404(sub_id)
+    client = User.query.get(local_sub.client_id)
+
+    if not stripe_enabled():
+        flash('Stripe not configured.', 'danger')
+        return redirect(url_for('admin_packages'))
+
+    try:
+        _stripe.Subscription.modify(
+            local_sub.stripe_subscription_id,
+            cancel_at_period_end=False,
+        )
+        local_sub.status = 'active'
+        local_sub.canceled_at = None
+        db.session.commit()
+        flash(f'{client.name}\'s subscription reactivated.', 'success')
+
+    except _stripe.error.StripeError as e:
+        flash(f'Stripe error: {e.user_message or str(e)}', 'danger')
+
+    return redirect(url_for('admin_packages'))
+
+
+@app.route('/webhook/stripe', methods=['POST'])
+@csrf.exempt
+def stripe_webhook():
+    """Handle Stripe webhook events — payment success, failure, subscription changes."""
+    payload = request.get_data(as_text=True)
+    sig = request.headers.get('Stripe-Signature', '')
+
+    if STRIPE_WEBHOOK_SECRET:
+        try:
+            event = _stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+        except (ValueError, _stripe.error.SignatureVerificationError):
+            return 'Invalid signature', 400
+    else:
+        event = _stripe.Event.construct_from(
+            _stripe.util.json.loads(payload), _stripe.api_key
+        )
+
+    etype = event['type']
+    obj = event['data']['object']
+
+    if etype == 'invoice.paid':
+        # Successful recurring payment — auto-create SessionPackage for the month
+        sub_id = obj.get('subscription')
+        if sub_id:
+            local_sub = ClientSubscription.query.filter_by(stripe_subscription_id=sub_id).first()
+            if local_sub and local_sub.plan:
+                from datetime import date as _date
+                now = datetime.now(timezone.utc)
+                existing_pkg = SessionPackage.query.filter_by(
+                    client_id=local_sub.client_id, month=now.month, year=now.year
+                ).first()
+                if not existing_pkg:
+                    db.session.add(SessionPackage(
+                        client_id=local_sub.client_id,
+                        month=now.month, year=now.year,
+                        sessions_purchased=local_sub.plan.sessions_per_month,
+                        plan_id=local_sub.plan_id,
+                        is_crew=local_sub.plan.is_crew,
+                        notes=f'Auto-created from Stripe payment ({obj.get("id", "")})',
+                    ))
+                    db.session.commit()
+                    audit_logger.info(f'Auto-created package for client {local_sub.client_id} '
+                                     f'({now.month}/{now.year}) from Stripe invoice {obj.get("id")}')
+
+    elif etype == 'invoice.payment_failed':
+        sub_id = obj.get('subscription')
+        if sub_id:
+            local_sub = ClientSubscription.query.filter_by(stripe_subscription_id=sub_id).first()
+            if local_sub:
+                local_sub.status = 'past_due'
+                db.session.commit()
+                client = User.query.get(local_sub.client_id)
+                audit_logger.warning(f'Payment failed for {client.name if client else local_sub.client_id} '
+                                     f'— subscription {sub_id}')
+
+    elif etype == 'customer.subscription.updated':
+        sub_id = obj.get('id')
+        local_sub = ClientSubscription.query.filter_by(stripe_subscription_id=sub_id).first()
+        if local_sub:
+            local_sub.status = obj.get('status', local_sub.status)
+            if obj.get('current_period_start'):
+                local_sub.current_period_start = datetime.fromtimestamp(obj['current_period_start']).date()
+                local_sub.current_period_end = datetime.fromtimestamp(obj['current_period_end']).date()
+            db.session.commit()
+
+    elif etype == 'customer.subscription.deleted':
+        sub_id = obj.get('id')
+        local_sub = ClientSubscription.query.filter_by(stripe_subscription_id=sub_id).first()
+        if local_sub:
+            local_sub.status = 'canceled'
+            local_sub.canceled_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+    return '', 200
+
+
 # ─── V2 Engagement Routes ────────────────────────────────────────────────────
 
 @app.route('/daily-log')
@@ -4207,6 +4528,10 @@ def init_db():
             # V2 Engagement: Exercise time-domain fields
             ('is_timed',         'ALTER TABLE exercises ADD COLUMN is_timed BOOLEAN DEFAULT FALSE'),
             ('is_hold',          'ALTER TABLE exercises ADD COLUMN is_hold BOOLEAN DEFAULT FALSE'),
+            # Stripe billing fields
+            ('stripe_customer_id', 'ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(100) UNIQUE'),
+            ('stripe_price_id',    'ALTER TABLE membership_plans ADD COLUMN stripe_price_id VARCHAR(100)'),
+            ('stripe_product_id',  'ALTER TABLE membership_plans ADD COLUMN stripe_product_id VARCHAR(100)'),
             # V2 Engagement: ExerciseLog time-domain fields
             ('duration_seconds', 'ALTER TABLE exercise_logs ADD COLUMN duration_seconds FLOAT'),
             ('time_seconds',     'ALTER TABLE exercise_logs ADD COLUMN time_seconds FLOAT'),

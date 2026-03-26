@@ -588,6 +588,142 @@
   </div>
 
 </div>
+
+<!-- ─── Stripe Recurring Billing ──────────────────────────────────────────── -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="pkg-cards-panel">
+      <div class="pkg-panel-header">
+        <div class="pkg-panel-title">
+          <i class="bi bi-credit-card-2-front"></i> Recurring Billing
+          {% if not stripe_enabled %}
+          <span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px;
+            background:var(--amber-dim); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); margin-left:0.5rem;">
+            Stripe not configured
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if not stripe_enabled %}
+      <div style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
+        <p>Set <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_WEBHOOK_SECRET</code> in Railway environment variables to enable billing.</p>
+      </div>
+      {% else %}
+
+      <!-- Active Subscriptions -->
+      {% if sub_by_client %}
+      <div style="padding:0 1rem 1rem;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin:1rem 0 0.75rem;">
+          Active Subscriptions
+        </div>
+        {% for client_id, sub in sub_by_client.items() %}
+        {% set client = sub.client %}
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; background:var(--bg-elevated);
+          border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:0.5rem;
+          {% if sub.status == 'past_due' %}border-left:3px solid var(--red);{% else %}border-left:3px solid var(--green);{% endif %}">
+
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:0.85rem;">{{ client.name }}</div>
+            <div style="font-size:0.75rem; color:var(--text-soft);">
+              {{ sub.plan.name if sub.plan else 'Unknown Plan' }} ·
+              ${{ (sub.plan.price_cents // 100) if sub.plan else '?' }}/mo ·
+              Bills on the {{ sub.billing_day }}{{ 'st' if sub.billing_day == 1 else 'nd' if sub.billing_day == 2 else 'rd' if sub.billing_day == 3 else 'th' }}
+            </div>
+            {% if sub.status == 'past_due' %}
+            <div style="font-size:0.7rem; color:var(--red); font-weight:600; margin-top:2px;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>Payment failed — past due
+            </div>
+            {% elif sub.status == 'canceled' %}
+            <div style="font-size:0.7rem; color:var(--amber); font-weight:600; margin-top:2px;">
+              <i class="bi bi-clock me-1"></i>Cancels at end of period
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Change Plan -->
+          <form method="POST" action="{{ url_for('admin_change_plan') }}" style="display:flex; gap:0.35rem; align-items:center;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+            <select name="new_plan_id" class="form-select form-select-sm" style="width:auto; font-size:0.75rem; min-width:160px;">
+              {% for p in plans %}
+              <option value="{{ p.id }}" {% if p.id == sub.plan_id %}selected{% endif %}>
+                {{ p.name | truncate(40) }} · ${{ p.price_cents // 100 }}/mo
+              </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem; white-space:nowrap;">
+              <i class="bi bi-arrow-repeat"></i> Swap
+            </button>
+          </form>
+
+          <!-- Cancel / Reactivate -->
+          {% if sub.status != 'canceled' %}
+          <form method="POST" action="{{ url_for('admin_cancel_subscription') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+            <button type="submit" class="btn btn-sm" style="font-size:0.7rem; color:var(--red); border:1px solid var(--red-dim); background:var(--red-dim);"
+              onclick="return confirm('Cancel {{ client.name }}\'s subscription at end of billing period?')">
+              <i class="bi bi-x-circle"></i> Cancel
+            </button>
+          </form>
+          {% else %}
+          <form method="POST" action="{{ url_for('admin_reactivate_subscription') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+            <button type="submit" class="btn btn-sm" style="font-size:0.7rem; color:var(--green); border:1px solid var(--green-dim); background:var(--green-dim);">
+              <i class="bi bi-arrow-counterclockwise"></i> Reactivate
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Start New Subscription -->
+      <div style="padding:1rem;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:0.75rem;">
+          <i class="bi bi-plus-circle me-1"></i> Start New Subscription
+        </div>
+        <form method="POST" action="{{ url_for('admin_start_subscription') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div style="display:grid; grid-template-columns:1fr 1fr auto auto; gap:0.5rem; align-items:end;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Client</label>
+              <select name="client_id" class="form-select form-select-sm" required>
+                <option value="">Select client…</option>
+                {% for c in clients %}
+                {% if c.id not in sub_by_client %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Plan</label>
+              <select name="plan_id" class="form-select form-select-sm" required>
+                <option value="">Select plan…</option>
+                {% for p in plans %}
+                <option value="{{ p.id }}">{{ p.name | truncate(45) }} · ${{ p.price_cents // 100 }}/mo</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Bill Day</label>
+              <input type="number" name="billing_day" class="form-control form-control-sm" value="1" min="1" max="28" style="width:70px;">
+            </div>
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="white-space:nowrap;">
+              <i class="bi bi-credit-card me-1"></i>Start Billing
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
