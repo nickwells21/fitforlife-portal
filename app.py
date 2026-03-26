@@ -43,6 +43,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
@@ -377,17 +378,22 @@ def get_program_quarter_progress(now_dt=None):
 def check_conflict(trainer_id, location_id, start_dt, end_dt, exclude_session_id=None):
     """Returns list of conflicting sessions. Two sessions conflict if they
     share the same trainer OR same location AND their time windows overlap."""
-    query = Session.query.filter(Session.status != 'cancelled')
+    # Filter by time range and relevant trainer/location in SQL
+    day_start = start_dt - timedelta(days=1)
+    day_end = end_dt + timedelta(days=1)
+    query = Session.query.filter(
+        Session.status != 'cancelled',
+        Session.scheduled_at >= day_start,
+        Session.scheduled_at < day_end,
+        db.or_(Session.trainer_id == trainer_id, Session.location_id == location_id),
+    )
     if exclude_session_id:
         query = query.filter(Session.id != exclude_session_id)
 
     conflicts = []
     for sess in query.all():
         sess_end = sess.scheduled_at + timedelta(minutes=sess.duration)
-        overlaps = sess.scheduled_at < end_dt and sess_end > start_dt
-        same_trainer = sess.trainer_id == trainer_id
-        same_location = sess.location_id == location_id
-        if overlaps and (same_trainer or same_location):
+        if sess.scheduled_at < end_dt and sess_end > start_dt:
             conflicts.append(sess)
     return conflicts
 
@@ -537,6 +543,8 @@ def login():
         if user and user.is_active and user.check_password(password):
             # Reset failed attempts on success
             _failed_logins.pop(email, None)
+            from flask import session as flask_session
+            flask_session.permanent = True
             login_user(user)
             audit_logger.info("LOGIN_SUCCESS user_id=%s email=%s ip=%s", user.id, email, request.remote_addr)
             return redirect(url_for('dashboard'))
@@ -1004,7 +1012,7 @@ def new_session():
             for dt in session_times:
                 end_dt = dt + timedelta(minutes=duration)
                 if check_conflict(trainer_id, location_id, dt, end_dt):
-                    skipped.append(dt.strftime('%a %b %-d'))
+                    skipped.append(dt.strftime('%a %b %d').replace(' 0', ' '))
                 else:
                     for cid in client_ids:
                         db.session.add(Session(
@@ -1165,7 +1173,7 @@ def update_session_status(session_id):
             s.status = new_status
 
             if new_status == 'completed' and old_status != 'completed' and s.client_id:
-                date_str = s.scheduled_at.strftime('%b %-d')
+                date_str = s.scheduled_at.strftime('%b %d').replace(' 0', ' ')
                 trainer_name = s.trainer.name if s.trainer else 'your trainer'
                 create_notification(s.client_id, 'session_completed',
                     f'Session completed {date_str} with {trainer_name}. Great work! 💪',
@@ -1219,7 +1227,7 @@ def complete_week():
         if s.client_id:
             affected_clients.add(s.client_id)
             try:
-                date_str = s.scheduled_at.strftime('%b %-d')
+                date_str = s.scheduled_at.strftime('%b %d').replace(' 0', ' ')
                 create_notification(s.client_id, 'session_completed',
                     f'Session completed {date_str} with {s.trainer.name}. Great work! 💪',
                     session_id=s.id)
@@ -1524,6 +1532,10 @@ def admin_new_user():
         password = request.form['password']
         trainerize_url = request.form.get('trainerize_url', '').strip() or None
 
+        if len(password) < 8:
+            flash('Password must be at least 8 characters.', 'danger')
+            return render_template('admin_user_form.html', user=None, trainers=trainers)
+
         existing_email = User.query.filter_by(email=email).first()
         existing_name = User.query.filter(
             db.func.lower(User.name) == name.lower()
@@ -1555,12 +1567,22 @@ def admin_edit_user(user_id):
     user = User.query.get_or_404(user_id)
     trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
     if request.method == 'POST':
+        new_email = request.form['email'].strip().lower()
+        # Check email uniqueness if changed
+        if new_email != user.email:
+            existing_email = User.query.filter_by(email=new_email).first()
+            if existing_email:
+                flash('Email already in use by another account.', 'danger')
+                return render_template('admin_user_form.html', user=user, trainers=trainers)
         user.name = request.form['name'].strip()
-        user.email = request.form['email'].strip().lower()
+        user.email = new_email
         user.role = request.form['role']
         user.trainerize_url = request.form.get('trainerize_url', '').strip() or None
         user.is_active = 'is_active' in request.form
         if request.form.get('password'):
+            if len(request.form['password']) < 8:
+                flash('Password must be at least 8 characters.', 'danger')
+                return render_template('admin_user_form.html', user=user, trainers=trainers)
             user.set_password(request.form['password'])
         # Trainer assignment (clients only)
         if user.role == 'client':
@@ -1940,6 +1962,10 @@ def api_send_message():
     recipient = db.session.get(User, recipient_id)
     if not recipient:
         return jsonify({'error': 'Recipient not found'}), 404
+    # Clients can only message their assigned trainer or admins
+    if current_user.role == 'client':
+        if not (recipient.role == 'admin' or recipient.id == current_user.trainer_id):
+            return jsonify({'error': 'You can only message your trainer or gym staff'}), 403
     msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
     db.session.add(msg)
     db.session.commit()
@@ -2133,7 +2159,6 @@ class ProgressionOverride(db.Model):
     __table_args__ = (db.UniqueConstraint('phase_id', 'exercise_id', 'week_num', name='uq_progression'),)
     phase = db.relationship('ProgramPhase', backref=db.backref('overrides', lazy='dynamic',
                             cascade='all, delete-orphan'))
-    phase = db.relationship('ProgramPhase')
     exercise = db.relationship('Exercise')
 
 
@@ -2566,7 +2591,7 @@ def check_badges(user_id, context):
         for badge_key, threshold in [('double_up', 2), ('triple_up', 3)]:
             if week_prs >= threshold:
                 badge_def = BadgeDefinition.query.filter_by(key=badge_key).first()
-                if badge_def:
+                if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
                     db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
                     create_notification(user_id, 'badge_earned',
                         f'🏅 Badge unlocked: {badge_def.name} — {badge_def.description}')
@@ -2606,13 +2631,13 @@ def check_badges(user_id, context):
         hour = context['hour']
         if hour < 7:
             badge_def = BadgeDefinition.query.filter_by(key='early_bird').first()
-            if badge_def:
+            if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
                 db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
                 create_notification(user_id, 'early_bird', '🌅 Workout before 7 AM — Early Bird energy!')
                 awarded.append('Early Bird')
         elif hour >= 20:
             badge_def = BadgeDefinition.query.filter_by(key='night_owl').first()
-            if badge_def:
+            if badge_def and not UserBadge.query.filter_by(user_id=user_id, badge_id=badge_def.id).first():
                 db.session.add(UserBadge(user_id=user_id, badge_id=badge_def.id))
                 create_notification(user_id, 'night_owl', '🌙 Late night grind — Night Owl mode activated!')
                 awarded.append('Night Owl')
@@ -4311,6 +4336,8 @@ def daily_log_page():
 @app.route('/daily-log/water', methods=['POST'])
 @login_required
 def daily_log_water():
+    if current_user.role != 'client':
+        abort(403)
     from datetime import date as _date
     value = float(request.form.get('value', 0))
     existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='water').first()
@@ -4327,6 +4354,8 @@ def daily_log_water():
 @app.route('/daily-log/sleep', methods=['POST'])
 @login_required
 def daily_log_sleep():
+    if current_user.role != 'client':
+        abort(403)
     from datetime import date as _date
     hours = float(request.form.get('hours', 0))
     quality = int(request.form.get('quality', 3))
@@ -4345,9 +4374,15 @@ def daily_log_sleep():
 @app.route('/daily-log/meal', methods=['POST'])
 @login_required
 def daily_log_meal():
+    if current_user.role != 'client':
+        abort(403)
     from datetime import date as _date
     notes = request.form.get('notes', '').strip()
-    db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='meal', notes=notes))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='meal').first()
+    if existing:
+        existing.notes = notes
+    else:
+        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='meal', notes=notes))
     process_daily_log(current_user.id, 'meal')
     db.session.commit()
     flash('Meal logged!', 'success')
@@ -4357,6 +4392,8 @@ def daily_log_meal():
 @app.route('/daily-log/weighin', methods=['POST'])
 @login_required
 def daily_log_weighin():
+    if current_user.role != 'client':
+        abort(403)
     from datetime import date as _date
     weight = float(request.form.get('weight', 0))
     existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='weighin').first()

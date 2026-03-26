@@ -867,9 +867,13 @@ async function checkConflict() {
 
   if (conflicts.length > 0) {
     alertEl.style.display = 'block';
-    listEl.innerHTML = conflicts.map(c =>
-      `<li>${c.conflict_type.charAt(0).toUpperCase() + c.conflict_type.slice(1)}: <strong>${c.trainer}</strong> + ${c.client} @ ${c.location} (${c.start}–${c.end})</li>`
-    ).join('');
+    listEl.innerHTML = '';
+    conflicts.forEach(c => {
+      const li = document.createElement('li');
+      const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+      li.innerHTML = `${esc(c.conflict_type.charAt(0).toUpperCase() + c.conflict_type.slice(1))}: <strong>${esc(c.trainer)}</strong> + ${esc(c.client)} @ ${esc(c.location)} (${esc(c.start)}–${esc(c.end)})`;
+      listEl.appendChild(li);
+    });
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.4';
   } else {
