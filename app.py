@@ -3489,9 +3489,24 @@ def program_delete(program_id):
 @app.route('/my-workout/<int:workout_id>')
 @login_required
 def client_workout_view(workout_id):
-    """Read-only workout view accessible to clients (for their assigned program workouts)."""
+    """Read-only workout view — same layout as logging but no input fields."""
     workout = Workout.query.get_or_404(workout_id)
-    return render_template('workout_detail.html', workout=workout)
+    workout_exercises = workout.exercises.order_by(WorkoutExercise.order).all()
+    phase_id = request.args.get('phase_id', type=int)
+    week_num = request.args.get('week', type=int)
+    override_map = {}
+    if phase_id and week_num:
+        overrides = ProgressionOverride.query.filter_by(phase_id=phase_id, week_num=week_num).all()
+        override_map = {o.exercise_id: o for o in overrides}
+    return render_template('workout_log.html',
+        workout=workout,
+        workout_exercises=workout_exercises,
+        override_map=override_map,
+        phase_id=phase_id,
+        week_num=week_num,
+        extract_youtube_id=extract_youtube_id,
+        view_only=True,  # Flag: no inputs, no submit
+    )
 
 
 @app.route('/workout-log/<int:workout_id>', methods=['GET', 'POST'])
@@ -3605,6 +3620,7 @@ def client_workout_log(workout_id):
         phase_id=phase_id,
         week_num=week_num,
         extract_youtube_id=extract_youtube_id,
+        view_only=False,
     )
 
 

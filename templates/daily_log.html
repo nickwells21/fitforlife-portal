@@ -77,21 +77,6 @@
     </form>
   </div>
 
-  <!-- Meal -->
-  <div class="dl-card {% if status.meal %}dl-card-done{% endif %}">
-    <div class="dl-card-header">
-      <div class="dl-card-title">🍽️ Meal</div>
-      {% if status.meal %}<i class="bi bi-check-circle-fill dl-card-check"></i>{% endif %}
-    </div>
-    <form method="POST" action="{{ url_for('daily_log_meal') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="dl-input-row">
-        <input type="text" name="notes" placeholder="What did you eat? (optional)">
-      </div>
-      <button type="submit" class="dl-submit">Log Meal</button>
-    </form>
-  </div>
-
   <!-- Weigh-In -->
   <div class="dl-card {% if status.weighin %}dl-card-done{% endif %}">
     <div class="dl-card-header">

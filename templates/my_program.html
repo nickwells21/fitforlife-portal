@@ -247,7 +247,7 @@
       <span style="color:var(--text-faint);">Rest</span>
       {% endif %}
     </div>
-    <!-- Checkin status -->
+    <!-- Checkin status + View button -->
     <div class="day-check">
       {% if day_checkins.get(d) %}
       <i class="bi bi-check-circle-fill day-check-done"></i>
@@ -256,7 +256,11 @@
       {% endif %}
     </div>
     {% if pd and pd.workout_id %}
-    <i class="bi bi-lightning-charge-fill" style="color:var(--accent);font-size:12px;"></i>
+    <a href="{{ url_for('client_workout_view', workout_id=pd.workout_id) }}"
+       class="btn btn-sm" style="font-size:0.65rem; padding:0.2rem 0.5rem; white-space:nowrap;
+       background:var(--accent-dim); color:var(--accent); border:1px solid rgba(30,157,241,0.25); border-radius:4px;">
+      <i class="bi bi-eye" style="font-size:9px;"></i> View
+    </a>
     {% endif %}
   </div>
   {% endfor %}

@@ -196,14 +196,36 @@
   color: #fbbf24;
   border: 1px solid rgba(245,158,11,0.2);
 }
+
+/* Warm-up items */
+.warmup-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 0.75rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  cursor: pointer; transition: all 0.15s; font-size: 0.85rem; color: var(--text-soft);
+}
+.warmup-item:hover { background: var(--bg-hover); }
+.warmup-item.done { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+.warmup-item.done .warmup-check { color: #4ade80; }
+.warmup-item.done span { text-decoration: line-through; color: var(--text-muted); }
+.warmup-check { font-size: 1.1rem; color: var(--text-muted); transition: all 0.15s; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+  {% if view_only %}
+  <a href="{{ url_for('my_program') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>My Program
+  </a>
+  <span style="font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:999px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(30,157,241,0.25); font-weight:600;">
+    <i class="bi bi-eye me-1"></i>View Only
+  </span>
+  {% else %}
   <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>Dashboard
   </a>
+  {% endif %}
   {% if phase_id and week_num %}
   <span style="font-size:0.75rem; color:var(--text-muted);">Week {{ week_num }} prescription</span>
   {% endif %}
@@ -211,14 +233,96 @@
 
 <div class="page-header mb-1">
   <div class="page-title">{{ workout.name }}</div>
+  {% if view_only %}
+  <div class="page-subtitle">Preview your exercises, videos, and coaching cues</div>
+  {% else %}
   <div class="page-subtitle">Log your sets, reps, and weight · Watch the demo video for each movement</div>
+  {% endif %}
 </div>
 
+{% if not view_only %}
+<!-- ─── Step 1: Pre-Workout Check-In ──────────────────────────────────────── -->
+<div id="step-checkin" class="workout-step">
+  <div class="ffl-card" style="padding:1.5rem; margin-bottom:1rem; border-color:rgba(30,157,241,0.3); background:rgba(30,157,241,0.04);">
+    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:1rem;">
+      <i class="bi bi-clipboard-check me-1"></i> Pre-Workout Check-In
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem;">
+      <div>
+        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">😴 How did you sleep?</label>
+        <input type="number" id="checkin-sleep" class="form-control form-control-sm" placeholder="Hours" min="0" max="24" step="0.5">
+      </div>
+      <div>
+        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">💧 Water today?</label>
+        <input type="number" id="checkin-water" class="form-control form-control-sm" placeholder="oz" min="0" step="1">
+      </div>
+      <div>
+        <label style="font-size:0.75rem; font-weight:600; color:var(--text-soft); display:block; margin-bottom:0.35rem;">⚖️ Today's weight?</label>
+        <input type="number" id="checkin-weight" class="form-control form-control-sm" placeholder="lbs" min="50" max="600" step="0.1">
+      </div>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-3" onclick="completeCheckin()" style="width:100%;">
+      <i class="bi bi-arrow-right me-1"></i>Continue to Warm-Up
+    </button>
+  </div>
+</div>
+
+<!-- ─── Step 2: Warm-Up ───────────────────────────────────────────────────── -->
+<div id="step-warmup" class="workout-step" style="display:none;">
+  <div class="ffl-card" style="padding:1.5rem; margin-bottom:1rem; border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.04);">
+    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--amber); margin-bottom:0.75rem;">
+      <i class="bi bi-activity me-1"></i> General Warm-Up
+    </div>
+    <div style="font-size:0.82rem; color:var(--text-soft); margin-bottom:1rem;">
+      Complete the warm-up before starting your workout. This builds consistency and prepares your body.
+    </div>
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>5 minutes light cardio (bike, row, or walk)</span>
+      </div>
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>Arm circles — 10 forward, 10 backward</span>
+      </div>
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>Leg swings — 10 each side</span>
+      </div>
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>Hip circles — 10 each direction</span>
+      </div>
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>Cat-cow stretch — 10 reps</span>
+      </div>
+      <div class="warmup-item" onclick="toggleWarmup(this)">
+        <i class="bi bi-circle warmup-check"></i>
+        <span>Band pull-aparts — 15 reps</span>
+      </div>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-3" id="warmupDoneBtn" onclick="completeWarmup()" style="width:100%; opacity:0.4;" disabled>
+      <i class="bi bi-check-lg me-1"></i>Warm-Up Complete — Begin Workout
+    </button>
+  </div>
+</div>
+
+<!-- ─── Step 3: Full Workout ──────────────────────────────────────────────── -->
+<div id="step-workout" class="workout-step" style="display:none;">
+{% endif %}
+
+{% if view_only %}
+<p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
+  Purple = your trainer's prescription.
+</p>
+{% else %}
 <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem;">
   Purple = your trainer's prescription. Enter what you actually did.
 </p>
+{% endif %}
 
-<form method="POST">
+<form method="POST" {% if view_only %}onsubmit="return false;"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% if phase_id %}<input type="hidden" name="phase_id" value="{{ phase_id }}">{% endif %}
   {% if week_num  %}<input type="hidden" name="week_num"  value="{{ week_num }}">{% endif %}
@@ -263,9 +367,9 @@
       </div>
       {% endif %}
 
-      <!-- Log inputs -->
+      <!-- Log inputs (only in logging mode) -->
+      {% if not view_only %}
       {% if ex.is_hold %}
-      <!-- Hold exercise (plank, wall sit, dead hang) — duration input -->
       <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
         <div class="log-field-wrap">
           <label>Minutes</label>
@@ -278,7 +382,6 @@
       </div>
       <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⏱️ How long did you hold it?</div>
       {% elif ex.is_timed %}
-      <!-- Timed exercise (mile run, 400m) — time input -->
       <div class="log-fields" style="grid-template-columns: 1fr 1fr;">
         <div class="log-field-wrap">
           <label>Minutes</label>
@@ -291,7 +394,6 @@
       </div>
       <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.25rem;">⚡ What was your time?</div>
       {% else %}
-      <!-- Standard strength exercise -->
       <div class="log-fields">
         <div class="log-field-wrap">
           <label>Sets</label>
@@ -309,6 +411,7 @@
                  placeholder="0">
         </div>
       </div>
+      {% endif %}
       {% endif %}
 
       <!-- Tags -->
@@ -363,7 +466,7 @@
   <div class="ffl-card text-center py-4" style="color:var(--text-muted);">
     This workout has no exercises yet.
   </div>
-  {% else %}
+  {% elif not view_only %}
   <div class="d-flex gap-2 mt-3">
     <button type="submit" class="btn btn-outline-secondary">
       <i class="bi bi-check-lg me-1"></i>Save Workout Log
@@ -372,4 +475,75 @@
   </div>
   {% endif %}
 </form>
+
+{% if not view_only %}
+</div><!-- end step-workout -->
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not view_only %}
+<script>
+// ── Pre-workout check-in → daily log ──
+function completeCheckin() {
+  const sleep = document.getElementById('checkin-sleep').value;
+  const water = document.getElementById('checkin-water').value;
+  const weight = document.getElementById('checkin-weight').value;
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+  // Fire daily logs silently (don't block the flow)
+  if (sleep) {
+    const fd = new FormData();
+    fd.append('hours', sleep);
+    fd.append('quality', '3');
+    fetch('/daily-log/sleep', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+  }
+  if (water) {
+    const fd = new FormData();
+    fd.append('value', water);
+    fetch('/daily-log/water', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+  }
+  if (weight) {
+    const fd = new FormData();
+    fd.append('weight', weight);
+    fetch('/daily-log/weighin', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd});
+  }
+
+  // Show warm-up step
+  document.getElementById('step-checkin').style.display = 'none';
+  document.getElementById('step-warmup').style.display = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── Warm-up toggles ──
+let warmupCount = 0;
+const warmupTotal = document.querySelectorAll('.warmup-item').length;
+
+function toggleWarmup(el) {
+  if (el.classList.contains('done')) {
+    el.classList.remove('done');
+    el.querySelector('.warmup-check').className = 'bi bi-circle warmup-check';
+    warmupCount--;
+  } else {
+    el.classList.add('done');
+    el.querySelector('.warmup-check').className = 'bi bi-check-circle-fill warmup-check';
+    warmupCount++;
+  }
+  const btn = document.getElementById('warmupDoneBtn');
+  if (warmupCount >= warmupTotal) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+  }
+}
+
+function completeWarmup() {
+  document.getElementById('step-warmup').style.display = 'none';
+  document.getElementById('step-workout').style.display = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+{% endif %}
 {% endblock %}
