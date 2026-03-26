@@ -129,6 +129,31 @@
 .wf-summary-row:last-child { border-bottom: none; }
 .wf-summary-label { color: var(--text-muted); font-size: 0.85rem; }
 .wf-summary-value { font-size: 1.25rem; font-weight: 800; color: var(--text); }
+
+/* Set rows — one per programmed set */
+.wf-set-header { display: grid; grid-template-columns: 50px 1fr 1fr; gap: 0.5rem; padding: 0 0.25rem 0.35rem; }
+.wf-set-header span { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+.wf-set-row {
+  display: grid; grid-template-columns: 50px 1fr 1fr; gap: 0.5rem; align-items: center;
+  padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s;
+}
+.wf-set-row:last-child { border-bottom: none; }
+.wf-set-row:hover { background: var(--bg-hover); }
+.wf-set-num {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 800; background: rgba(255,255,255,0.06); color: var(--text-soft); border: 1px solid var(--border);
+}
+.wf-set-input {
+  background: var(--bg-surface); border: 1px solid var(--border-mid); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 0.95rem; font-weight: 700; padding: 0.55rem 0.65rem; width: 100%;
+  text-align: center; transition: border-color 0.15s;
+}
+.wf-set-input:focus { outline: none; border-color: var(--accent); background: rgba(30,157,241,0.04); }
+.wf-set-input::placeholder { color: var(--text-faint); font-weight: 400; }
+
+/* Hold/timed set rows — 2 column */
+.wf-set-header-time { display: grid; grid-template-columns: 50px 1fr 1fr; gap: 0.5rem; padding: 0 0.25rem 0.35rem; }
+.wf-set-row-time { display: grid; grid-template-columns: 50px 1fr 1fr; gap: 0.5rem; align-items: center; padding: 0.5rem 0.25rem; }
 </style>
 {% endblock %}
 
@@ -303,22 +328,16 @@
 <!-- ─── Step 3: Exercise-by-Exercise Workout ──────────────────────────────── -->
 <div id="screen-workout" class="wf-screen" style="display:none;">
   <div class="wf-card wf-wide">
-    <!-- Badges + progress bar -->
+    <!-- Badge + progress bar -->
     <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-      <span class="wf-badge wf-badge-secondary" id="wf-ex-counter">Exercise 1 of {{ workout_exercises|length }}</span>
-      <span class="wf-badge wf-badge-outline" id="wf-set-counter">Set 1 of 3</span>
+      <span class="wf-badge wf-badge-secondary" id="wf-ex-counter">Movement A</span>
+      <span class="wf-badge wf-badge-outline" id="wf-ex-of">1 of {{ workout_exercises|length }}</span>
     </div>
     <div class="wf-progress-bar"><div class="wf-progress-fill" id="wf-progress" style="width:0%;"></div></div>
 
-    <!-- Exercise name -->
+    <!-- Exercise name + prescription -->
     <div class="wf-ex-name" id="wf-ex-name"></div>
-
-    <!-- Sets / Reps stat row -->
-    <div class="wf-stat-row">
-      <div class="wf-stat"><div class="wf-stat-label">Sets</div><div class="wf-stat-value" id="wf-ex-sets"></div></div>
-      <div class="wf-divider"></div>
-      <div class="wf-stat"><div class="wf-stat-label">Reps</div><div class="wf-stat-value" id="wf-ex-reps"></div></div>
-    </div>
+    <div id="wf-prescription" style="text-align:center; margin-bottom:1rem;"></div>
 
     <!-- Video -->
     <div id="wf-video-area" style="margin-bottom:1rem;"></div>
@@ -326,8 +345,8 @@
     <!-- Coaching Cues -->
     <div id="wf-cues-area" style="margin-bottom:1rem;"></div>
 
-    <!-- Log inputs -->
-    <div id="wf-input-area"></div>
+    <!-- Set rows — one row per programmed set -->
+    <div id="wf-sets-area" style="margin-bottom:1rem;"></div>
 
     <!-- RPE slider -->
     <div style="margin:1rem 0;">
@@ -340,9 +359,9 @@
       <div class="wf-rpe-row"><span>Easy</span><span>Moderate</span><span>Maximum</span></div>
     </div>
 
-    <!-- Complete Set button -->
-    <button type="button" class="wf-btn wf-btn-green" onclick="WF.completeSet()">
-      <i class="bi bi-check-lg"></i> <span id="wf-complete-label">Complete Set</span>
+    <!-- Complete Exercise button -->
+    <button type="button" class="wf-btn wf-btn-green" onclick="WF.completeExercise()">
+      <i class="bi bi-check-lg"></i> <span id="wf-complete-label">Complete Exercise</span>
     </button>
   </div>
 </div>
@@ -383,10 +402,10 @@
 {% if not view_only %}
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
-// Workout Flow Controller — one exercise at a time, set-by-set logging
+// Workout Flow Controller — one exercise at a time, all sets visible as rows
 // ══════════════════════════════════════════════════════════════════════════════
 const WF = (() => {
-  // Exercise data from Jinja (rendered as JSON)
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const exercises = [
     {% for we in workout_exercises %}
     {% set ex = we.exercise %}
@@ -402,16 +421,14 @@ const WF = (() => {
       isTimed: {{ 'true' if ex.is_timed else 'false' }},
       youtubeId: {{ yt_id | tojson if yt_id else 'null' }},
       cues: {{ (ex.instructions or '') | tojson }},
-      muscleGroup: {{ (ex.muscle_group or '') | tojson }},
     },
     {% endfor %}
   ];
 
   let exIdx = 0;
-  let setIdx = 0;
   let warmupDone = 0;
   const warmupTotal = 4;
-  const logData = {}; // {exerciseId: {sets, reps, weight, dur_min, dur_sec, time_min, time_sec}}
+  const logData = {}; // {exerciseId: {sets, reps (comma-sep), weight (max), dur_min, dur_sec, time_min, time_sec}}
 
   function show(id) {
     ['screen-checkin','screen-warmup','screen-workout','screen-complete'].forEach(s =>
@@ -449,23 +466,26 @@ const WF = (() => {
 
   function startWorkout() {
     if (warmupDone < warmupTotal) return;
-    exIdx = 0; setIdx = 0;
+    exIdx = 0;
     renderExercise();
     show('screen-workout');
   }
 
   function renderExercise() {
     const ex = exercises[exIdx];
-    const totalSets = exercises.reduce((a, e) => a + e.sets, 0);
-    const doneSets = exercises.slice(0, exIdx).reduce((a, e) => a + e.sets, 0) + setIdx;
-    const pct = Math.round(doneSets / totalSets * 100);
+    const pct = Math.round(exIdx / exercises.length * 100);
 
-    document.getElementById('wf-ex-counter').textContent = `Exercise ${exIdx+1} of ${exercises.length}`;
-    document.getElementById('wf-set-counter').textContent = `Set ${setIdx+1} of ${ex.sets}`;
+    // Header
+    document.getElementById('wf-ex-counter').textContent = `Movement ${LETTERS[exIdx] || exIdx+1}`;
+    document.getElementById('wf-ex-of').textContent = `${exIdx+1} of ${exercises.length}`;
     document.getElementById('wf-progress').style.width = pct + '%';
     document.getElementById('wf-ex-name').textContent = ex.name;
-    document.getElementById('wf-ex-sets').textContent = ex.sets;
-    document.getElementById('wf-ex-reps').textContent = ex.reps;
+
+    // Prescription pill
+    const rxArea = document.getElementById('wf-prescription');
+    let rxText = `${ex.sets} × ${ex.reps}`;
+    if (ex.weightNote) rxText += ` @ ${ex.weightNote}`;
+    rxArea.innerHTML = `<span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.8rem;font-weight:600;color:#a78bfa;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);border-radius:999px;padding:0.2rem 0.7rem;"><i class="bi bi-lightning-charge-fill" style="font-size:9px;"></i>${rxText}</span>`;
 
     // Video
     const videoArea = document.getElementById('wf-video-area');
@@ -484,63 +504,91 @@ const WF = (() => {
       cuesArea.innerHTML = `<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:0.35rem;">Form Cues</div>${cueItems}`;
     } else { cuesArea.innerHTML = ''; }
 
-    // Input fields
-    const inputArea = document.getElementById('wf-input-area');
+    // Set rows — one row per programmed set
+    const setsArea = document.getElementById('wf-sets-area');
+    let html = '';
+
     if (ex.isHold) {
-      inputArea.innerHTML = `<div class="wf-log-fields" style="grid-template-columns:1fr 1fr;">
-        <div class="wf-log-field"><label>Minutes</label><input type="number" id="wf-dur-min" min="0" max="60" placeholder="0"></div>
-        <div class="wf-log-field"><label>Seconds</label><input type="number" id="wf-dur-sec" min="0" max="59" placeholder="0"></div>
-      </div><div style="font-size:0.7rem;color:var(--text-muted);text-align:center;">⏱️ How long did you hold it?</div>`;
-    } else if (ex.isTimed) {
-      inputArea.innerHTML = `<div class="wf-log-fields" style="grid-template-columns:1fr 1fr;">
-        <div class="wf-log-field"><label>Minutes</label><input type="number" id="wf-time-min" min="0" max="120" placeholder="0"></div>
-        <div class="wf-log-field"><label>Seconds</label><input type="number" id="wf-time-sec" min="0" max="59" placeholder="0"></div>
-      </div><div style="font-size:0.7rem;color:var(--text-muted);text-align:center;">⚡ What was your time?</div>`;
-    } else {
-      inputArea.innerHTML = `<div class="wf-log-fields">
-        <div class="wf-log-field"><label>Sets</label><input type="number" id="wf-sets" min="0" max="20" placeholder="${ex.sets}" value="${ex.sets}"></div>
-        <div class="wf-log-field"><label>Reps</label><input type="text" id="wf-reps" placeholder="${ex.reps}"></div>
-        <div class="wf-log-field"><label>Weight (lbs)</label><input type="number" id="wf-weight" min="0" step="2.5" placeholder="0"></div>
+      html += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
+      html += `<div class="wf-set-row-time">
+        <div class="wf-set-num">1</div>
+        <input type="number" class="wf-set-input" id="sr-dur-min" min="0" max="60" placeholder="0">
+        <input type="number" class="wf-set-input" id="sr-dur-sec" min="0" max="59" placeholder="0">
       </div>`;
+      html += `<div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:0.35rem;">⏱️ How long did you hold it?</div>`;
+    } else if (ex.isTimed) {
+      html += `<div class="wf-set-header-time"><span></span><span>Minutes</span><span>Seconds</span></div>`;
+      html += `<div class="wf-set-row-time">
+        <div class="wf-set-num">1</div>
+        <input type="number" class="wf-set-input" id="sr-time-min" min="0" max="120" placeholder="0">
+        <input type="number" class="wf-set-input" id="sr-time-sec" min="0" max="59" placeholder="0">
+      </div>`;
+      html += `<div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:0.35rem;">⚡ What was your time?</div>`;
+    } else {
+      html += `<div class="wf-set-header"><span>SET</span><span style="text-align:center;">REPS</span><span style="text-align:center;">WEIGHT (LBS)</span></div>`;
+      for (let s = 0; s < ex.sets; s++) {
+        html += `<div class="wf-set-row">
+          <div class="wf-set-num">${s + 1}</div>
+          <input type="text" class="wf-set-input sr-reps" placeholder="${ex.reps}" data-set="${s}">
+          <input type="number" class="wf-set-input sr-weight" placeholder="0" min="0" step="2.5" data-set="${s}">
+        </div>`;
+      }
     }
+    setsArea.innerHTML = html;
 
     // Button label
-    const isLastSet = setIdx >= ex.sets - 1;
-    const isLastEx = exIdx >= exercises.length - 1;
     const label = document.getElementById('wf-complete-label');
-    if (isLastSet && isLastEx) label.textContent = 'Finish Workout';
-    else if (isLastSet) label.textContent = 'Complete Exercise';
-    else label.textContent = 'Complete Set';
+    label.textContent = exIdx >= exercises.length - 1 ? 'Finish Workout' : 'Complete Exercise';
+
+    // Reset RPE
+    document.getElementById('wf-rpe').value = 7;
+    document.getElementById('wf-rpe-val').textContent = '7';
   }
 
-  function completeSet() {
+  function completeExercise() {
     const ex = exercises[exIdx];
 
-    // Save the logged data (only on first set or update each set)
-    if (setIdx === 0) {
-      if (ex.isHold) {
-        logData[ex.id] = { dur_min: gv('wf-dur-min'), dur_sec: gv('wf-dur-sec') };
-      } else if (ex.isTimed) {
-        logData[ex.id] = { time_min: gv('wf-time-min'), time_sec: gv('wf-time-sec') };
-      } else {
-        logData[ex.id] = { sets: gv('wf-sets'), reps: gv('wf-reps'), weight: gv('wf-weight') };
-      }
+    // Collect data from set rows
+    if (ex.isHold) {
+      logData[ex.id] = {
+        dur_min: gv('sr-dur-min'),
+        dur_sec: gv('sr-dur-sec'),
+      };
+    } else if (ex.isTimed) {
+      logData[ex.id] = {
+        time_min: gv('sr-time-min'),
+        time_sec: gv('sr-time-sec'),
+      };
     } else {
-      // Update on subsequent sets (use latest values)
-      if (!ex.isHold && !ex.isTimed) {
-        logData[ex.id] = { sets: gv('wf-sets'), reps: gv('wf-reps'), weight: gv('wf-weight') };
-      }
+      // Collect per-set reps and weights
+      const repsInputs = document.querySelectorAll('.sr-reps');
+      const weightInputs = document.querySelectorAll('.sr-weight');
+      const repsList = [];
+      let maxWeight = 0;
+      let filledSets = 0;
+
+      repsInputs.forEach((inp, i) => {
+        const r = inp.value.trim();
+        const w = parseFloat(weightInputs[i].value) || 0;
+        if (r || w) {
+          repsList.push(r || ex.reps);
+          if (w > maxWeight) maxWeight = w;
+          filledSets++;
+        }
+      });
+
+      logData[ex.id] = {
+        sets: String(filledSets || ex.sets),
+        reps: repsList.join(',') || ex.reps,
+        weight: String(maxWeight),
+      };
     }
 
-    setIdx++;
-    if (setIdx >= ex.sets) {
-      // Move to next exercise or complete
-      exIdx++;
-      setIdx = 0;
-      if (exIdx >= exercises.length) {
-        showComplete();
-        return;
-      }
+    // Advance to next exercise or finish
+    exIdx++;
+    if (exIdx >= exercises.length) {
+      showComplete();
+      return;
     }
     renderExercise();
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -559,7 +607,7 @@ const WF = (() => {
       if (d && d.weight && d.reps) {
         const w = parseFloat(d.weight) || 0;
         const repsList = d.reps.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-        const totalReps = repsList.length === 1 ? repsList[0] * (parseInt(d.sets) || e.sets) : repsList.reduce((a,b) => a+b, 0);
+        const totalReps = repsList.reduce((a, b) => a + b, 0);
         totalVol += w * totalReps;
       }
     });
@@ -567,6 +615,7 @@ const WF = (() => {
     document.getElementById('wf-sum-exercises').textContent = exercises.length;
     document.getElementById('wf-sum-sets').textContent = totalSets;
     document.getElementById('wf-sum-volume').textContent = totalVol > 0 ? totalVol.toLocaleString() + ' lbs' : '—';
+    document.getElementById('wf-progress').style.width = '100%';
     show('screen-complete');
   }
 
@@ -600,7 +649,7 @@ const WF = (() => {
     container.appendChild(input);
   }
 
-  return { submitCheckin, toggleWarmup, startWorkout, completeSet, submitWorkout };
+  return { submitCheckin, toggleWarmup, startWorkout, completeExercise, submitWorkout };
 })();
 </script>
 {% endif %}
