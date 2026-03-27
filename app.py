@@ -1430,6 +1430,11 @@ def client_detail(client_id):
         SessionPackage.year.desc(), SessionPackage.month.desc()
     ).all()
 
+    # Client's current program assignment
+    current_assignment = ProgramAssignment.query.filter_by(
+        client_id=client.id
+    ).order_by(ProgramAssignment.start_date.desc()).first()
+
     return render_template('client_detail.html',
         client=client,
         purchased=p, completed=comp, remaining=rem,
@@ -1437,7 +1442,8 @@ def client_detail(client_id):
         recent=recent,
         packages=packages,
         month_name=month_name[month],
-        year=year
+        year=year,
+        current_assignment=current_assignment
     )
 
 
