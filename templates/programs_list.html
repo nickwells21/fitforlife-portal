@@ -7,9 +7,14 @@
     <div class="page-title">Programs</div>
     <div class="page-subtitle">{{ programs|length }} program{{ 's' if programs|length != 1 else '' }}</div>
   </div>
-  <a href="{{ url_for('program_new') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i>New Program
-  </a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('program_quick_create') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-lightning-charge me-1"></i>Quick Program
+    </a>
+    <a href="{{ url_for('program_new') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Advanced Builder
+    </a>
+  </div>
 </div>
 
 {% if programs %}

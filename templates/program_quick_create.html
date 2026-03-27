@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% block title %}Quick Program — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+/* ── Week grid ───────────────────────────────────────────────────────────── */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 768px) {
+  .week-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.day-slot {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.day-slot.has-workout {
+  border-color: rgba(30,157,241,0.3);
+}
+.day-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+.day-slot select {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-mid) !important;
+  color: var(--text) !important;
+  font-size: 12px !important;
+  padding: 0.4rem 0.5rem !important;
+  border-radius: var(--radius-sm) !important;
+}
+.day-slot select option { background: #1a1a1a; }
+.day-label-input {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-soft) !important;
+  font-size: 11px !important;
+  padding: 0.3rem 0.5rem !important;
+  border-radius: var(--radius-sm) !important;
+}
+.workout-preview {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: auto;
+}
+.workout-preview .ex-count {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Client checkboxes ───────────────────────────────────────────────────── */
+.client-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.4rem;
+}
+.client-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  transition: border-color 0.12s, background 0.12s;
+}
+.client-check-label:hover { border-color: var(--border-mid); }
+.client-check-label input:checked ~ span {
+  color: var(--text);
+}
+.client-check-label input { accent-color: var(--accent); }
+
+/* ── Select all ──────────────────────────────────────────────────────────── */
+.select-all-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.select-all-row input { accent-color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Programs
+  </a>
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">Quick Program</div>
+  <div class="page-subtitle">Pick workouts for each day, set the duration, and assign to clients — all in one step.</div>
+</div>
+
+<form method="POST" id="quickProgramForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <!-- Program info -->
+  <div class="ffl-card mb-3">
+    <div class="mb-3">
+      <label class="form-label" for="progName">Program Name <span style="color:#f87171;">*</span></label>
+      <input type="text" id="progName" name="name" class="form-control" required
+             placeholder="e.g. Nick's 8-Week Strength Program">
+    </div>
+    <div class="d-flex gap-3 flex-wrap">
+      <div style="flex:1;min-width:200px;">
+        <label class="form-label" for="progDesc">Description</label>
+        <textarea id="progDesc" name="description" class="form-control" rows="2"
+                  placeholder="Optional notes about this program…"></textarea>
+      </div>
+      <div style="width:120px;">
+        <label class="form-label" for="progWeeks">Weeks</label>
+        <input type="number" id="progWeeks" name="weeks" class="form-control"
+               value="4" min="1" max="52">
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly schedule -->
+  <div class="ffl-card mb-3">
+    <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+      Weekly Schedule
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">
+      This schedule repeats every week for the duration of the program. Leave a day empty for rest.
+    </p>
+
+    <div class="week-grid" id="weekGrid">
+      {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+      {% for day in days %}
+      <div class="day-slot" id="daySlot{{ loop.index }}">
+        <div class="day-name">{{ day }}</div>
+        <select name="day_{{ loop.index }}_workout" onchange="updateDaySlot({{ loop.index }})">
+          <option value="">Rest Day</option>
+          {% for w in workouts %}
+          <option value="{{ w.id }}" data-count="{{ w.exercises.count() }}">{{ w.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" name="day_{{ loop.index }}_label" class="day-label-input"
+               placeholder="Label (optional)">
+        <div class="workout-preview" id="dayPreview{{ loop.index }}">
+          <span style="color:var(--text-faint);">Rest day</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Assign to clients -->
+  <div class="ffl-card mb-3">
+    <div class="fw-600 mb-3" style="font-size:0.88rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+      Assign to Clients <span style="font-weight:400;color:var(--text-faint);">(optional)</span>
+    </div>
+
+    <div class="mb-3" style="width:200px;">
+      <label class="form-label">Start Date</label>
+      <input type="date" name="start_date" class="form-control" value="{{ now_date }}">
+    </div>
+
+    {% if clients %}
+    <div class="select-all-row">
+      <input type="checkbox" id="selectAll" onchange="toggleAllClients(this)">
+      <label for="selectAll">Select All</label>
+    </div>
+    <div class="client-grid">
+      {% for c in clients %}
+      <label class="client-check-label">
+        <input type="checkbox" name="client_ids" value="{{ c.id }}">
+        <span>{{ c.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-muted);font-size:0.85rem;">No clients to assign. You can assign later from the program page.</div>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-outline-secondary">
+      <i class="bi bi-check-lg me-1"></i>Create Program
+    </button>
+    <a href="{{ url_for('programs_list') }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+<script>
+/* Workout exercise counts for preview */
+const WORKOUT_DATA = {
+  {% for w in workouts %}
+  {{ w.id }}: { name: {{ w.name | tojson }}, count: {{ w.exercises.count() }} }{{ ',' if not loop.last }}
+  {% endfor %}
+};
+
+function updateDaySlot(dayNum) {
+  const slot = document.getElementById('daySlot' + dayNum);
+  const select = slot.querySelector('select');
+  const preview = document.getElementById('dayPreview' + dayNum);
+  const wid = select.value;
+
+  if (wid && WORKOUT_DATA[wid]) {
+    const w = WORKOUT_DATA[wid];
+    slot.classList.add('has-workout');
+    preview.innerHTML = `<span class="ex-count">${w.count} exercise${w.count !== 1 ? 's' : ''}</span>`;
+  } else {
+    slot.classList.remove('has-workout');
+    preview.innerHTML = '<span style="color:var(--text-faint);">Rest day</span>';
+  }
+}
+
+function toggleAllClients(master) {
+  document.querySelectorAll('input[name="client_ids"]').forEach(cb => {
+    cb.checked = master.checked;
+  });
+}
+
+/* Init all day slots */
+for (let i = 1; i <= 7; i++) updateDaySlot(i);
+</script>
+{% endblock %}

@@ -1,6 +1,8 @@
 import os
+import re as _re
 import logging
-from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+from datetime import date as date_type, datetime, timedelta, timezone
 from calendar import month_name
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
@@ -303,11 +305,16 @@ def set_security_headers(response):
 
 # ─── Template Context Processors ─────────────────────────────────────────────
 
+_cached_admin_id = None
+
 @app.context_processor
 def inject_admin_id():
-    """Make admin_id available in all templates."""
-    admin = User.query.filter_by(role='admin', is_active=True).first()
-    return {'admin_id': admin.id if admin else 1}
+    """Make admin_id available in all templates (cached after first lookup)."""
+    global _cached_admin_id
+    if _cached_admin_id is None:
+        admin = User.query.filter_by(role='admin', is_active=True).first()
+        _cached_admin_id = admin.id if admin else 1
+    return {'admin_id': _cached_admin_id}
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1439,7 +1446,6 @@ def client_detail(client_id):
 @app.route('/admin/dedup-users', methods=['POST'])
 @admin_required
 def admin_dedup_users():
-    from collections import defaultdict
     all_users = User.query.order_by(User.id).all()
     by_name = defaultdict(list)
     for u in all_users:
@@ -1840,7 +1846,7 @@ def admin_promos():
 def admin_new_promo():
     start_raw = request.form.get('start_date') or None
     end_raw = request.form.get('end_date') or None
-    from datetime import date as date_type
+
     promo = Promo(
         title=request.form['title'].strip(),
         description=request.form['description'].strip(),
@@ -2024,7 +2030,6 @@ def messages_inbox():
 
 # ─── Training Modules: Models ────────────────────────────────────────────────
 
-import re as _re
 
 def extract_youtube_id(url):
     """Extract YouTube video ID from watch or short URL."""
@@ -2492,8 +2497,8 @@ def get_best_active_streak(user_id):
 
 def get_today_log_status(user_id):
     """Return dict of which daily log types were done today."""
-    from datetime import date as _date
-    today = _date.today()
+
+    today = date_type.today()
     logs = DailyLog.query.filter_by(user_id=user_id, log_date=today).all()
     done = {log.log_type for log in logs}
     return {'water': 'water' in done, 'sleep': 'sleep' in done,
@@ -2502,8 +2507,8 @@ def get_today_log_status(user_id):
 
 def update_streak(user_id, streak_type):
     """Update a streak, handling freeze logic and milestones."""
-    from datetime import date as _date
-    today = _date.today()
+
+    today = date_type.today()
     streak = Streak.query.filter_by(user_id=user_id, streak_type=streak_type).first()
     if not streak:
         streak = Streak(user_id=user_id, streak_type=streak_type, current_count=0, longest_count=0)
@@ -2668,8 +2673,8 @@ def process_daily_log(user_id, log_type, value=None):
 
 def check_comeback(user_id):
     """Check if user is returning after days away and award comeback_kid if 7+."""
-    from datetime import date as _date
-    today = _date.today()
+
+    today = date_type.today()
     # Find most recent activity across all streaks
     last = db.session.query(db.func.max(Streak.last_activity_date)).filter_by(user_id=user_id).scalar()
     if not last:
@@ -2895,8 +2900,8 @@ def process_workout_log(user_id, workout_id, exercise_data_list, log_date):
     # ── 13. Time-of-day ── (handled in check_badges via 'hour')
 
     # ── 14. Week started / weekly target ──
-    from datetime import date as _date
-    week_start = _date.today() - timedelta(days=_date.today().weekday())
+
+    week_start = date_type.today() - timedelta(days=date_type.today().weekday())
     week_start_dt = datetime(week_start.year, week_start.month, week_start.day, tzinfo=timezone.utc)
     week_checkins = WorkoutCheckin.query.filter(
         WorkoutCheckin.client_id == user_id,
@@ -3181,6 +3186,73 @@ def program_new():
     return render_template('program_form.html')
 
 
+@app.route('/programs/quick-create', methods=['GET', 'POST'])
+@staff_required
+def program_quick_create():
+    """Single-page program creator: pick workouts for each day, set weeks, assign clients."""
+    workouts = Workout.query.order_by(Workout.name).all()
+    if current_user.role == 'admin':
+        clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
+    else:
+        clients = User.query.filter_by(role='client', is_active=True, trainer_id=current_user.id).order_by(User.name).all()
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Program name is required.', 'danger')
+            return render_template('program_quick_create.html', workouts=workouts, clients=clients,
+                                   now_date=date_type.today().isoformat())
+
+        weeks = int(request.form.get('weeks', 4))
+        weeks = max(1, min(52, weeks))
+        description = request.form.get('description', '').strip() or None
+
+        # Create program with a single phase
+        prog = Program(name=name, description=description, weeks=weeks, trainer_id=current_user.id)
+        db.session.add(prog)
+        db.session.flush()
+
+        phase = ProgramPhase(program_id=prog.id, phase_num=1, weeks=weeks, name=name)
+        db.session.add(phase)
+        db.session.flush()
+
+        # Create PhaseDays for each day of the week
+        for day_num in range(1, 8):
+            workout_id = request.form.get(f'day_{day_num}_workout') or None
+            label = request.form.get(f'day_{day_num}_label', '').strip() or None
+            db.session.add(PhaseDay(
+                phase_id=phase.id,
+                day_num=day_num,
+                workout_id=int(workout_id) if workout_id else None,
+                label=label,
+            ))
+
+        # Assign to selected clients
+        client_ids = request.form.getlist('client_ids')
+        start_raw = request.form.get('start_date', '').strip()
+        assigned = 0
+        if client_ids and start_raw:
+            start_date = date_type.fromisoformat(start_raw)
+            for cid in client_ids:
+                db.session.add(ProgramAssignment(
+                    program_id=prog.id,
+                    client_id=int(cid),
+                    start_date=start_date,
+                    assigned_by_id=current_user.id,
+                ))
+                assigned += 1
+
+        db.session.commit()
+        if assigned:
+            flash(f'Program "{prog.name}" created and assigned to {assigned} client(s).', 'success')
+        else:
+            flash(f'Program "{prog.name}" created. Assign it to clients from the program page.', 'success')
+        return redirect(url_for('program_detail', program_id=prog.id))
+
+    return render_template('program_quick_create.html', workouts=workouts, clients=clients,
+                           now_date=date_type.today().isoformat())
+
+
 @app.route('/programs/<int:program_id>')
 @staff_required
 def program_detail(program_id):
@@ -3194,7 +3266,7 @@ def program_detail(program_id):
     day_map = {}
     for pd in prog.days.all():
         day_map[(pd.week, pd.day)] = pd
-    from datetime import date as date_type
+
     assignments = prog.assignments.order_by(ProgramAssignment.start_date.desc()).all()
     return render_template('program_detail.html', prog=prog, day_map=day_map, clients=clients,
                            assignments=assignments, now_date=date_type.today().isoformat())
@@ -3400,7 +3472,7 @@ def phase_progression_save(program_id, phase_id):
 @staff_required
 def program_assign(program_id):
     prog = Program.query.get_or_404(program_id)
-    from datetime import date as date_type
+
     client_ids = request.form.getlist('client_ids')
     start_raw = request.form.get('start_date', '').strip()
     if not client_ids or not start_raw:
@@ -3437,7 +3509,7 @@ def program_assign(program_id):
 @app.route('/programs/manage-assignments', methods=['GET', 'POST'])
 @staff_required
 def program_manage_assignments():
-    from datetime import date as date_type
+
     if current_user.role == 'admin':
         all_clients = User.query.filter_by(role='client', is_active=True).order_by(User.name).all()
         all_programs = Program.query.order_by(Program.name).all()
@@ -3482,7 +3554,7 @@ def program_manage_assignments():
         ).first()
         client_data.append({'client': c, 'assignment': active})
 
-    from datetime import date as date_type
+
     return render_template('program_assignments.html',
         client_data=client_data,
         all_programs=all_programs,
@@ -3558,7 +3630,7 @@ def client_workout_log(workout_id):
         override_map = {o.exercise_id: o for o in overrides}
 
     if request.method == 'POST':
-        from datetime import date as date_type
+    
         log_date = date_type.today()
 
         # ── Duplicate prevention: check if this workout was already logged today ──
@@ -3658,7 +3730,7 @@ def client_workout_log(workout_id):
 def my_program():
     if current_user.role != 'client':
         return redirect(url_for('dashboard'))
-    from datetime import date as date_type
+
     today = date_type.today()
     # Find the most recent assignment
     assignment = ProgramAssignment.query.filter_by(
@@ -3845,7 +3917,7 @@ def my_program():
 def client_progress():
     if current_user.role not in ('client',):
         return redirect(url_for('dashboard'))
-    from datetime import date as date_type
+
     entries = ProgressEntry.query.filter_by(client_id=current_user.id).order_by(ProgressEntry.log_date).all()
     ex_logs = ExerciseLog.query.filter_by(client_id=current_user.id).order_by(ExerciseLog.log_date.desc()).all()
     exercises = Exercise.query.order_by(Exercise.name).all()
@@ -3859,7 +3931,7 @@ def client_progress():
 def progress_log():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as date_type
+
     def _float(key):
         val = request.form.get(key, '').strip()
         try:
@@ -3890,7 +3962,7 @@ def progress_log():
 def progress_log_exercise():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as date_type
+
     raw_date = request.form.get('log_date', '').strip()
     log_date = date_type.fromisoformat(raw_date) if raw_date else date_type.today()
     ex_id = request.form.get('exercise_id', '').strip()
@@ -3972,7 +4044,7 @@ def workout_checkin():
 @app.route('/compliance')
 @staff_required
 def compliance_dashboard():
-    from datetime import date as date_type
+
     today = date_type.today()
     # Get all active clients with an assignment
     all_assignments = ProgramAssignment.query.all()
@@ -4122,7 +4194,7 @@ def admin_start_subscription():
             billing_day=billing_day,
         )
         if sub.current_period_start:
-            from datetime import date as _date
+        
             local_sub.current_period_start = datetime.fromtimestamp(sub.current_period_start).date()
             local_sub.current_period_end = datetime.fromtimestamp(sub.current_period_end).date()
         db.session.add(local_sub)
@@ -4267,7 +4339,7 @@ def stripe_webhook():
         if sub_id:
             local_sub = ClientSubscription.query.filter_by(stripe_subscription_id=sub_id).first()
             if local_sub and local_sub.plan:
-                from datetime import date as _date
+            
                 now = datetime.now(timezone.utc)
                 existing_pkg = SessionPackage.query.filter_by(
                     client_id=local_sub.client_id, month=now.month, year=now.year
@@ -4324,8 +4396,8 @@ def stripe_webhook():
 def daily_log_page():
     if current_user.role != 'client':
         return redirect(url_for('dashboard'))
-    from datetime import date as _date
-    today = _date.today()
+
+    today = date_type.today()
     status = get_today_log_status(current_user.id)
     # Get today's actual values
     today_logs = DailyLog.query.filter_by(user_id=current_user.id, log_date=today).all()
@@ -4335,16 +4407,21 @@ def daily_log_page():
 
 @app.route('/daily-log/water', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def daily_log_water():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as _date
-    value = float(request.form.get('value', 0))
-    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='water').first()
+
+    try:
+        value = float(request.form.get('value', 0))
+    except (ValueError, TypeError):
+        flash('Invalid value.', 'danger')
+        return redirect(url_for('daily_log_page'))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=date_type.today(), log_type='water').first()
     if existing:
         existing.value = (existing.value or 0) + value
     else:
-        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='water', value=value))
+        db.session.add(DailyLog(user_id=current_user.id, log_date=date_type.today(), log_type='water', value=value))
     process_daily_log(current_user.id, 'water', value=(existing.value if existing else value))
     db.session.commit()
     flash('Water logged!', 'success')
@@ -4353,18 +4430,23 @@ def daily_log_water():
 
 @app.route('/daily-log/sleep', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def daily_log_sleep():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as _date
-    hours = float(request.form.get('hours', 0))
-    quality = int(request.form.get('quality', 3))
-    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='sleep').first()
+
+    try:
+        hours = float(request.form.get('hours', 0))
+        quality = int(request.form.get('quality', 3))
+    except (ValueError, TypeError):
+        flash('Invalid value.', 'danger')
+        return redirect(url_for('daily_log_page'))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=date_type.today(), log_type='sleep').first()
     if existing:
         existing.value = hours
         existing.quality = quality
     else:
-        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='sleep', value=hours, quality=quality))
+        db.session.add(DailyLog(user_id=current_user.id, log_date=date_type.today(), log_type='sleep', value=hours, quality=quality))
     process_daily_log(current_user.id, 'sleep', value=hours)
     db.session.commit()
     flash('Sleep logged!', 'success')
@@ -4373,16 +4455,17 @@ def daily_log_sleep():
 
 @app.route('/daily-log/meal', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def daily_log_meal():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as _date
+
     notes = request.form.get('notes', '').strip()
-    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='meal').first()
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=date_type.today(), log_type='meal').first()
     if existing:
         existing.notes = notes
     else:
-        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='meal', notes=notes))
+        db.session.add(DailyLog(user_id=current_user.id, log_date=date_type.today(), log_type='meal', notes=notes))
     process_daily_log(current_user.id, 'meal')
     db.session.commit()
     flash('Meal logged!', 'success')
@@ -4391,16 +4474,21 @@ def daily_log_meal():
 
 @app.route('/daily-log/weighin', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def daily_log_weighin():
     if current_user.role != 'client':
         abort(403)
-    from datetime import date as _date
-    weight = float(request.form.get('weight', 0))
-    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=_date.today(), log_type='weighin').first()
+
+    try:
+        weight = float(request.form.get('weight', 0))
+    except (ValueError, TypeError):
+        flash('Invalid value.', 'danger')
+        return redirect(url_for('daily_log_page'))
+    existing = DailyLog.query.filter_by(user_id=current_user.id, log_date=date_type.today(), log_type='weighin').first()
     if existing:
         existing.value = weight
     else:
-        db.session.add(DailyLog(user_id=current_user.id, log_date=_date.today(), log_type='weighin', value=weight))
+        db.session.add(DailyLog(user_id=current_user.id, log_date=date_type.today(), log_type='weighin', value=weight))
     process_daily_log(current_user.id, 'weighin', value=weight)
     db.session.commit()
     flash('Weigh-in recorded!', 'success')
