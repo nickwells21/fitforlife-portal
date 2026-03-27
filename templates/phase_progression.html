@@ -167,8 +167,16 @@
         </thead>
         <tbody>
           {% for ex in exercises %}
+          {% set defaults = workout_defaults.get(ex.id, {}) %}
           <tr>
-            <td class="exercise-name-cell">{{ ex.name }}</td>
+            <td class="exercise-name-cell">
+              {{ ex.name }}
+              {% if defaults %}
+              <div style="font-size:10px;color:var(--text-faint);font-weight:400;margin-top:2px;">
+                Default: {{ defaults.get('sets', 3) }}&times;{{ defaults.get('reps', '10') }}{% if defaults.get('rest_seconds') %} · {{ defaults.get('rest_seconds') }}s rest{% endif %}
+              </div>
+              {% endif %}
+            </td>
             {% for w in weeks %}
             {% set ov = override_map.get((ex.id, w)) %}
             <td>
@@ -178,16 +186,16 @@
                   <input type="number" min="1" max="20"
                          name="ex_{{ ex.id }}_w{{ w }}_sets"
                          class="cell-input"
-                         value="{{ ov.sets if ov and ov.sets is not none else '' }}"
-                         placeholder="—">
+                         value="{{ ov.sets if ov and ov.sets is not none else (defaults.get('sets', '') if defaults else '') }}"
+                         placeholder="{{ defaults.get('sets', '—') if defaults else '—' }}">
                 </div>
                 <div class="cell-row">
                   <label>Reps</label>
                   <input type="text"
                          name="ex_{{ ex.id }}_w{{ w }}_reps"
                          class="cell-input"
-                         value="{{ ov.reps if ov and ov.reps else '' }}"
-                         placeholder="e.g. 8-12">
+                         value="{{ ov.reps if ov and ov.reps else (defaults.get('reps', '') if defaults else '') }}"
+                         placeholder="{{ defaults.get('reps', '8-12') if defaults else '8-12' }}">
                 </div>
                 <div class="cell-row">
                   <label>Wt</label>

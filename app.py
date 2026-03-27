@@ -3402,10 +3402,18 @@ def phase_progression(program_id, phase_id):
             seen_workout_ids.append(pd.workout_id)
 
     workout_groups = []  # [(workout, [exercise, ...])]
+    workout_defaults = {}  # {exercise_id: {sets, reps, rest_seconds}}
     for wid in seen_workout_ids:
         w = db.session.get(Workout, wid)
         if w:
-            exs = [we.exercise for we in w.exercises.order_by('order').all()]
+            we_list = w.exercises.order_by(WorkoutExercise.order).all()
+            exs = [we.exercise for we in we_list]
+            for we in we_list:
+                workout_defaults[we.exercise_id] = {
+                    'sets': we.sets,
+                    'reps': we.reps,
+                    'rest_seconds': we.rest_seconds,
+                }
             if exs:
                 workout_groups.append((w, exs))
 
@@ -3414,7 +3422,8 @@ def phase_progression(program_id, phase_id):
     override_map = {(o.exercise_id, o.week_num): o for o in overrides}
     weeks = list(range(1, phase.weeks + 1))
     return render_template('phase_progression.html', prog=prog, phase=phase,
-                           workout_groups=workout_groups, weeks=weeks, override_map=override_map)
+                           workout_groups=workout_groups, weeks=weeks,
+                           override_map=override_map, workout_defaults=workout_defaults)
 
 
 @app.route('/programs/<int:program_id>/phase/<int:phase_id>/progression', methods=['POST'])
