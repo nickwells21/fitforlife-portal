@@ -4972,6 +4972,17 @@ def init_db():
             'is_timed': True,
             'is_hold': False,
         },
+        {
+            'name': 'Dumbbell Box Stepover',
+            'muscle_group': 'Legs',
+            'category': 'Compound',
+            'movement_pattern': 'Lunge',
+            'equipment': 'Dumbbell',
+            'instructions': '1. Hold a dumbbell in each hand at your sides with a neutral grip — stand facing a box or bench at mid-shin to knee height.\n2. Step up and over the box leading with one foot, driving through your heel — keep your chest tall and core braced like a farmer\'s carry.\n3. Step down on the opposite side under control, then turn and repeat back over — alternate the leading leg each rep.',
+            'youtube_url': 'https://www.youtube.com/watch?v=aC-bHflpOH0',
+            'is_timed': False,
+            'is_hold': False,
+        },
     ]
     _ex_added = 0
     admin_user = User.query.filter_by(role='admin').first()
