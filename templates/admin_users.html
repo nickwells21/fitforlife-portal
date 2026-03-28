@@ -304,7 +304,7 @@
         <th class="hide-mobile">Trainer</th>
         <th>Package</th>
         <th>Sessions ({{ month_name[:3] }})</th>
-        <th class="hide-mobile">Next Session</th>
+        <th class="hide-mobile">Current Program</th>
         <th>Status</th>
         <th></th>
       </tr>
@@ -315,7 +315,7 @@
       {% set purchased = cd.get('purchased', 0) %}
       {% set completed = cd.get('completed', 0) %}
       {% set remaining = cd.get('remaining', 0) %}
-      {% set next_s    = cd.get('next_session') %}
+      {% set prog      = cd.get('prog') %}
       {% set pkg_count = cd.get('pkg_count', 0) %}
       <tr>
         <td>
@@ -364,13 +364,15 @@
           {% endif %}
         </td>
         <td class="hide-mobile">
-          {% if next_s %}
-          <div class="next-sess-text">
-            <i class="bi bi-calendar-event" style="font-size:10px; color:var(--accent);"></i>
-            {{ next_s.scheduled_at.strftime('%b %-d') }} · {{ next_s.scheduled_at.strftime('%-I:%M %p') }}
+          {% if prog %}
+          <a href="{{ url_for('program_detail', program_id=prog.program.id) }}" style="font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;">
+            {{ prog.program.name }}
+          </a>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">
+            {{ prog.start_date.strftime('%b %-d') }} — {{ prog.end_date.strftime('%b %-d, %Y') }}
           </div>
           {% else %}
-          <span style="font-size:11px; color:var(--text-muted);">None booked</span>
+          <span style="font-size:11px; color:var(--text-muted);">No program</span>
           {% endif %}
         </td>
         <td>

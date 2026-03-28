@@ -1507,20 +1507,31 @@ def admin_users():
     users = User.query.order_by(User.role, User.name).all()
     trainers = User.query.filter(User.role.in_(['trainer', 'admin']), User.is_active == True).order_by(User.name).all()
 
-    # Build client-specific data (package rate, session balance, next session)
+    # Build client-specific data (package rate, session balance, program)
     client_data = {}
     for u in users:
         if u.role == 'client':
             p, comp, rem = get_month_balance(u.id, now.month, now.year)
-            next_sess = Session.query.filter(
-                Session.client_id == u.id,
-                Session.status == 'scheduled',
-                Session.scheduled_at >= now,
-            ).order_by(Session.scheduled_at).first()
             pkg_count = SessionPackage.query.filter_by(client_id=u.id).count()
+            # Current program assignment
+            assignment = ProgramAssignment.query.filter_by(
+                client_id=u.id
+            ).order_by(ProgramAssignment.start_date.desc()).first()
+            prog_info = None
+            if assignment and assignment.program:
+                total_weeks = assignment.program.weeks
+                phases = assignment.program.phases.all() if hasattr(assignment.program, 'phases') else []
+                if phases:
+                    total_weeks = sum(ph.weeks for ph in phases)
+                end_date = assignment.start_date + timedelta(weeks=total_weeks)
+                prog_info = {
+                    'program': assignment.program,
+                    'start_date': assignment.start_date,
+                    'end_date': end_date,
+                }
             client_data[u.id] = {
                 'purchased': p, 'completed': comp, 'remaining': rem,
-                'next_session': next_sess, 'pkg_count': pkg_count,
+                'pkg_count': pkg_count, 'prog': prog_info,
             }
 
     return render_template('admin_users.html', users=users, trainers=trainers,
