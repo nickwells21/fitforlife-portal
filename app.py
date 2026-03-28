@@ -4926,6 +4926,66 @@ def init_db():
         db.session.commit()
         print(f'Membership plans seeded ({len(plans)} plans).')
 
+    # Seed exercises (only if they don't already exist by name)
+    _exercise_seeds = [
+        {
+            'name': 'Broad Jump',
+            'muscle_group': 'Legs',
+            'category': 'Plyometric',
+            'movement_pattern': 'Hinge',
+            'equipment': 'Bodyweight',
+            'instructions': '1. Stand with feet hip-width apart, toes at the edge of your starting line.\n2. Hinge at the hips and swing arms back, loading the posterior chain — then explode forward and up, extending hips, knees, and ankles simultaneously.\n3. Land softly with knees bent, absorbing impact through your whole foot — stick the landing before resetting.',
+            'youtube_url': 'https://www.youtube.com/watch?v=96zJo3nlmHI',
+            'is_timed': False,
+            'is_hold': False,
+        },
+        {
+            'name': 'Concept2 BikeErg',
+            'muscle_group': 'Legs',
+            'category': 'Cardio',
+            'movement_pattern': 'Cardio',
+            'equipment': 'Cardio Machine',
+            'instructions': '1. Adjust the seat height so your knee has a slight bend at the bottom of the pedal stroke.\n2. Strap feet in firmly, grip the handles lightly, and drive through the balls of your feet — maintain a smooth, circular pedal stroke.\n3. Keep your core braced, chest up, and breathe rhythmically — target a consistent damper setting and monitor your pace on the monitor.',
+            'youtube_url': 'https://www.youtube.com/watch?v=jFb4KVPqvcQ',
+            'is_timed': True,
+            'is_hold': False,
+        },
+        {
+            'name': 'Concept2 RowErg',
+            'muscle_group': 'Full Body',
+            'category': 'Cardio',
+            'movement_pattern': 'Cardio',
+            'equipment': 'Cardio Machine',
+            'instructions': '1. Strap feet in snugly, grab the handle with an overhand grip, and start at the catch — shins vertical, arms extended, core braced.\n2. Drive with your legs first, then lean back slightly and pull the handle to your lower chest — the sequence is legs, back, arms.\n3. Reverse the motion smoothly — arms away, body forward, then bend knees back to the catch. Keep the chain level and the stroke ratio 1:2 (drive:recovery).',
+            'youtube_url': 'https://www.youtube.com/watch?v=zQ82RYIFLN8',
+            'is_timed': True,
+            'is_hold': False,
+        },
+        {
+            'name': 'Concept2 SkiErg',
+            'muscle_group': 'Full Body',
+            'category': 'Cardio',
+            'movement_pattern': 'Cardio',
+            'equipment': 'Cardio Machine',
+            'instructions': '1. Stand tall facing the machine, reach up and grab both handles with arms fully extended overhead.\n2. Pull the handles down by hinging at the hips and driving your elbows past your torso — engage your lats, core, and legs in one powerful motion.\n3. Let the handles return overhead with control as you stand back up — keep a rhythmic pace and breathe out on the pull.',
+            'youtube_url': 'https://www.youtube.com/watch?v=hLFBEYOgUQA',
+            'is_timed': True,
+            'is_hold': False,
+        },
+    ]
+    _ex_added = 0
+    admin_user = User.query.filter_by(role='admin').first()
+    for ex_data in _exercise_seeds:
+        if not Exercise.query.filter_by(name=ex_data['name']).first():
+            db.session.add(Exercise(
+                created_by_id=admin_user.id if admin_user else None,
+                **ex_data,
+            ))
+            _ex_added += 1
+    if _ex_added:
+        db.session.commit()
+        print(f'Exercises seeded: {_ex_added} new exercises added.')
+
     # Seed / upsert badge definitions (adds new badges, updates existing ones)
     _seeded = 0
     for b in BADGE_SEED:
