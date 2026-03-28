@@ -1059,7 +1059,15 @@
       </div>
       <div class="notif-body">
         <div class="notif-msg">{{ n.message }}</div>
-        <div class="notif-time">{{ n.created_at.strftime('%b %d') }}</div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:3px;">
+          <span class="notif-time" style="margin:0;">{{ n.created_at.strftime('%b %d') }}</span>
+          {% if n.notif_type == 'event' and n.event_id %}
+          <a href="{{ url_for('event_detail', event_id=n.event_id) }}"
+             style="font-size:10px; font-weight:700; color:#a78bfa; text-decoration:none; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.25); border-radius:4px; padding:1px 7px;">
+            View Event
+          </a>
+          {% endif %}
+        </div>
       </div>
       {% if not n.is_read %}
       <button class="notif-dismiss" onclick="dismissNotif({{ n.id }}, this)" title="Mark read">

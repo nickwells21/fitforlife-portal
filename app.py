@@ -242,6 +242,7 @@ class Notification(db.Model):
     icon = db.Column(db.String(50), nullable=True)  # bootstrap icon class
     level = db.Column(db.String(20), nullable=True)  # bronze, silver, gold, platinum
     session_id = db.Column(db.Integer, db.ForeignKey('sessions.id'), nullable=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=True)
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
@@ -1923,6 +1924,14 @@ def delete_promo(promo_id):
 
 # ─── Admin: Events ────────────────────────────────────────────────────────────
 
+@app.route('/events/<int:event_id>')
+@login_required
+def event_detail(event_id):
+    """Client-facing event detail page."""
+    event = Event.query.get_or_404(event_id)
+    return render_template('event_detail.html', event=event)
+
+
 @app.route('/admin/events')
 @admin_required
 def admin_events():
@@ -1943,13 +1952,14 @@ def admin_new_event():
         location_id=int(location_id) if location_id else None,
     )
     db.session.add(event)
+    db.session.flush()  # get event.id
     # Notify all active clients
     event_date_str = event.event_date.strftime('%b %-d')
     clients = User.query.filter_by(role='client', is_active=True).all()
     for c in clients:
         create_notification(c.id, 'event',
             f'📣 New event: {event.title} — {event_date_str}',
-            icon='bi-calendar-event-fill')
+            icon='bi-calendar-event-fill', event_id=event.id)
     db.session.commit()
     flash('Event created.', 'success')
     return redirect(url_for('admin_events'))
@@ -2579,11 +2589,12 @@ def get_notif_emoji(notif_type):
     return NOTIF_EMOJI.get(notif_type, 'ℹ️')
 
 
-def create_notification(user_id, notif_type, message, title=None, icon=None, level=None, session_id=None):
+def create_notification(user_id, notif_type, message, title=None, icon=None, level=None, session_id=None, event_id=None):
     """Central notification creation — ALL notifications flow through here."""
     notif = Notification(
         user_id=user_id, title=title, message=message,
-        notif_type=notif_type, icon=icon, level=level, session_id=session_id,
+        notif_type=notif_type, icon=icon, level=level,
+        session_id=session_id, event_id=event_id,
     )
     db.session.add(notif)
     return notif
@@ -4864,6 +4875,7 @@ def init_db():
             ('title',    'ALTER TABLE notifications ADD COLUMN title VARCHAR(120)'),
             ('icon',     'ALTER TABLE notifications ADD COLUMN icon VARCHAR(50)'),
             ('level',    'ALTER TABLE notifications ADD COLUMN level VARCHAR(20)'),
+            ('event_id', 'ALTER TABLE notifications ADD COLUMN event_id INTEGER REFERENCES events(id)'),
             # V2 Engagement: Exercise time-domain fields
             ('is_timed',         'ALTER TABLE exercises ADD COLUMN is_timed BOOLEAN DEFAULT FALSE'),
             ('is_hold',          'ALTER TABLE exercises ADD COLUMN is_hold BOOLEAN DEFAULT FALSE'),

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.title }} — Fit For Life{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+<div class="ffl-card" style="max-width:600px;">
+  <!-- Date chip -->
+  <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem;">
+    <div style="background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); border-radius:var(--radius-md); padding:0.6rem 0.85rem; text-align:center; min-width:56px;">
+      <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#a78bfa;">{{ event.event_date.strftime('%b') }}</div>
+      <div style="font-size:1.5rem; font-weight:800; color:var(--text); line-height:1;">{{ event.event_date.strftime('%d') }}</div>
+    </div>
+    <div>
+      <div style="font-size:1.1rem; font-weight:800; color:var(--text);">{{ event.title }}</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
+        <i class="bi bi-clock me-1" style="font-size:0.7rem;"></i>{{ event.event_date.strftime('%A, %B %-d at %-I:%M %p') }}
+      </div>
+      {% if event.location %}
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
+        <i class="bi bi-geo-alt me-1" style="font-size:0.7rem;"></i>{{ event.location.name }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Description -->
+  {% if event.description %}
+  <div style="border-top:1px solid var(--border); padding-top:1rem;">
+    <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.5rem;">Details</div>
+    <div style="font-size:0.9rem; color:var(--text-soft); line-height:1.65; white-space:pre-wrap;">{{ event.description }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
