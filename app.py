@@ -3249,14 +3249,14 @@ def program_new():
         if not name:
             flash('Program name is required.', 'danger')
             return render_template('program_form.html')
-        num_phases = int(request.form.get('num_phases', 2))
-        num_phases = max(2, min(4, num_phases))
+        num_phases = int(request.form.get('num_phases', 1))
+        num_phases = max(1, min(4, num_phases))
         # Compute total weeks from phase lengths
         total_weeks = 0
         phase_data = []
         for i in range(1, num_phases + 1):
             ph_weeks = int(request.form.get(f'phase_{i}_weeks', 4))
-            ph_weeks = max(2, min(4, ph_weeks))
+            ph_weeks = max(1, min(6, ph_weeks))
             ph_name = request.form.get(f'phase_{i}_name', '').strip() or None
             total_weeks += ph_weeks
             phase_data.append({'phase_num': i, 'weeks': ph_weeks, 'name': ph_name})

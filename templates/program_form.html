@@ -69,9 +69,10 @@
 
     <div class="mb-4">
       <label class="form-label">Number of Phases</label>
-      <input type="hidden" name="num_phases" id="numPhasesInput" value="2">
+      <input type="hidden" name="num_phases" id="numPhasesInput" value="1">
       <div class="pill-group" id="phasePills">
-        <button type="button" class="pill-btn active" data-val="2" onclick="selectPhases(this)">2 Phases</button>
+        <button type="button" class="pill-btn active" data-val="1" onclick="selectPhases(this)">1 Phase</button>
+        <button type="button" class="pill-btn" data-val="2" onclick="selectPhases(this)">2 Phases</button>
         <button type="button" class="pill-btn" data-val="3" onclick="selectPhases(this)">3 Phases</button>
         <button type="button" class="pill-btn" data-val="4" onclick="selectPhases(this)">4 Phases</button>
       </div>
@@ -118,9 +119,12 @@ function renderPhaseRows(count) {
         <span style="font-size:0.8rem;color:var(--text-muted);">Length:</span>
         <select name="phase_${i}_weeks" class="form-select form-select-sm week-sel"
                 style="width:90px;font-size:0.83rem;" onchange="updateTotal()">
+          <option value="1">1 wk</option>
           <option value="2">2 wks</option>
           <option value="3">3 wks</option>
           <option value="4" selected>4 wks</option>
+          <option value="5">5 wks</option>
+          <option value="6">6 wks</option>
         </select>
       </div>`;
     container.appendChild(row);
@@ -135,7 +139,7 @@ function updateTotal() {
   document.getElementById('totalWeeksDisplay').textContent = `Total program length: ${total} weeks`;
 }
 
-// Initialize with 2 phases
-renderPhaseRows(2);
+// Initialize with 1 phase
+renderPhaseRows(1);
 </script>
 {% endblock %}
