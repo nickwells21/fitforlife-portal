@@ -302,11 +302,6 @@
         </a>
       </li>
       <li>
-        <a href="{{ url_for('exercises_list') }}" class="nav-link {% if request.endpoint and 'exercise' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-lightning-charge"></i><span class="nav-label"> Library</span>
-        </a>
-      </li>
-      <li>
         <a href="{{ url_for('client_progress') }}" class="nav-link {% if request.endpoint and 'progress' in request.endpoint %}active{% endif %}">
           <i class="bi bi-graph-up-arrow"></i><span class="nav-label"> Progress</span>
         </a>

@@ -2937,7 +2937,7 @@ def process_workout_log(user_id, workout_id, exercise_data_list, log_date):
 # MODULE 1: Exercise Library
 
 @app.route('/exercises')
-@login_required
+@staff_required
 def exercises_list():
     exercises = Exercise.query.order_by(Exercise.name).all()
     return render_template('exercises_list.html', exercises=exercises,
@@ -2971,7 +2971,7 @@ def exercise_new():
 
 
 @app.route('/exercises/<int:ex_id>')
-@login_required
+@staff_required
 def exercise_detail(ex_id):
     ex = Exercise.query.get_or_404(ex_id)
     return render_template('exercise_detail.html', ex=ex,
