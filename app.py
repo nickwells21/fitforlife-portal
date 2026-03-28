@@ -1999,6 +1999,14 @@ def api_send_message():
             return jsonify({'error': 'You can only message your trainer or gym staff'}), 403
     msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
     db.session.add(msg)
+    # Notify client when a coach/admin sends them a message
+    if recipient.role == 'client' and current_user.role in ('admin', 'trainer'):
+        preview = body[:80] + ('...' if len(body) > 80 else '')
+        create_notification(
+            recipient.id, 'coach_message',
+            f'💬 Message from {current_user.name.split()[0]}: {preview}',
+            icon='bi-chat-fill',
+        )
     db.session.commit()
     return jsonify({
         'id': msg.id,
@@ -2530,6 +2538,7 @@ NOTIF_EMOJI = {
     'daily_log_water': '💧', 'daily_log_sleep': '😴', 'daily_log_meal': '🍽️',
     'daily_log_weighin': '⚖️', 'early_bird': '🌅', 'night_owl': '🌙',
     'week_started': '📅', 'month_summary': '📋',
+    'coach_message': '💬',
 }
 
 RARITY_MAP = {'bronze': 'common', 'silver': 'rare', 'gold': 'epic', 'platinum': 'legendary'}
