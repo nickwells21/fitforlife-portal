@@ -318,6 +318,12 @@
         </a>
       </li>
       <li>
+        <a href="{{ url_for('trainer_chat') }}" class="nav-link {% if request.endpoint == 'trainer_chat' %}active{% endif %}">
+          <i class="bi bi-chat-dots"></i><span class="nav-label"> My Coach</span>
+          <span class="msg-unread-badge" id="chatWidgetBadgeSidebar" style="display:none;"></span>
+        </a>
+      </li>
+      <li>
         <a href="{{ url_for('leaderboard') }}" class="nav-link {% if request.endpoint == 'leaderboard' %}active{% endif %}">
           <i class="bi bi-people"></i><span class="nav-label"> Leaderboard</span>
         </a>

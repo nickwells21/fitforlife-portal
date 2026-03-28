@@ -2008,10 +2008,17 @@ def api_messages_unread_count():
 @app.route('/chat')
 @login_required
 def chat():
-    """Full-screen chat page for clients — redirects to AI Coach."""
+    """Legacy route — redirects to AI Coach."""
+    return redirect(url_for('ai_coach'))
+
+
+@app.route('/my-coach')
+@login_required
+def trainer_chat():
+    """Direct messaging with your assigned trainer."""
     if current_user.role != 'client':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('ai_coach'))
+    return render_template('chat.html')
 
 
 @app.route('/ai-coach')
