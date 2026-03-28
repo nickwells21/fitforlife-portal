@@ -29,6 +29,7 @@ if _ANTHROPIC_KEY:
     _anthropic_client = _anthropic.Anthropic(api_key=_ANTHROPIC_KEY)
 
 app = Flask(__name__)
+app.jinja_env.add_extension('jinja2.ext.loopcontrols')
 
 # SECRET_KEY — use env var, fall back to a generated key with warning
 _secret_key = os.environ.get('SECRET_KEY')
