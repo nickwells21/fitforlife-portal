@@ -23,15 +23,7 @@
 .client-hero {
   padding: 2.25rem 0 0.5rem;
   margin-bottom: 1.75rem;
-}
-
-.hero-time-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
+  text-align: center;
 }
 
 .hero-greeting {
@@ -53,6 +45,7 @@
 .hero-right {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.625rem;
   flex-wrap: wrap;
   flex-shrink: 0;
@@ -794,11 +787,8 @@
 
 <!-- ─── Hero ───────────────────────────────────────────────────────────────── -->
 <div class="client-hero">
-  <div>
-    <div class="hero-time-label" id="hero-time-label">Good day</div>
-    <div class="hero-greeting" id="hero-greeting">{{ greeting }}, {{ first_name }}.</div>
-    <div class="hero-subtitle">Here's your training overview.</div>
-  </div>
+  <div class="hero-greeting" id="hero-greeting">{{ greeting }}, {{ first_name }}.</div>
+  <div class="hero-subtitle">Here's your training overview.</div>
   <div class="hero-right">
     {% if streak > 0 %}
     <div class="streak-badge">🔥 {{ streak }}-week streak</div>
@@ -1226,29 +1216,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Time-based greeting update
   var hour = new Date().getHours();
-  var timeLabel, timeGreeting;
+  var timeLabel;
   if (hour < 12) {
-    timeLabel   = 'Good morning';
-    timeGreeting = 'morning';
+    timeLabel = 'Good morning';
   } else if (hour < 17) {
-    timeLabel   = 'Good afternoon';
-    timeGreeting = 'afternoon';
+    timeLabel = 'Good afternoon';
   } else {
-    timeLabel   = 'Good evening';
-    timeGreeting = 'evening';
+    timeLabel = 'Good evening';
   }
 
-  var labelEl    = document.getElementById('hero-time-label');
   var greetingEl = document.getElementById('hero-greeting');
-
-  if (labelEl)    labelEl.textContent = timeLabel;
   if (greetingEl) {
-    // Replace the greeting word while keeping the name (everything after the first comma+space)
     var current = greetingEl.textContent;
     var commaIdx = current.indexOf(',');
     if (commaIdx !== -1) {
-      var namePart = current.slice(commaIdx); // ", FirstName."
-      greetingEl.textContent = timeLabel + namePart;
+      greetingEl.textContent = timeLabel + current.slice(commaIdx);
     }
   }
 });
