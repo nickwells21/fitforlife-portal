@@ -4983,6 +4983,22 @@ def init_db():
         db.session.commit()
         print(f'Membership plans seeded ({len(plans)} plans).')
 
+    # Backfill event_id on existing event notifications that are missing it
+    orphan_notifs = Notification.query.filter(
+        Notification.notif_type == 'event',
+        Notification.event_id.is_(None),
+    ).all()
+    for n in orphan_notifs:
+        # Extract event title from message: "📣 New event: TITLE — DATE"
+        msg = n.message
+        if 'New event:' in msg:
+            title_part = msg.split('New event:')[1].split('—')[0].strip()
+            evt = Event.query.filter_by(title=title_part).first()
+            if evt:
+                n.event_id = evt.id
+    if orphan_notifs:
+        db.session.commit()
+
     # Seed exercises (only if they don't already exist by name)
     _exercise_seeds = [
         {
