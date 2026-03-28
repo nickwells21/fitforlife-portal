@@ -663,13 +663,16 @@ def dashboard():
 
         if assignment:
             days_since_start = (today - assignment.start_date).days
-            if days_since_start >= 0:
+            # Show upcoming workouts for programs starting within the next 7 days too
+            if days_since_start >= -7:
                 phases = assignment.program.phases.order_by(ProgramPhase.phase_num).all()
                 total_program_days = sum(ph.weeks * 7 for ph in phases)
+                # Start searching from day 0 if program hasn't begun yet
+                search_start = max(0, days_since_start)
 
-                # Search from today forward through the rest of the program
-                for offset in range(0, min(total_program_days - days_since_start, 14)):
-                    check_day = days_since_start + offset
+                # Search from today (or program start) forward through the program
+                for offset in range(0, min(total_program_days - search_start, 14)):
+                    check_day = search_start + offset
                     if check_day >= total_program_days:
                         break
                     # Find which phase + week + day this falls in
