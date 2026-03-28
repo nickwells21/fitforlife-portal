@@ -1003,6 +1003,26 @@
 
 </div>
 
+<!-- ─── Quick Access ─────────────────────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:0.625rem; margin-bottom:1rem;">
+  <a href="{{ url_for('my_program') }}" class="ffl-card" style="text-align:center; padding:1rem 0.5rem; text-decoration:none; transition:border-color 0.15s;">
+    <i class="bi bi-calendar2-week" style="font-size:1.4rem; color:var(--accent); display:block; margin-bottom:0.35rem;"></i>
+    <div style="font-size:0.72rem; font-weight:700; color:var(--text-soft);">My Program</div>
+  </a>
+  <a href="{{ url_for('ai_coach') }}" class="ffl-card" style="text-align:center; padding:1rem 0.5rem; text-decoration:none; transition:border-color 0.15s;">
+    <i class="bi bi-stars" style="font-size:1.4rem; color:#a78bfa; display:block; margin-bottom:0.35rem;"></i>
+    <div style="font-size:0.72rem; font-weight:700; color:var(--text-soft);">AI Coach</div>
+  </a>
+  <a href="{{ url_for('trainer_chat') }}" class="ffl-card" style="text-align:center; padding:1rem 0.5rem; text-decoration:none; transition:border-color 0.15s;">
+    <i class="bi bi-chat-dots" style="font-size:1.4rem; color:#14b8a6; display:block; margin-bottom:0.35rem;"></i>
+    <div style="font-size:0.72rem; font-weight:700; color:var(--text-soft);">My Coach</div>
+  </a>
+  <a href="{{ url_for('achievements') }}" class="ffl-card" style="text-align:center; padding:1rem 0.5rem; text-decoration:none; transition:border-color 0.15s;">
+    <i class="bi bi-trophy" style="font-size:1.4rem; color:#f59e0b; display:block; margin-bottom:0.35rem;"></i>
+    <div style="font-size:0.72rem; font-weight:700; color:var(--text-soft);">Achievements</div>
+  </a>
+</div>
+
 <!-- ─── Notifications ────────────────────────────────────────────────────── -->
 {% if notifications %}
 <div class="notif-panel ffl-card" style="margin-bottom:1rem;">

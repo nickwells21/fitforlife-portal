@@ -1114,7 +1114,27 @@ textarea.form-control {
     padding-bottom: 0.25rem;
   }
   .sidebar.open .sidebar-brand { padding: 1.25rem 1rem 1rem; justify-content: flex-start; }
-  .sidebar.open .sidebar-nav .nav-link { padding: 0.45rem 0.625rem; justify-content: flex-start; }
+  .sidebar.open .sidebar-nav .nav-link {
+    padding: 0.75rem 1rem;
+    justify-content: flex-start;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+    gap: 12px;
+    border-radius: 10px;
+  }
+  .sidebar.open .sidebar-nav .nav-link i {
+    font-size: 20px;
+    width: 24px;
+    opacity: 0.85;
+  }
+  .sidebar.open .sidebar-nav .nav-link.active i { opacity: 1; }
+  .sidebar.open .sidebar-nav { padding: 0.5rem 0.625rem; }
+  .sidebar.open .nav-section {
+    font-size: 11px;
+    padding-top: 1rem;
+    padding-bottom: 0.35rem;
+  }
   .sidebar.open .sidebar-footer { padding: 0.75rem; flex-direction: row; justify-content: space-between; }
   .page-title { font-size: 1.1rem; }
 }
