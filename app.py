@@ -3006,6 +3006,13 @@ def exercise_edit(ex_id):
 def exercise_delete(ex_id):
     ex = Exercise.query.get_or_404(ex_id)
     name = ex.name
+    # Clear FK references that would block deletion
+    WorkoutExercise.query.filter_by(exercise_id=ex.id).delete()
+    ExerciseLog.query.filter_by(exercise_id=ex.id).delete()
+    PersonalRecord.query.filter_by(exercise_id=ex.id).delete()
+    ExerciseVolumeTotal.query.filter_by(exercise_id=ex.id).delete()
+    RepMilestone.query.filter_by(exercise_id=ex.id).delete()
+    ProgressionOverride.query.filter_by(exercise_id=ex.id).delete()
     db.session.delete(ex)
     db.session.commit()
     flash(f'Exercise "{name}" deleted.', 'success')
@@ -3134,6 +3141,10 @@ def workout_delete(workout_id):
     if current_user.role != 'admin' and workout.trainer_id != current_user.id:
         abort(403)
     name = workout.name
+    # Clear FK references that would block deletion
+    ProgramDay.query.filter_by(workout_id=workout.id).update({'workout_id': None})
+    PhaseDay.query.filter_by(workout_id=workout.id).update({'workout_id': None})
+    WorkoutVolumeRecord.query.filter_by(workout_id=workout.id).delete()
     db.session.delete(workout)
     db.session.commit()
     flash(f'Workout "{name}" deleted.', 'success')
@@ -3607,7 +3618,7 @@ def program_delete(program_id):
 def client_workout_view(workout_id):
     """Read-only workout view — same layout as logging but no input fields."""
     workout = Workout.query.get_or_404(workout_id)
-    workout_exercises = workout.exercises.order_by(WorkoutExercise.order).all()
+    workout_exercises = [we for we in workout.exercises.order_by(WorkoutExercise.order).all() if we.exercise]
     phase_id = request.args.get('phase_id', type=int)
     week_num = request.args.get('week', type=int)
     override_map = {}
@@ -3635,8 +3646,8 @@ def client_workout_log(workout_id):
     phase_id = request.args.get('phase_id', type=int)
     week_num  = request.args.get('week', type=int)
 
-    # Load exercises in order
-    workout_exercises = workout.exercises.order_by(WorkoutExercise.order).all()
+    # Load exercises in order (filter out orphaned references)
+    workout_exercises = [we for we in workout.exercises.order_by(WorkoutExercise.order).all() if we.exercise]
 
     # Load progression overrides for this phase+week (if available)
     override_map = {}

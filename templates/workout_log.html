@@ -182,6 +182,7 @@
 
 {% set ns = namespace(current_group=None) %}
 {% for we in workout_exercises %}
+{% if not we.exercise %}{% continue %}{% endif %}
 {% set ex = we.exercise %}
 {% set ov = override_map.get(ex.id) %}
 {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}
@@ -412,6 +413,7 @@ const WF = (() => {
   // Raw exercise data from Jinja
   const allExercises = [
     {% for we in workout_exercises %}
+    {% if not we.exercise %}{% continue %}{% endif %}
     {% set ex = we.exercise %}
     {% set ov = override_map.get(ex.id) %}
     {% set yt_id = extract_youtube_id(ex.youtube_url) if ex.youtube_url else None %}

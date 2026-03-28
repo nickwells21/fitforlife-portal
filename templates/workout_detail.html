@@ -125,11 +125,15 @@
           <tr>
             <td style="color:var(--text-muted);">{{ ns.num }}</td>
             <td>
+              {% if we.exercise %}
               <a href="{{ url_for('exercise_detail', ex_id=we.exercise.id) }}" style="color:var(--accent);text-decoration:none;font-weight:600;">
                 {{ we.exercise.name }}
               </a>
               {% if we.exercise.muscle_group %}
               <span class="ms-1" style="font-size:10px;color:var(--text-muted);">{{ we.exercise.muscle_group }}</span>
+              {% endif %}
+              {% else %}
+              <span style="color:var(--text-muted);font-style:italic;">Deleted exercise</span>
               {% endif %}
             </td>
             <td>{{ we.sets }}</td>
