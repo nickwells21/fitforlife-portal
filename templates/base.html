@@ -317,6 +317,11 @@
         </a>
       </li>
       <li>
+        <a href="{{ url_for('pr_history') }}" class="nav-link {% if request.endpoint == 'pr_history' %}active{% endif %}">
+          <i class="bi bi-graph-up-arrow"></i><span class="nav-label"> PR History</span>
+        </a>
+      </li>
+      <li>
         <a href="{{ url_for('daily_log_page') }}" class="nav-link {% if request.endpoint == 'daily_log_page' %}active{% endif %}">
           <i class="bi bi-clipboard-check"></i><span class="nav-label"> Daily Log</span>
         </a>
@@ -431,6 +436,24 @@
            title="Dashboard">
           <i class="bi bi-house-fill" aria-hidden="true"></i>
         </a>
+        <!-- Notification Bell -->
+        <div class="notif-bell-wrap" style="position:relative;">
+          <button class="btn-ghost btn btn-sm" id="notifBellBtn" onclick="toggleNotifDropdown()"
+                  style="padding:0.3rem 0.5rem !important;position:relative;" aria-label="Notifications">
+            <i class="bi bi-bell" style="font-size:15px;"></i>
+            <span id="notifBadge" class="notif-bell-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>
+          </button>
+          <div id="notifDropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:6px;width:320px;max-height:400px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border-mid);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:999;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);">
+              <span style="font-size:0.8rem;font-weight:700;color:var(--text);">Notifications</span>
+              <button onclick="markAllReadBell()" style="background:none;border:none;color:var(--accent);font-size:0.7rem;font-weight:600;cursor:pointer;">Mark all read</button>
+            </div>
+            <div id="notifDropdownList" style="padding:0.25rem 0;"></div>
+            <div style="padding:0.5rem 0.75rem;border-top:1px solid var(--border);text-align:center;">
+              <a href="{{ url_for('achievements') }}" style="font-size:0.72rem;color:var(--accent);text-decoration:none;font-weight:600;">View All Achievements</a>
+            </div>
+          </div>
+        </div>
         <span class="topbar-user">{{ current_user.name }}</span>
         <a href="{{ url_for('logout') }}" class="logout-btn" aria-label="Sign out">
           <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
@@ -558,6 +581,73 @@ setInterval(updateStaffMsgBadge, 30000);
     }
     return _origFetch.call(this, url, opts);
   };
+})();
+</script>
+
+<!-- Notification Bell Logic -->
+<script>
+(function() {
+  var dd = document.getElementById('notifDropdown');
+  var badge = document.getElementById('notifBadge');
+  var list = document.getElementById('notifDropdownList');
+  if (!dd) return;
+
+  function timeAgo(iso) {
+    var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+  }
+
+  function loadNotifs() {
+    fetch('/api/notifications/recent?limit=15').then(function(r) { return r.json(); }).then(function(data) {
+      var unread = data.filter(function(n) { return !n.is_read; }).length;
+      badge.style.display = unread > 0 ? 'block' : 'none';
+      if (!data.length) {
+        list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.8rem;">No notifications yet</div>';
+        return;
+      }
+      list.innerHTML = data.map(function(n) {
+        return '<div style="display:flex;gap:0.5rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--border);' +
+          (!n.is_read ? 'background:rgba(30,157,241,0.06);' : '') + '">' +
+          '<span style="font-size:1rem;flex-shrink:0;width:1.25rem;text-align:center;">' + (n.emoji || '') + '</span>' +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:0.77rem;color:var(--text);line-height:1.3;">' + n.message + '</div>' +
+          '<div style="font-size:0.63rem;color:var(--text-muted);margin-top:2px;">' + timeAgo(n.created_at) + '</div>' +
+          '</div></div>';
+      }).join('');
+    });
+  }
+
+  window.toggleNotifDropdown = function() {
+    if (dd.style.display === 'none') {
+      dd.style.display = 'block';
+      loadNotifs();
+    } else {
+      dd.style.display = 'none';
+    }
+  };
+
+  window.markAllReadBell = function() {
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/notifications/mark-all-read', {
+      method: 'POST',
+      headers: csrf ? {'X-CSRFToken': csrf.content} : {}
+    }).then(function() {
+      badge.style.display = 'none';
+      loadNotifs();
+    });
+  };
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.notif-bell-wrap')) {
+      dd.style.display = 'none';
+    }
+  });
+
+  /* Check for unread on page load */
+  loadNotifs();
 })();
 </script>
 {% block scripts %}{% endblock %}

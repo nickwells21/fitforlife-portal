@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}PR History — Fit For Life{% endblock %}
+
+{% block head %}
+<style>
+.pr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+@media (max-width: 640px) { .pr-stats { grid-template-columns: 1fr; } }
+.pr-stat { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; text-align: center; }
+.pr-stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; color: var(--accent); }
+.pr-stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 0.25rem; }
+
+.pr-exercise-group { margin-bottom: 1rem; }
+.pr-exercise-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0.75rem; cursor: pointer; user-select: none;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); transition: background 0.12s;
+}
+.pr-exercise-header:hover { background: var(--bg-hover); }
+.pr-exercise-name { font-weight: 700; font-size: 0.9rem; }
+.pr-exercise-count { font-size: 0.75rem; color: var(--text-muted); }
+.pr-exercise-body { display: none; padding: 0.25rem 0; }
+.pr-exercise-group.open .pr-exercise-body { display: block; }
+.pr-exercise-group.open .pr-exercise-header { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.pr-exercise-body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+
+.pr-row {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border); font-size: 0.82rem;
+}
+.pr-row:last-child { border-bottom: none; }
+.pr-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 2px 8px; border-radius: 3px; min-width: 52px; text-align: center; white-space: nowrap; }
+.pr-type.weight { background: rgba(30,157,241,0.12); color: var(--accent); }
+.pr-type.time { background: rgba(245,158,11,0.12); color: #fbbf24; }
+.pr-type.reps { background: rgba(34,197,94,0.12); color: #4ade80; }
+.pr-type.volume { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.pr-type.speed { background: rgba(6,182,212,0.12); color: #22d3ee; }
+.pr-value { font-weight: 700; color: var(--text); min-width: 80px; }
+.pr-delta { font-size: 0.75rem; color: #4ade80; }
+.pr-date { font-size: 0.72rem; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+/* Best lifts grid */
+.best-lifts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem; }
+.best-lift-card {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0.75rem; border-left: 3px solid var(--accent);
+}
+.best-lift-name { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+.best-lift-value { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.15rem; }
+.best-lift-type { font-size: 0.65rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  {% if current_user.role == 'client' %}
+  <a href="{{ url_for('achievements') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Achievements
+  </a>
+  {% else %}
+  <a href="{{ url_for('client_detail', client_id=client.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>{{ client.name }}
+  </a>
+  {% endif %}
+</div>
+
+<div class="page-header mb-3">
+  <div class="page-title">
+    {% if current_user.id != client.id %}{{ client.name }}'s {% endif %}PR History
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="pr-stats">
+  <div class="pr-stat">
+    <div class="pr-stat-value">{{ total_prs }}</div>
+    <div class="pr-stat-label">Lifetime PRs</div>
+  </div>
+  <div class="pr-stat">
+    <div class="pr-stat-value" style="color:#4ade80;">{{ this_week }}</div>
+    <div class="pr-stat-label">This Week</div>
+  </div>
+  <div class="pr-stat">
+    <div class="pr-stat-value" style="color:#fbbf24;">{{ this_month }}</div>
+    <div class="pr-stat-label">This Month</div>
+  </div>
+</div>
+
+<!-- Best Lifts -->
+{% if best_lifts %}
+<div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+  Top Lifts
+</div>
+<div class="best-lifts">
+  {% for name, pr in best_lifts.items() | sort(attribute='1.value', reverse=True) %}
+  <div class="best-lift-card">
+    <div class="best-lift-name">{{ name }}</div>
+    <div class="best-lift-value">{{ pr.value | int }} lbs</div>
+    <div class="best-lift-type">{{ pr.pr_type | upper }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- PR Timeline by Exercise -->
+<div class="fw-600 mb-2" style="font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">
+  All Records
+</div>
+
+{% if by_exercise %}
+{% for ex_name, prs in by_exercise.items() | sort %}
+<div class="pr-exercise-group">
+  <div class="pr-exercise-header" onclick="this.parentElement.classList.toggle('open')">
+    <span class="pr-exercise-name">{{ ex_name }}</span>
+    <span class="pr-exercise-count">{{ prs | length }} PR{{ 's' if prs | length != 1 }}</span>
+  </div>
+  <div class="pr-exercise-body">
+    {% for pr in prs %}
+    <div class="pr-row">
+      <span class="pr-type {% if pr.unit == 'lbs' %}weight{% elif pr.unit == 'seconds' and 'hold' in (pr.pr_type or '') %}time{% elif pr.unit == 'seconds' %}speed{% elif pr.unit == 'reps' %}reps{% else %}volume{% endif %}">
+        {{ pr.pr_type | upper | replace('_', ' ') }}
+      </span>
+      <span class="pr-value">
+        {% if pr.unit == 'lbs' %}{{ pr.value | int }} lbs
+        {% elif pr.unit == 'seconds' %}{{ format_duration(pr.value) }}
+        {% elif pr.unit == 'reps' %}{{ pr.value | int }} reps
+        {% elif pr.unit == 'lbs_volume' %}{{ format_number(pr.value) }} lbs
+        {% else %}{{ pr.value }}{% endif %}
+      </span>
+      {% if pr.previous_value %}
+      <span class="pr-delta">
+        {% if pr.unit == 'lbs' %}+{{ (pr.value - pr.previous_value) | int }} lbs
+        {% elif pr.unit == 'seconds' and 'fastest' in (pr.pr_type or '') %}-{{ (pr.previous_value - pr.value) | int }}s
+        {% elif pr.unit == 'seconds' %}+{{ (pr.value - pr.previous_value) | int }}s
+        {% elif pr.unit == 'reps' %}+{{ (pr.value - pr.previous_value) | int }} reps
+        {% endif %}
+      </span>
+      {% endif %}
+      <span class="pr-date">{{ pr.achieved_at.strftime('%b %-d, %Y') }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="ffl-card text-center py-4" style="color:var(--text-muted);">
+  <i class="bi bi-trophy" style="font-size:2rem;opacity:0.3;"></i>
+  <div class="mt-2">No PRs yet. Log a workout to start tracking records.</div>
+</div>
+{% endif %}
+{% endblock %}

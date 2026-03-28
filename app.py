@@ -2747,7 +2747,7 @@ def process_workout_log(user_id, workout_id, exercise_data_list, log_date):
         if weight > 0 and reps_str:
             reps_list = [int(r.strip()) for r in str(reps_str).split(',') if r.strip().isdigit()]
             for rep_count in reps_list:
-                for pr_label, max_reps in [('1rm', 1), ('3rm', 3), ('5rm', 5), ('8rm', 8), ('10rm', 10)]:
+                for pr_label, max_reps in [('1rm', 1), ('3rm', 3), ('5rm', 5), ('8rm', 8), ('10rm', 10), ('15rm', 15)]:
                     if rep_count <= max_reps:
                         prev = PersonalRecord.query.filter_by(
                             user_id=user_id, exercise_id=ex_id, pr_type=pr_label
@@ -4608,6 +4608,52 @@ def api_notifications_recent():
         'emoji': get_notif_emoji(n.notif_type), 'is_read': n.is_read,
         'created_at': n.created_at.isoformat(),
     } for n in notifs])
+
+
+@app.route('/pr-history')
+@login_required
+def pr_history():
+    """PR History page — shows all personal records grouped by exercise."""
+    user_id = current_user.id
+    if current_user.role != 'client':
+        # Staff can view a client's PRs via ?client_id=
+        cid = request.args.get('client_id', type=int)
+        if cid:
+            user_id = cid
+        else:
+            return redirect(url_for('dashboard'))
+
+    prs = PersonalRecord.query.filter_by(user_id=user_id).order_by(
+        PersonalRecord.achieved_at.desc()
+    ).all()
+
+    # Group by exercise
+    by_exercise = {}
+    for pr in prs:
+        ex_name = pr.exercise.name if pr.exercise else 'General'
+        if ex_name not in by_exercise:
+            by_exercise[ex_name] = []
+        by_exercise[ex_name].append(pr)
+
+    # Overall stats
+    total_prs = len(prs)
+    this_week = sum(1 for pr in prs if (datetime.now(timezone.utc) - pr.achieved_at).days < 7)
+    this_month = sum(1 for pr in prs if (datetime.now(timezone.utc) - pr.achieved_at).days < 30)
+
+    # Best lifts (weight PRs only, best per exercise)
+    best_lifts = {}
+    for pr in prs:
+        if pr.unit == 'lbs' and pr.exercise:
+            key = pr.exercise.name
+            if key not in best_lifts or pr.value > best_lifts[key].value:
+                best_lifts[key] = pr
+
+    client = User.query.get(user_id) if user_id != current_user.id else current_user
+    return render_template('pr_history.html',
+        by_exercise=by_exercise, total_prs=total_prs,
+        this_week=this_week, this_month=this_month,
+        best_lifts=best_lifts, client=client,
+        format_duration=format_duration, format_number=format_number)
 
 
 @app.route('/leaderboard')
