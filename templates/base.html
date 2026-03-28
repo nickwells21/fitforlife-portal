@@ -272,30 +272,27 @@
     </div>
 
     <ul class="sidebar-nav">
+      {% if current_user.role == 'client' %}
+      <li>
+        <a href="{{ url_for('client_calendar') }}" class="nav-link {% if request.endpoint == 'client_calendar' %}active{% endif %}">
+          <i class="bi bi-calendar3"></i><span class="nav-label"> My Schedule</span>
+        </a>
+      </li>
+      {% endif %}
       <li>
         <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
           <i class="bi bi-house"></i><span class="nav-label"> Dashboard</span>
         </a>
       </li>
+      {% if current_user.role != 'client' %}
       <li>
-        {% if current_user.role == 'client' %}
-        <a href="{{ url_for('client_calendar') }}" class="nav-link {% if request.endpoint == 'client_calendar' %}active{% endif %}">
-          <i class="bi bi-calendar3"></i><span class="nav-label"> My Schedule</span>
-        </a>
-        {% else %}
         <a href="{{ url_for('calendar_view') }}" class="nav-link {% if request.endpoint == 'calendar_view' %}active{% endif %}">
           <i class="bi bi-calendar3"></i><span class="nav-label"> Calendar</span>
         </a>
-        {% endif %}
       </li>
+      {% endif %}
 
       {% if current_user.role == 'client' %}
-      <li>
-        <a href="{{ url_for('chat') }}" class="nav-link {% if request.endpoint == 'chat' %}active{% endif %}">
-          <i class="bi bi-chat-dots"></i><span class="nav-label"> Chat</span>
-          <span class="msg-unread-badge" id="chatWidgetBadgeSidebar" style="display:none;"></span>
-        </a>
-      </li>
       <li>
         <a href="{{ url_for('my_program') }}" class="nav-link {% if request.endpoint == 'my_program' %}active{% endif %}">
           <i class="bi bi-calendar2-week"></i><span class="nav-label"> My Program</span>
@@ -309,6 +306,15 @@
       <li>
         <a href="{{ url_for('achievements') }}" class="nav-link {% if request.endpoint == 'achievements' %}active{% endif %}">
           <i class="bi bi-trophy"></i><span class="nav-label"> Achievements</span>
+        </a>
+      </li>
+
+      <!-- Community section divider -->
+      <li><div class="sidebar-divider" style="height:1px;background:var(--border-mid);margin:0.75rem 0.75rem;"></div></li>
+      <li class="nav-section">Community</li>
+      <li>
+        <a href="{{ url_for('ai_coach') }}" class="nav-link {% if request.endpoint == 'ai_coach' %}active{% endif %}">
+          <i class="bi bi-stars"></i><span class="nav-label"> AI Coach</span>
         </a>
       </li>
       <li>

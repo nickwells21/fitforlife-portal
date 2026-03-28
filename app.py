@@ -14,12 +14,19 @@ from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import stripe as _stripe
+import anthropic as _anthropic
 
 load_dotenv()
 
 # Stripe config — set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in environment
 _stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+
+# Anthropic config — powers the AI Coach chatbot
+_anthropic_client = None
+_ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+if _ANTHROPIC_KEY:
+    _anthropic_client = _anthropic.Anthropic(api_key=_ANTHROPIC_KEY)
 
 app = Flask(__name__)
 
@@ -2001,10 +2008,73 @@ def api_messages_unread_count():
 @app.route('/chat')
 @login_required
 def chat():
-    """Full-screen chat page for clients."""
+    """Full-screen chat page for clients — redirects to AI Coach."""
     if current_user.role != 'client':
         return redirect(url_for('dashboard'))
-    return render_template('chat.html')
+    return redirect(url_for('ai_coach'))
+
+
+@app.route('/ai-coach')
+@login_required
+def ai_coach():
+    """AI fitness assistant — nutrition, exercise & wellness advice."""
+    if current_user.role != 'client':
+        return redirect(url_for('dashboard'))
+    return render_template('ai_coach.html')
+
+
+AI_COACH_SYSTEM = """You are FFL Coach, the personal AI fitness assistant for Fit For Life clients. \
+You are warm, encouraging, and knowledgeable. Your focus areas:
+
+- **Nutrition**: meal planning, macros, pre/post-workout fuel, hydration, supplements
+- **Exercise**: form cues, programming questions, warm-up/cool-down, mobility
+- **Wellness**: sleep, stress management, recovery, habit building, motivation
+
+Guidelines:
+- Keep responses concise and actionable (2-4 short paragraphs max).
+- Use simple language — no jargon without explanation.
+- Be encouraging but honest. Celebrate effort over perfection.
+- Never diagnose medical conditions or replace professional medical advice. \
+If something sounds medical, recommend they consult their doctor.
+- When asked about specific exercises, give clear form cues.
+- You can suggest general calorie/macro ranges but always note individual needs vary.
+- Do not discuss topics outside health, fitness, and wellness."""
+
+
+@app.route('/api/ai-coach', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def api_ai_coach():
+    """Send conversation to Claude and return AI response."""
+    if not _anthropic_client:
+        return jsonify({'error': 'AI Coach is not configured. Set ANTHROPIC_API_KEY.'}), 503
+
+    data = request.get_json()
+    messages = data.get('messages', [])
+
+    # Validate and trim conversation (keep last 20 messages for context)
+    clean = []
+    for m in messages[-20:]:
+        role = m.get('role')
+        content = (m.get('content') or '').strip()
+        if role in ('user', 'assistant') and content:
+            clean.append({'role': role, 'content': content[:2000]})
+
+    if not clean or clean[-1]['role'] != 'user':
+        return jsonify({'error': 'No message provided'}), 400
+
+    try:
+        response = _anthropic_client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=600,
+            system=AI_COACH_SYSTEM,
+            messages=clean,
+        )
+        reply = response.content[0].text
+        return jsonify({'reply': reply})
+    except Exception as e:
+        app.logger.error(f'AI Coach error: {e}')
+        return jsonify({'error': 'AI Coach is temporarily unavailable.'}), 500
 
 
 @app.route('/messages')
