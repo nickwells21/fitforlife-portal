@@ -1880,6 +1880,12 @@ def admin_new_promo():
         end_date=date_type.fromisoformat(end_raw) if end_raw else None,
     )
     db.session.add(promo)
+    # Notify all active clients
+    clients = User.query.filter_by(role='client', is_active=True).all()
+    for c in clients:
+        create_notification(c.id, 'promo',
+            f'🎉 New promotion: {promo.title}',
+            icon='bi-megaphone-fill')
     db.session.commit()
     flash('Promo created.', 'success')
     return redirect(url_for('admin_promos'))
@@ -1926,6 +1932,13 @@ def admin_new_event():
         location_id=int(location_id) if location_id else None,
     )
     db.session.add(event)
+    # Notify all active clients
+    event_date_str = event.event_date.strftime('%b %-d')
+    clients = User.query.filter_by(role='client', is_active=True).all()
+    for c in clients:
+        create_notification(c.id, 'event',
+            f'📣 New event: {event.title} — {event_date_str}',
+            icon='bi-calendar-event-fill')
     db.session.commit()
     flash('Event created.', 'success')
     return redirect(url_for('admin_events'))
@@ -2539,6 +2552,7 @@ NOTIF_EMOJI = {
     'daily_log_weighin': '⚖️', 'early_bird': '🌅', 'night_owl': '🌙',
     'week_started': '📅', 'month_summary': '📋',
     'coach_message': '💬',
+    'promo': '🎉', 'event': '📣',
 }
 
 RARITY_MAP = {'bronze': 'common', 'silver': 'rare', 'gold': 'epic', 'platinum': 'legendary'}
