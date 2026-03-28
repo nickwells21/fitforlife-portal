@@ -1929,7 +1929,7 @@ def admin_events():
     events = Event.query.order_by(Event.event_date).all()
     locations = Location.query.all()
     return render_template('admin_events.html', events=events, locations=locations,
-                           now=datetime.now(timezone.utc))
+                           now=datetime.now())
 
 
 @app.route('/admin/events/new', methods=['POST'])
