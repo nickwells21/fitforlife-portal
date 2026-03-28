@@ -665,30 +665,38 @@ def dashboard():
             days_since_start = (today - assignment.start_date).days
             if days_since_start >= 0:
                 phases = assignment.program.phases.order_by(ProgramPhase.phase_num).all()
-                running = 0
-                for ph in phases:
-                    phase_total = ph.weeks * 7
-                    if days_since_start < running + phase_total:
-                        days_in_phase = days_since_start - running
-                        current_day_num = (days_in_phase % 7) + 1   # 1=Mon … 7=Sun
-                        week_in_phase   = (days_in_phase // 7) + 1
-                        # Search from today's weekday slot forward in the phase
-                        for d in range(current_day_num, 8):
+                total_program_days = sum(ph.weeks * 7 for ph in phases)
+
+                # Search from today forward through the rest of the program
+                for offset in range(0, min(total_program_days - days_since_start, 14)):
+                    check_day = days_since_start + offset
+                    if check_day >= total_program_days:
+                        break
+                    # Find which phase + week + day this falls in
+                    running = 0
+                    for ph in phases:
+                        phase_total = ph.weeks * 7
+                        if check_day < running + phase_total:
+                            days_in_phase = check_day - running
+                            day_num = (days_in_phase % 7) + 1
+                            week_num = (days_in_phase // 7) + 1
                             phd = PhaseDay.query.filter(
                                 PhaseDay.phase_id == ph.id,
-                                PhaseDay.day_num == d,
+                                PhaseDay.day_num == day_num,
                                 PhaseDay.workout_id.isnot(None)
                             ).first()
                             if phd and phd.workout:
                                 next_program_workout = phd.workout
                                 next_program_exercises = [
                                     we.exercise for we in phd.workout.exercises.order_by(WorkoutExercise.order).all()
+                                    if we.exercise
                                 ]
                                 next_workout_phase_id = ph.id
-                                next_workout_week = week_in_phase
-                                break
+                                next_workout_week = week_num
+                            break
+                        running += phase_total
+                    if next_program_workout:
                         break
-                    running += phase_total
 
         return render_template('dashboard_client.html',
             upcoming=upcoming,
